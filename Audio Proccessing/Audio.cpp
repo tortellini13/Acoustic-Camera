@@ -1,3 +1,4 @@
+// Default libraries
 #include <iostream>
 #include <cmath>
 #include <complex>
@@ -5,10 +6,13 @@
 #include <math.h>
 #include <iomanip>
 
-#include <alsa/asoundlib.h> // Need to install
-#include <sys/mman.h> // Should only have this on Linux
+// Additional libraries
+//#include <alsa/asoundlib.h> // Need to install
+//#include <sys/mman.h> // Should only have this on Linux
 
+// User headers
 #include "PARAMS.h"
+#include "sharedMemory.h"
 
 using namespace std;
 
@@ -68,7 +72,8 @@ double degtorad(double angleDEG)
 
 //==============================================================================================
 
-// Needs to be checked on Linux. Currently untested***
+/*
+// Needs to be checked on Linux. Currently untested
 // Read data from interface and put into FFT_SIZE buffer
 bool captureAudioData(const char* device, int16_t*** audio_data)
 {
@@ -146,6 +151,7 @@ bool captureAudioData(const char* device, int16_t*** audio_data)
 
 	return true;
 } // end captureAudioData
+*/
 
 //==============================================================================================
 
