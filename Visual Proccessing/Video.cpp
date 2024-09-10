@@ -8,7 +8,7 @@ using namespace cv;
 int main() {
   
    Mat frame, heatMapData, heatMap, blended;
-   VideoCapture cap(0); //open camera
+   VideoCapture cap(0, CAP_V4L2); //open camera
     
     while (true) {
        
@@ -18,9 +18,11 @@ int main() {
 
         cap.set(CAP_PROP_FRAME_WIDTH, width);  //set frame width
         cap.set(CAP_PROP_FRAME_HEIGHT, height); //set frame height
-        cap.set(CAP_PROP_FPS, 60);
+        //cap.set(CAP_PROP_FPS, 60);
         cap >> frame; //capture the frame
-        if (frame.empty()) break;
+        //while (frame.empty()) {
+        //    cap >> frame;
+        //}
 
         //generate random heat map data
         heatMapData = Mat(frame.size(), CV_32FC1); 
@@ -44,6 +46,6 @@ int main() {
     }
 
     cap.release();
-    destroyAllWindows(); 
+    //destroyAllWindows(); 
     return 0;
 }
