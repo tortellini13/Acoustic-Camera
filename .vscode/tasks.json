@@ -12,7 +12,7 @@
                 "${fileDirname}/${fileBasenameNoExtension}",
                 //"main",
                 //"`pkg-config --cflags --libs opencv4`",
-                "-I/usr/include/opencv4",   // Add this to manually include the path to OpenCV headers
+                "-I/usr/local/include/opencv4",   // Add this to manually include the path to OpenCV headers
                 "-L/usr/lib",               // Add this to specify the library path
                 "-lopencv_core",            // Link against the core OpenCV libraries
                 "-lopencv_imgcodecs",
