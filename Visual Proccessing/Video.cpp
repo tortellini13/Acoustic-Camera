@@ -14,11 +14,11 @@ int main() {
        
         int width = 640;
         int height = 480;
-        double alpha = 0.1; //transparency factor
+        double alpha = 0.8; //transparency factor
 
-        cap.set(CAP_PROP_FRAME_WIDTH, width);  //set frame width
-        cap.set(CAP_PROP_FRAME_HEIGHT, height); //set frame height
-        //cap.set(CAP_PROP_FPS, 60);
+        //cap.set(CAP_PROP_FRAME_WIDTH, width);  //set frame width
+        //cap.set(CAP_PROP_FRAME_HEIGHT, height); //set frame height
+        cap.set(CAP_PROP_FPS, 60);
         cap >> frame; //capture the frame
         //while (frame.empty()) {
         //    cap >> frame;
