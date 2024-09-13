@@ -3699,7 +3699,7 @@
 		(descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "capacitor")
 		(property "Reference" "C5"
-			(at 0 -1.16 360)
+			(at 0 -1.16 0)
 			(layer "F.SilkS")
 			(uuid "39e986bf-509d-4ef8-a97a-8e32bc084a5d")
 			(effects
@@ -3710,7 +3710,7 @@
 			)
 		)
 		(property "Value" "100nF"
-			(at 0 1.16 360)
+			(at 0 1.16 0)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "79c12cea-668b-410e-b26c-32024d93ff26")
@@ -3866,7 +3866,7 @@
 			(uuid "2d23a202-306b-4e97-b32a-46ac4fffb443")
 		)
 		(fp_text user "${REFERENCE}"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "F.Fab")
 			(uuid "8316a99d-6099-415d-81a9-8d453366373a")
 			(effects
@@ -5296,7 +5296,7 @@
 		(descr "Resistor SMD 0603 (1608 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 72, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "resistor")
 		(property "Reference" "C1"
-			(at 4 0 360)
+			(at 4 0 0)
 			(layer "F.SilkS")
 			(uuid "50feb2da-5127-4299-879b-17d7eae59442")
 			(effects
@@ -5307,7 +5307,7 @@
 			)
 		)
 		(property "Value" "1uF"
-			(at 0 1.43 360)
+			(at 0 1.43 0)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "89e30d67-c096-4117-b2e8-a649c2f628f3")
@@ -5463,7 +5463,7 @@
 			(uuid "9236b890-d590-4f7d-bcd0-0509bb52eb7c")
 		)
 		(fp_text user "${REFERENCE}"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "F.Fab")
 			(uuid "96af8710-69e0-43eb-9a61-b09218f023b5")
 			(effects
@@ -5510,7 +5510,7 @@
 		(descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf), generated with kicad-footprint-generator")
 		(tags "capacitor")
 		(property "Reference" "C4"
-			(at 0 -1.16 360)
+			(at 0 -1.16 0)
 			(layer "F.SilkS")
 			(uuid "82b8499b-dd61-41b7-b9b0-848243bc921a")
 			(effects
@@ -5521,7 +5521,7 @@
 			)
 		)
 		(property "Value" "100nF"
-			(at 0 1.16 360)
+			(at 0 1.16 0)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "ddfc373a-e2be-4fc4-a9db-7acb2662813e")
@@ -5677,7 +5677,7 @@
 			(uuid "ab39628f-b971-4d5d-b19d-1bc2afb4c1f8")
 		)
 		(fp_text user "${REFERENCE}"
-			(at 0 0 360)
+			(at 0 0 0)
 			(layer "F.Fab")
 			(uuid "eee80fe1-668e-442e-ba2d-9553a4296ec5")
 			(effects
@@ -6396,6 +6396,16 @@
 		)
 	)
 	(gr_line
+		(start 160 55)
+		(end 170 55)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "Dwgs.User")
+		(uuid "0b8596d1-4e03-4ce2-9b51-460d36185953")
+	)
+	(gr_line
 		(start 180 80)
 		(end 150 80)
 		(stroke
@@ -6414,6 +6424,16 @@
 		)
 		(layer "Dwgs.User")
 		(uuid "68c459db-f3fd-48c7-9c59-f3d128e112e7")
+	)
+	(gr_line
+		(start 160 77.5)
+		(end 170 77.5)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "Dwgs.User")
+		(uuid "88ca2214-3a63-478f-b2a8-c0da288f3ef8")
 	)
 	(gr_line
 		(start 180 50)
@@ -6436,6 +6456,16 @@
 		(uuid "d296d996-cad2-4bca-bc87-cfc2c0be7f1b")
 	)
 	(gr_line
+		(start 165 80)
+		(end 165 50)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(layer "Dwgs.User")
+		(uuid "eb37a139-deca-469f-b11d-23c63c0836e7")
+	)
+	(gr_line
 		(start 182.5 82.5)
 		(end 147.5 82.5)
 		(stroke
@@ -6444,6 +6474,28 @@
 		)
 		(layer "Edge.Cuts")
 		(uuid "15f30438-e223-4f74-ab8f-a771ea563430")
+	)
+	(gr_circle
+		(center 165 55)
+		(end 166.25 55)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill none)
+		(layer "Edge.Cuts")
+		(uuid "67a2605f-b2cd-4f4f-880f-86802150432e")
+	)
+	(gr_circle
+		(center 170 77.5)
+		(end 171.25 77.5)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill none)
+		(layer "Edge.Cuts")
+		(uuid "b38baa46-06c6-4e52-8516-96eed5246a8c")
 	)
 	(gr_line
 		(start 150 47.5)
@@ -6454,6 +6506,17 @@
 		)
 		(layer "Edge.Cuts")
 		(uuid "c10ef966-d51c-46aa-9d4d-92e152e2aa2c")
+	)
+	(gr_circle
+		(center 160 77.5)
+		(end 161.25 77.5)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill none)
+		(layer "Edge.Cuts")
+		(uuid "cc79925f-3421-4be3-86a8-0fdd2ca893ef")
 	)
 	(gr_line
 		(start 182.5 47.5)
