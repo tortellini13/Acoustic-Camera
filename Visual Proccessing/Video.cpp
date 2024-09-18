@@ -8,7 +8,7 @@ using namespace cv;
 int main() {
   
    Mat frame, heatMapData, heatMap, blended;
-   VideoCapture cap(0, CAP_V4L2); //open camera
+   VideoCapture cap(0, CAP_V4L); //open camera
     
     while (true) {
        

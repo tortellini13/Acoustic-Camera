@@ -4,7 +4,13 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/local/include/opencv4**"
+                "/usr/local/include/opencv4**",
+                "/usr/local/include",
+                "/usr/include/libcamera/libcamera/**",
+                "/usr/include",
+                "/usr/include/libcamera",
+                "/usr/include/rpicam-apps",
+                "/usr/include/libcamera-apps/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++-12",

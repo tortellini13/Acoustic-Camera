@@ -1,7 +1,9 @@
 #include <iostream>
 #include <SDL2/SDL.h>
-#include <libcamera/libcamera.h>
-#include <libcamera/libcamera_app.h>
+#include <libcamera/libcamera/libcamera.h>
+#include <libcamera-apps/core/libcamera_app.h>
+#include <libcamera-apps/core/buffer_sync.hpp>
+
 
 using namespace std;
 

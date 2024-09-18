@@ -18,7 +18,14 @@
                 "-lopencv_imgcodecs",
                 "-lopencv_highgui",
                 "-lopencv_imgproc",          // Add this for image processing functions
-                "-lopencv_videoio" 
+                "-lopencv_videoio" ,
+
+                 //"-I/usr/include/libcamera**",
+                 //"-I/usr/include/SDL2**",
+                 //"-I/usr/include/libercamera-apps/core/**",
+                 "-I/usr/include"
+
+
             ],
             "options": {
                 "cwd": "${fileDirname}"
