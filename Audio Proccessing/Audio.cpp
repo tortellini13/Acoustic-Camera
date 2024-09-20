@@ -45,7 +45,7 @@ Misc
 //==============================================================================================
 
 // Custom type declaration for ease of use
-typedef complex<double> cdouble;
+typedef complex<float> cfloat;
 
 // Defines amount of angles to sweep through (coordinates)
 const int ANGLE_AMOUNT = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP + 1);
@@ -54,7 +54,7 @@ const int ANGLE_AMOUNT = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP + 1);
 const int HALF_FFT_SIZE = FFT_SIZE / 2;
 
 // Initializes gain array
-vector<vector<double>> gain(ANGLE_AMOUNT, vector<double>(ANGLE_AMOUNT));
+vector<vector<float>> gain(ANGLE_AMOUNT, vector<float>(ANGLE_AMOUNT));
 
 // Initialize upper and lower frequencies
 // Changed by user input
@@ -64,9 +64,9 @@ int upperFrequency;
 //==============================================================================================
 
 // Converts degrees to radians
-double degtorad(double angleDEG)
+float degtorad(float angleDEG)
 {
-	double result = angleDEG * (M_PI / 180);
+	float result = angleDEG * (M_PI / 180);
 	return result;
 } // end degtorad
 
@@ -156,10 +156,10 @@ bool captureAudioData(const char* device, int16_t*** audio_data)
 //==============================================================================================
 
 // Calculates Array Factor and outputs gain
-void arrayFactor(const vector<vector<double>>& Data)
+void arrayFactor(const vector<vector<float>>& Data)
 {
 	// Initialize Array Factor array
-	vector<vector<cdouble>> AF(ANGLE_AMOUNT, vector<cdouble>(ANGLE_AMOUNT));
+	vector<vector<cfloat>> AF(ANGLE_AMOUNT, vector<cfloat>(ANGLE_AMOUNT));
 
 	// Calculate phase shift for every angle
 	int indexTHETA = 0; // Reset theta index
@@ -168,14 +168,14 @@ void arrayFactor(const vector<vector<double>>& Data)
 		int indexPHI = 0; // Reset phi index
 		for (int PHI = MIN_ANGLE; indexPHI < ANGLE_AMOUNT; PHI += ANGLE_STEP, ++indexPHI)
 		{
-			cdouble sum = 0;  // To accumulate results
+			cfloat sum = 0;  // To accumulate results
 			for (int m = 0; m < M_AMOUNT; m++)
 			{
 				for (int n = 0; n < N_AMOUNT; n++)
 				{
 					// Calculate the phase shift for each element
-					double angle = degtorad(THETA * m + PHI * n);
-					sum += Data[m][n] * cdouble(cos(angle), sin(angle));
+					float angle = degtorad(THETA * m + PHI * n);
+					sum += Data[m][n] * cfloat(cos(angle), sin(angle));
 				}
 			}
 			AF[indexTHETA][indexPHI] = sum; // Writes sum to Array Factor array
@@ -212,18 +212,18 @@ void arrayFactor(const vector<vector<double>>& Data)
 //==============================================================================================
 
 // Calculate all constants and write to arrays to access later
-double vk; // (2 * M_PI * k) / FFT_SIZE
-vector<cdouble> ev(HALF_FFT_SIZE); // exp((-2 * M_PI * k) / FFT_SIZE)
-vector<vector<cdouble>> ev2m(HALF_FFT_SIZE, vector<cdouble>(HALF_FFT_SIZE)); // exp((-2 * M_PI * k * 2 * m) / FFT_SIZE)
+float vk; // (2 * M_PI * k) / FFT_SIZE
+vector<cfloat> ev(HALF_FFT_SIZE); // exp((-2 * M_PI * k) / FFT_SIZE)
+vector<vector<cfloat>> ev2m(HALF_FFT_SIZE, vector<cfloat>(HALF_FFT_SIZE)); // exp((-2 * M_PI * k * 2 * m) / FFT_SIZE)
 void constantCalcs()
 {
 	for (int k = 0; k < HALF_FFT_SIZE; k++)
 	{
 		vk = (2 * M_PI * k) / FFT_SIZE;     // some vector as a function of k
-		ev[k] = cdouble(cos(vk), -sin(vk)); // some complex vector as a function of k
+		ev[k] = cfloat(cos(vk), -sin(vk)); // some complex vector as a function of k
 		for (int m = 0; m < HALF_FFT_SIZE; m++)
 		{
-			ev2m[k][m] = cdouble(cos(vk * 2 * m), -sin(vk * 2 * m)); // some complex vector as a function of k with a factor of 2m in exponent
+			ev2m[k][m] = cfloat(cos(vk * 2 * m), -sin(vk * 2 * m)); // some complex vector as a function of k with a factor of 2m in exponent
 		}
 	}
 } // end constantCalcs
@@ -231,9 +231,9 @@ void constantCalcs()
 //==============================================================================================
 
 // Calculates Ek (first component of FFT for even samples in buffer as a function of k)
-vector<vector<vector<cdouble>>> Ek(const vector<vector<vector<double>>>& rawData, int lowerBound, int upperBound)
+vector<vector<vector<cfloat>>> Ek(const vector<vector<vector<float>>>& rawData, int lowerBound, int upperBound)
 {
-	vector<vector<vector<cdouble>>> result(HALF_FFT_SIZE, vector<vector<cdouble>>(M_AMOUNT, vector<cdouble>(N_AMOUNT, 0)));
+	vector<vector<vector<cfloat>>> result(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
 
 	for (int x = 0; x < M_AMOUNT; x++) // Loop through M-axis
 	{
@@ -256,7 +256,7 @@ vector<vector<vector<cdouble>>> Ek(const vector<vector<vector<double>>>& rawData
 				// Calculates Ek array
 				else
 				{
-					cdouble sum = 0;
+					cfloat sum = 0;
 					for (int m = 0; m < HALF_FFT_SIZE; m += 2) // m (buffered sample index)
 					{
 						sum += rawData[x][y][m] * ev2m[k][m]; // Calculates Ek array
@@ -272,9 +272,9 @@ vector<vector<vector<cdouble>>> Ek(const vector<vector<vector<double>>>& rawData
 //==============================================================================================
 
 // Calculates Ok (second component of FFT for odd samples in buffer as a function of k)
-vector<vector<vector<cdouble>>> Ok(const vector<vector<vector<double>>>& rawData, int lowerBound, int upperBound)
+vector<vector<vector<cfloat>>> Ok(const vector<vector<vector<float>>>& rawData, int lowerBound, int upperBound)
 {
-	vector<vector<vector<cdouble>>> result(HALF_FFT_SIZE, vector<vector<cdouble>>(M_AMOUNT, vector<cdouble>(N_AMOUNT, 0)));
+	vector<vector<vector<cfloat>>> result(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
 
 	for (int x = 0; x < M_AMOUNT; x++) // Loop through M-axis
 	{
@@ -297,7 +297,7 @@ vector<vector<vector<cdouble>>> Ok(const vector<vector<vector<double>>>& rawData
 				// Calculates Ok array
 				else
 				{
-					cdouble sum = 0;
+					cfloat sum = 0;
 					for (int m = 1; m < HALF_FFT_SIZE; m += 2) // m (buffered sample index)
 					{
 						sum += rawData[x][y][m] * ev2m[k][m]; // Calculates Ok array
@@ -314,14 +314,14 @@ vector<vector<vector<cdouble>>> Ok(const vector<vector<vector<double>>>& rawData
 
 // Calculates X array (total FFT as a function of k) and sums all of the values in the desired range
 // Outputs M x N array of filtered data
-vector<vector<double>> FFTSum(vector<vector<vector<double>>>& rawData)
+vector<vector<float>> FFTSum(vector<vector<vector<float>>>& rawData)
 {
 	// Calls Ek and Ok
-	vector<vector<vector<cdouble>>> Xcomp1 = Ek(rawData, lowerFrequency, upperFrequency); 
-	vector<vector<vector<cdouble>>> Xcomp2 = Ok(rawData, lowerFrequency, upperFrequency);
+	vector<vector<vector<cfloat>>> Xcomp1 = Ek(rawData, lowerFrequency, upperFrequency); 
+	vector<vector<vector<cfloat>>> Xcomp2 = Ok(rawData, lowerFrequency, upperFrequency);
 		
 	// Xk
-	vector<vector<vector<cdouble>>> Xresult(HALF_FFT_SIZE, vector<vector<cdouble>>(M_AMOUNT, vector<cdouble>(N_AMOUNT, 0)));
+	vector<vector<vector<cfloat>>> Xresult(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
 	for (int x = 0; x < M_AMOUNT; x++)
 	{
 		for (int y = 0; y < N_AMOUNT; y++)
@@ -348,12 +348,12 @@ vector<vector<double>> FFTSum(vector<vector<vector<double>>>& rawData)
 	*/
 	
 	// Sum all X array values to convert frequency bins into a full band (user defined)
-	vector<vector<double>> result(M_AMOUNT, vector<double>(N_AMOUNT));
+	vector<vector<float>> result(M_AMOUNT, vector<float>(N_AMOUNT));
 	for (int x = 0; x < M_AMOUNT; x++)
 	{
 		for (int y = 0; y < N_AMOUNT; y++)
 		{
-			double sum = 0; // To accumulate results
+			float sum = 0; // To accumulate results
 			for (int k = 0; k < HALF_FFT_SIZE; k++)
 			{
 				sum += norm(Xresult[x][y][k]); // magnitude of complex number sqrt(a^2 + b^2)
@@ -366,8 +366,8 @@ vector<vector<double>> FFTSum(vector<vector<vector<double>>>& rawData)
 
 //==============================================================================================
 
-// Prints 3D array of doubles to the console
-void print3DDouble(vector<vector<vector<double>>>& inputArray, string& title, int dim1, int dim2, int dim3)
+// Prints 3D array of floats to the console
+void print3Dfloat(vector<vector<vector<float>>>& inputArray, string& title, int dim1, int dim2, int dim3)
 {
 	cout << "title\n";
 	for (int m = 0; m < dim1; m++)
@@ -382,7 +382,7 @@ void print3DDouble(vector<vector<vector<double>>>& inputArray, string& title, in
 		} // end n
 	} // end m
 	cout << "\n\n\n";
-} // end print3DDouble
+} // end print3Dfloat
 
 //==============================================================================================
 
@@ -391,7 +391,7 @@ int main()
 	// Needs to be 3D for input***
 	// 3rd dimension is buffered data***
 	// Will be made 3D after data aquisition is made***
-	vector<vector<double>> DATA =
+	vector<vector<float>> DATA =
 	{
 		{1, 1, 1, 1},
 		{1, 1, 1, 1},
@@ -719,7 +719,7 @@ int main()
 		//==============================================================================================
 		
 		// Filters data to remove unneeded frequencies and sums all frequency bins
-		//vector<vector<double>> filteredData = FFTSum(DATA);	***disabled until data aquisition is made***
+		//vector<vector<float>> filteredData = FFTSum(DATA);	***disabled until data aquisition is made***
 
 
 		// Writes gain to M x N array to be plotted

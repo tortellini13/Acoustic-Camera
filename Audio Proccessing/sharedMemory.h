@@ -38,17 +38,17 @@ public:
     // Close shared memory
     bool closeAll();
 
-    // Write a vector of doubles
+    // Write a vector of floats
     bool write(const void* data_input);
 
-    // Read a vector of doubles
-    bool read(double* data_output);
+    // Read a vector of floats
+    bool read(float* data_output);
 
-    // Write a 2D array of doubles
-    bool write2D(vector<vector<double>> data_input);
+    // Write a 2D array of floats
+    bool write2D(vector<vector<float>> data_input);
 
-    // Read a 2D array of doubles
-    bool read2D(vector<vector<double>>& data_output);
+    // Read a 2D array of floats
+    bool read2D(vector<vector<float>>& data_output);
 
 private:
     string shm_name;   // Name of shared memory
@@ -71,7 +71,7 @@ private:
 
 // Initialize shared memory and semaphore
 sharedMemory::sharedMemory(const char* name_shm, string name_sem_1, string name_sem_2, int num_rows, int num_cols)
-    : shm_name(name_shm), shm_size(sizeof(double) * num_rows * num_cols), sem_name_1(name_sem_1), sem_name_2(name_sem_2), shm_fd(-1), shm_ptr(nullptr), sem_ptr_1(nullptr), sem_ptr_2(nullptr), rows(num_rows), cols(num_cols) {}
+    : shm_name(name_shm), shm_size(sizeof(float) * num_rows * num_cols), sem_name_1(name_sem_1), sem_name_2(name_sem_2), shm_fd(-1), shm_ptr(nullptr), sem_ptr_1(nullptr), sem_ptr_2(nullptr), rows(num_rows), cols(num_cols) {}
 
 // Destroy shared memory and semaphore
 sharedMemory::~sharedMemory()
@@ -224,7 +224,7 @@ bool sharedMemory::closeAll()
 
 //=====================================================================================
 
-// Write a vector of doubles
+// Write a vector of floats
 bool sharedMemory::write(const void* data_input)
 {
     // Write data to shared memory
@@ -252,8 +252,8 @@ bool sharedMemory::write(const void* data_input)
 
 //=====================================================================================
 
-// Read a vector of doubles
-bool sharedMemory::read(double* data_output)
+// Read a vector of floats
+bool sharedMemory::read(float* data_output)
 {
     // Wait until data is written
     if (sem_wait(sem_ptr_1) < 0) 
@@ -293,11 +293,11 @@ bool sharedMemory::read(double* data_output)
 
 //=====================================================================================
 
-// Write a 2D array of doubles
-bool sharedMemory::write2D(vector<vector<double>> data_input)
+// Write a 2D array of floats
+bool sharedMemory::write2D(vector<vector<float>> data_input)
 {
     // Flatten the 2D vector into a 1D array
-    vector<double> flattened_data;
+    vector<float> flattened_data;
     for (const auto& row : data_input)
     {
         flattened_data.insert(flattened_data.end(), row.begin(), row.end());
@@ -338,8 +338,8 @@ bool sharedMemory::write2D(vector<vector<double>> data_input)
 
 //=====================================================================================
 
-// Read a 2D array of doubles
-bool sharedMemory::read2D(vector<vector<double>>& data_output)
+// Read a 2D array of floats
+bool sharedMemory::read2D(vector<vector<float>>& data_output)
 {
     if (sem_wait(sem_ptr_1) < 0) 
     {
@@ -349,10 +349,10 @@ bool sharedMemory::read2D(vector<vector<double>>& data_output)
     //cout << "Reading data.\n"; // Debugging
 
     // Ensure output size matches the number of rows and columns
-    data_output.resize(rows, vector<double>(cols));
+    data_output.resize(rows, vector<float>(cols));
 
     // Read data from shared memory and reshape it into the 2D array
-    vector<double> flattened_data(rows * cols);
+    vector<float> flattened_data(rows * cols);
 
     // Copy the data from shared memory into the flattened vector
     memcpy(flattened_data.data(), shm_ptr, shm_size);
