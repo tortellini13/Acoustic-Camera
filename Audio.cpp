@@ -5,10 +5,10 @@
 #include <vector>
 #include <math.h>
 #include <iomanip>
+#include <sys/mman.h>
 
 // Additional libraries
-//#include <alsa/asoundlib.h> // Need to install
-//#include <sys/mman.h> // Should only have this on Linux
+#include <alsa/asoundlib.h> // Need to install
 
 // User headers
 #include "PARAMS.h"
@@ -71,11 +71,90 @@ float degtorad(float angleDEG)
 } // end degtorad
 
 //==============================================================================================
+/*
+bool audioSetup(snd_pcm_t **pcm_handle)
+{
+
+
+
+
+
+
+
+
+	return true;
+}
+
+
+
+bool captureAudioData(vector<vector<float>> dataOutputBuffered)
+{
+	short dataBuffer[BUFFER_SIZE]; // Allocates memory to write data into
+	int pcm;
+
+	pcm = snd_pcm_readi(pcm_handle, dataBuffer, FFT_SIZE);
+
+
+
+
+
+
+
+	return true;
+}
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
 // Needs to be checked on Linux. Currently untested
 // Read data from interface and put into FFT_SIZE buffer
-bool captureAudioData(const char* device, int16_t*** audio_data)
+unsigned int rate = SAMPLE_RATE;
+bool captureAudioData(const char* device, float*** audio_data)
 {
 	snd_pcm_t* handle;
 	snd_pcm_hw_params_t* params;
@@ -84,7 +163,7 @@ bool captureAudioData(const char* device, int16_t*** audio_data)
 	// Open PCM device for recording (capture)
 	if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0) 
 	{
-		cerr << "Cannot open audio device " << device << ": " << snd_strerror(err) << std::endl;
+		cerr << "Cannot open audio device " << device << ": " << snd_strerror(err) << endl;
 		return false;
 	}
 
@@ -98,38 +177,38 @@ bool captureAudioData(const char* device, int16_t*** audio_data)
 	snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
 	snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
 	
-	snd_pcm_hw_params_set_rate_near(handle, params, &SAMPLE_RATE, 0);
+	snd_pcm_hw_params_set_rate_near(handle, params, &rate, 0);
 	snd_pcm_hw_params_set_channels(handle, params, M_AMOUNT * N_AMOUNT); // Total number of channels
 
 	// Write the parameters to the driver
 	if ((err = snd_pcm_hw_params(handle, params)) < 0) 
 	{
-		cerr << "Unable to set HW parameters: " << snd_strerror(err) << std::endl;
+		cerr << "Unable to set HW parameters: " << snd_strerror(err) << endl;
 		return false;
 	}
 
 	// Allocate buffer to hold captured data
 	int buffer_frames = FFT_SIZE;
-	int buffer_size = buffer_frames * M_AMOUNT * N_AMOUNT * sizeof(int16_t); // 2 bytes/sample, M*N channels
-	int16_t* buffer = new int16_t[M_AMOUNT * N_AMOUNT * buffer_frames];
+	int buffer_size = buffer_frames * M_AMOUNT * N_AMOUNT * sizeof(float); // 4 bytes/sample, M*N channels
+	float* buffer = new float[M_AMOUNT * N_AMOUNT * buffer_frames];
 
 	// Capture data
 	err = snd_pcm_readi(handle, buffer, buffer_frames);
 	if (err == -EPIPE) 
 	{
-		std::cerr << "Overrun occurred" << std::endl;
+		cerr << "Overrun occurred" << endl;
 		snd_pcm_prepare(handle);
 	}
 	else if (err < 0) 
 	{
-		std::cerr << "Error from read: " << snd_strerror(err) << std::endl;
+		cerr << "Error from read: " << snd_strerror(err) << endl;
 		delete[] buffer;
 		snd_pcm_close(handle);
 		return false;
 	}
 	else if (err != buffer_frames) 
 	{
-		std::cerr << "Short read, read " << err << " frames" << std::endl;
+		cerr << "Short read, read " << err << " frames" << endl;
 	}
 
 	// Store captured data into the 3D array
