@@ -7,22 +7,28 @@ using namespace cv;
 
 int main() {
   
-   Mat frame, heatMapData, heatMap, blended;
-   VideoCapture cap(0, CAP_V4L); //open camera
+   Mat heatMapData, heatMap, blended;
+   VideoCapture cap(0); //open camera
+
+        int width = 1280;
+        int height = 720;
+        double alpha = 0.2; //transparency factor
+
+        cap.set(CAP_PROP_FRAME_WIDTH, width);  //set frame width
+        cap.set(CAP_PROP_FRAME_HEIGHT, height); //set frame height
+        cap.set(CAP_PROP_FPS, 10);
+
+        Mat frame;
+
+    
     
     while (true) {
        
-        int width = 640;
-        int height = 480;
-        double alpha = 0.8; //transparency factor
-
-        //cap.set(CAP_PROP_FRAME_WIDTH, width);  //set frame width
-        //cap.set(CAP_PROP_FRAME_HEIGHT, height); //set frame height
-        cap.set(CAP_PROP_FPS, 60);
+       
         cap >> frame; //capture the frame
-        //while (frame.empty()) {
-        //    cap >> frame;
-        //}
+        while (frame.empty()) {
+            cap >> frame;
+        }
 
         //generate random heat map data
         heatMapData = Mat(frame.size(), CV_32FC1); 
