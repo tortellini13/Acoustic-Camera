@@ -1,4 +1,6 @@
-FLAGS = -lrt -lpthread
+OPENCV_FLAGS = `pkg-config --cflags --libs opencv4`
+
+FLAGS = -lrt -lpthread -lasound
 
 HEADERS = PARAMS.h sharedMemory.h
 
@@ -16,8 +18,11 @@ launch: launch.cpp $(NAME_1).cpp #$(NAME_2).cpp
 $(NAME_1): $(NAME_1).cpp $(HEADERS)
 	g++ -o $(NAME_1) $(NAME_1).cpp $(FLAGS)
 
+$(NAME_1): $(NAME_1).cpp
+	g++ -o $(NAME_1) $(NAME_1).cpp $(FLAGS)
+
 #$(NAME_2): $(NAME_2).cpp $(HEADERS)
-#	g++ -o $(NAME_2) $(NAME_2).cpp $(FLAGS)
+#	g++ -o $(NAME_2) $(NAME_2).cpp $(FLAGS) $(OPEN_CV_FLAGS)
 
 clean:
 	rm -f $(PROGRAM_NAMES)
