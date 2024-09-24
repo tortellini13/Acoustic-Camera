@@ -8,15 +8,15 @@ using namespace cv;
 int main() {
   
    Mat heatMapData, heatMap, blended;
-   VideoCapture cap(0); //open camera
+   VideoCapture cap(0, CAP_V4L2); //open camera
 
-        int width = 1280;
-        int height = 720;
+        int width = 640;
+        int height = 480;
         double alpha = 0.2; //transparency factor
 
         cap.set(CAP_PROP_FRAME_WIDTH, width);  //set frame width
         cap.set(CAP_PROP_FRAME_HEIGHT, height); //set frame height
-        cap.set(CAP_PROP_FPS, 10);
+        cap.set(CAP_PROP_FPS, 30);
 
         Mat frame;
 
