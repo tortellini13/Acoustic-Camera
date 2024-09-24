@@ -45,7 +45,7 @@ int main()
     //launchProgram(pid2, Video);
 
     waitpid(pid1, NULL, 0);
-    //waitpid(pid2, NULL, 0);
+    waitpid(pid2, NULL, 0);
 
     cout << "\nPrograms are done\n";
 
