@@ -10,20 +10,22 @@
                 "${file}",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}",
+                //"--libs",
                 //"main",
-                //"`pkg-config --cflags --libs opencv4`",
-                "-I/usr/local/include/opencv4",   // Add this to manually include the path to OpenCV headers
+                //"`pkg-config opencv4 --cflags --libs`",
+                //"-I/usr/local/include/opencv4",   // Add this to manually include the path to OpenCV headers
+                "-I/usr/include/opencv4",
                 "-L/usr/lib",               // Add this to specify the library path
                 "-lopencv_core",            // Link against the core OpenCV libraries
-                "-lopencv_imgcodecs",
-                "-lopencv_highgui",
-                "-lopencv_imgproc",          // Add this for image processing functions
                 "-lopencv_videoio" ,
+                "-lopencv_imgcodecs",
+                "-lopencv_imgproc",          // Add this for image processing functions
+                "-lopencv_highgui",
 
                  //"-I/usr/include/libcamera**",
                  //"-I/usr/include/SDL2**",
                  //"-I/usr/include/libercamera-apps/core/**",
-                 "-I/usr/include"
+                 //"-I/usr/include"
 
 
             ],

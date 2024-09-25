@@ -7,14 +7,14 @@ using namespace cv;
 
 int main() {
   
-   Mat heatMapData, heatMapRGB, heatMapRGBA, blended;
+   Mat heatMapData, heatMapRGB, heatMapRGBA, blended, frameRGBA;
    VideoCapture cap(0, CAP_V4L2); //open camera
 
 //Video frame and capture settings
 
         int width = 640;
         int height = 480;
-        double alpha = 0.2; //transparency factor
+        double alpha = 0.5; //transparency factor
 
         cap.set(CAP_PROP_FRAME_WIDTH, width);  //set frame width
         cap.set(CAP_PROP_FRAME_HEIGHT, height); //set frame height
@@ -62,7 +62,7 @@ int main() {
 
         //convert colormap from rgb to rgba
         cvtColor(heatMapRGB, heatMapRGBA, COLOR_RGB2RGBA);
-        cvtColor(frame, frame, COLOR_RGB2RGBA);
+        cvtColor(frame, frameRGBA, COLOR_RGB2RGBA);
 
         //scary nested for loops to iterate through each value and set to clear if 0
         for (int y = 0; y < heatMapData.rows; ++y) {
@@ -79,7 +79,7 @@ int main() {
 
 
         // combined color map and original frame
-        addWeighted(heatMapRGBA, alpha, frame, 1.0 - alpha, 0.0, blended);
+        addWeighted(heatMapRGBA, alpha, frameRGBA, 1.0 - alpha, 0.0, blended);
 
         //display the merged frame
         imshow("Heat Map Overlay", blended);
