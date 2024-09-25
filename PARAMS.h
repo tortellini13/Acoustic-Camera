@@ -16,5 +16,7 @@
 #define BUFFER_SIZE (FFT_SIZE * NUM_CHANNELS * sizeof(float)) // Size of buffer for all channels
 
 #define FRAME_RATE 30 // Frame rate of the camera
+#define RESOLUTION_WIDTH 640 // Width of the camera
+#define RESOLUTION_HEIGHT 480 // Height of the camera
 
 #endif
