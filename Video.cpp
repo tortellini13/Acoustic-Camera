@@ -3,10 +3,15 @@
 #include "PARAMS.h"
 
 using namespace cv;
+using namespace std;
 
 
 
 int main() {
+
+
+    //set this to 1 to record video
+    int recording = 1;
   
    Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA;
    VideoCapture cap(0, CAP_V4L2); //open camera
@@ -33,6 +38,24 @@ int main() {
         Mat mangitudeFrame(magnitudeHeight, mangnitudeWidth, CV_8UC1, Scalar(0)); //single channel, magnitude matrix, initialized to 0
 
         int testcycle = 0;
+    
+//setup recording if enabled
+    VideoWriter vide0;
+    Mat testframe;
+    cap >> testframe;
+    int codec = VideoWriter::fourcc('M', 'J', 'P', 'G');
+    string videoFileName = "./testoutput.avi";
+    vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
+        if (!vide0.isOpened()) {
+        cerr << "Could not open the output video file for write\n";
+        return -1;
+    }
+
+
+    
+    
+    
+    
     
     while (true) {
        
@@ -97,11 +120,23 @@ int main() {
         //display the merged frame
         imshow("Heat Map Overlay", blended);
 
+        //record if set to record
+        if (recording == 1) {
+        cvtColor(blended, blended, COLOR_RGBA2RGB);
+           vide0.write(blended);
+
+        }
+
+
+
+
+
         //break loop if key is pressed
         if (waitKey(30) >= 0) break;
     }
 
     cap.release();
+    vide0.release();
     //destroyAllWindows(); 
     return 0;
 }
