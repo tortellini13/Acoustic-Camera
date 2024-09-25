@@ -25,7 +25,7 @@ int main() {
 
         int mangnitudeWidth = 100;
         int magnitudeHeight = 100;
-        double thresholdValue = 150;
+        double thresholdValue = 200;
         double thresholdPeak = 255;
 
 
@@ -61,7 +61,8 @@ int main() {
         applyColorMap(heatMapData, heatMapRGB, COLORMAP_JET);
 
         //convert colormap from rgb to rgba
-        //cvtColor(heatMapRGB, heatMapRGBA, COLOR_BGR2RGBA);
+        cvtColor(heatMapRGB, heatMapRGBA, COLOR_RGB2RGBA);
+        cvtColor(frame, frame, COLOR_RGB2RGBA);
 
         //scary nested for loops to iterate through each value and set to clear if 0
         for (int y = 0; y < heatMapData.rows; ++y) {
@@ -70,7 +71,7 @@ int main() {
             
                 if (heatMapData.at<uchar>(y, x) == 0) {
 
-                    heatMapRGB.at<Vec4b>(y, x)[3] = 0; //set alpha channel 0
+                    heatMapRGBA.at<Vec4b>(y, x)[3] = 0; //set alpha channel 0
             
             }
         }
@@ -78,7 +79,7 @@ int main() {
 
 
         // combined color map and original frame
-        addWeighted(heatMapRGB, alpha, frame, 1.0 - alpha, 0.0, blended);
+        addWeighted(heatMapRGBA, alpha, frame, 1.0 - alpha, 0.0, blended);
 
         //display the merged frame
         imshow("Heat Map Overlay", blended);
