@@ -12,17 +12,16 @@ using namespace std;
 int main() {
 
     vector<vector<float>> magnitudeInput;
-    sharedMemory audioData(AUDIO_SHM, AUDIO_SHM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES); 
+    sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES); 
     audioData.openAll();
     audioData.read2D(magnitudeInput);
-
 
 
     //set this to 1 to record video
     int recording = 0;
   
-   Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA;
-   VideoCapture cap(0, CAP_V4L2); //open camera
+    Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA;
+    VideoCapture cap(0, CAP_V4L2); //open camera
 
 //Video frame and capture settings
 
@@ -37,13 +36,13 @@ int main() {
         Mat frame;
 //Heat Map settings
 
-        int mangnitudeWidth = (MAX_ANGLE - MIN_ANGLE)/ANGLE_STEP;
+        int magnitudeWidth = (MAX_ANGLE - MIN_ANGLE)/ANGLE_STEP;
         int magnitudeHeight = (MAX_ANGLE - MIN_ANGLE)/ANGLE_STEP;
         double thresholdValue = 100;
         double thresholdPeak = 255;
 
 
-        Mat mangitudeFrame(magnitudeHeight, mangnitudeWidth, CV_8UC1, Scalar(0)); //single channel, magnitude matrix, initialized to 0
+        Mat magnitudeFrame(magnitudeHeight, magnitudeWidth, CV_8UC1, Scalar(0)); //single channel, magnitude matrix, initialized to 0
 
         //int testcycle = 0;
     
@@ -85,7 +84,7 @@ int main() {
         //randu(heatMapData, Scalar(0), Scalar(255)); 
         //generate random heat map data every 10th frame
         //if (testcycle == 0 ) {
-            randu(mangitudeFrame, Scalar(0), Scalar(255)); //random input of magnitude data  
+            randu(magnitudeFrame, Scalar(0), Scalar(255)); //random input of magnitude data  
         //}
         ////++testcycle;
         //if (testcycle == 10) {
@@ -96,7 +95,7 @@ int main() {
         
 
         //scaling and interpolating
-        resize(mangitudeFrame, heatMapData, Size(width, height), 0, 0, INTER_LINEAR);
+        resize(magnitudeFrame, heatMapData, Size(width, height), 0, 0, INTER_LINEAR);
 
         //apply threshold
         threshold(heatMapData, heatMapData, thresholdValue, thresholdPeak, THRESH_TOZERO);

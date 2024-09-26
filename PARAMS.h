@@ -21,7 +21,7 @@
 #define RESOLUTION_HEIGHT 480 // Height of the camera
 
 const char* AUDIO_SHM = "/AUDIO_SHM";
-#define AUDIO_SHM_1 "/AUDIO_SEM_1"
+#define AUDIO_SEM_1 "/AUDIO_SEM_1"
 #define AUDIO_SEM_2 "/AUDIO_SEM_2"
 
 #endif

@@ -478,6 +478,14 @@ int main()
 		{1, 1, 1, 1}
 	};
 
+	//==============================================================================================
+
+	// Create sharedMemory object
+	sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);
+
+	audioData.createAll();
+
+	//==============================================================================================
 
 	// Initializes constants for later use
 	constantCalcs();
@@ -810,6 +818,10 @@ int main()
 	
 	//==============================================================================================
 	
+	// Output data to Video script
+	audioData.write2D(gain);
+
+	/*
 	// Print gain array in .csv format (debugging)
 	for (int index1 = 0; index1 < ANGLE_AMOUNT; ++index1)
 	{
@@ -824,4 +836,5 @@ int main()
 		}
 		cout << endl;
 	} // end print gain
+	*/
 } // end main
