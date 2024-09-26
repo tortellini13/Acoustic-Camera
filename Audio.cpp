@@ -483,7 +483,10 @@ int main()
 	// Create sharedMemory object
 	sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);
 
-	audioData.createAll();
+	if(!audioData.createAll())
+	{
+		cerr << "1. createAll failed.\n";
+	}
 
 	//==============================================================================================
 
@@ -819,7 +822,10 @@ int main()
 	//==============================================================================================
 	
 	// Output data to Video script
-	audioData.write2D(gain);
+	if(!audioData.write2D(gain))
+	{
+		cerr << "1. write2D failed.\n";
+	}
 
 	/*
 	// Print gain array in .csv format (debugging)
