@@ -1,6 +1,8 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include "PARAMS.h"
+#include "sharedMemory.h"
+#include <vector>
 
 using namespace cv;
 using namespace std;
@@ -9,9 +11,15 @@ using namespace std;
 
 int main() {
 
+    vector<vector<float>> magnitudeInput;
+    sharedMemory audioData(AUDIO_SHM, AUDIO_SHM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES); 
+    audioData.openAll();
+    audioData.read2D(magnitudeInput);
+
+
 
     //set this to 1 to record video
-    int recording = 1;
+    int recording = 0;
   
    Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA;
    VideoCapture cap(0, CAP_V4L2); //open camera
@@ -37,7 +45,7 @@ int main() {
 
         Mat mangitudeFrame(magnitudeHeight, mangnitudeWidth, CV_8UC1, Scalar(0)); //single channel, magnitude matrix, initialized to 0
 
-        int testcycle = 0;
+        //int testcycle = 0;
     
 //setup recording if enabled
     VideoWriter vide0;
@@ -45,10 +53,17 @@ int main() {
     cap >> testframe;
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G');
     string videoFileName = "./testoutput.avi";
+    
+    if (recording == 1) {
     vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
         if (!vide0.isOpened()) {
         cerr << "Could not open the output video file for write\n";
         return -1;
+    }
+    }
+
+    if (recording == 0) {
+        vide0.release();
     }
 
 
@@ -69,15 +84,15 @@ int main() {
         heatMapData = Mat(frame.size(), CV_32FC1); //make heat map data matrix
         //randu(heatMapData, Scalar(0), Scalar(255)); 
         //generate random heat map data every 10th frame
-        if (testcycle == 0 ) {
+        //if (testcycle == 0 ) {
             randu(mangitudeFrame, Scalar(0), Scalar(255)); //random input of magnitude data  
-        }
-        ++testcycle;
-        if (testcycle == 10) {
-            testcycle = 0;
+        //}
+        ////++testcycle;
+        //if (testcycle == 10) {
+           // testcycle = 0;
             //thresholdValue = thresholdValue + 1;
-        } 
-        
+        //} 
+       
         
 
         //scaling and interpolating
@@ -126,13 +141,17 @@ int main() {
            vide0.write(blended);
 
         }
+        
+        //if (getWindowProperty("Heat Map Overlay", WND_PROP_VISIBLE) < 1) {
+            // Exit the loop if the window is closed
+          //  break;
 
-
-
+        //}
 
 
         //break loop if key is pressed
         if (waitKey(30) >= 0) break;
+
     }
 
     cap.release();
