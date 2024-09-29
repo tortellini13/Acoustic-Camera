@@ -75,6 +75,7 @@ int main()
         {
             cout << "Frame is empty ;(";
         }
+        
         /*   
         // Read the shared memory to obtain magnitude data
         if (!audioData.read2D(magnitudeInput)) 
