@@ -11,7 +11,7 @@ using namespace std;
 
 int main() {
 
-    vector<vector<float>> magnitudeInput;                                                   //Vector vector for recieving data
+    vector<vector<float>> magnitudeInput(NUM_ANGLES, vector<float>(NUM_ANGLES));                                                   //Vector vector for recieving data
     sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);    //Initialize shared memory
 
     if (!audioData.openAll()) {                                                             //Open shared memory

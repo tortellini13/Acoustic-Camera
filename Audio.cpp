@@ -469,7 +469,7 @@ int main()
 {
 	// Needs to be 3D for input***
 	// 3rd dimension is buffered data***
-	// Will be made 3D after data aquisition is made***
+	// Will be made 3D after data acquisition is made***
 	vector<vector<float>> DATA =
 	{
 		{1, 1, 1, 1},
