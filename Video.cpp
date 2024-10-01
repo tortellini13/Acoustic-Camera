@@ -66,11 +66,11 @@ int main()
     cap.set(CAP_PROP_FRAME_HEIGHT, height);     // Set frame height for capture
     cap.set(CAP_PROP_FPS, FRAME_RATE);          // Set framerate of capture from PARAMS.h
 
-    // Heat Map settings
-    int magnitudeWidth = NUM_ANGLES;    // Set Dims of magnitude data coming in from PARAMS.h
-    int magnitudeHeight = NUM_ANGLES; 
-    double thresholdValue = 0;          // Set minimum threshold for heatmap (all data below this value is transparent)
-    double thresholdPeak = 255;         // Set the maximum allowed value
+        // Heat Map settings
+        int magnitudeWidth = NUM_ANGLES;    // Set Dims of magnitude data coming in from PARAMS.h
+        int magnitudeHeight = NUM_ANGLES; 
+        double thresholdValue = -1000;          // Set minimum threshold for heatmap (all data below this value is transparent)
+        double thresholdPeak = 255;         // Set the maximum allowed value
 
     Mat magnitudeFrame(magnitudeHeight, magnitudeWidth, CV_32FC1, Scalar(0)); //single channel, magnitude matrix, initialized to 0
 
