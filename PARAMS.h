@@ -25,6 +25,6 @@ const char* AUDIO_SHM = "/AUDIO_SHM"; // Shared memory name for audio data
 const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
 #define CONFIG_SEM_1 "/CONFIG_SEM_1"    // Semaphore for user config
 #define CONFIG_SEM_2 "/CONFIG_SEM_2"    // Semaphore for user config
-
+#define NUM_CONFIGS 5                   // Number of user configs
 
 #endif

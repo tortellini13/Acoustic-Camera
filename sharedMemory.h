@@ -39,10 +39,10 @@ public:
     bool closeAll();
 
     // Write a vector of floats
-    bool write(const void* data_input);
+    bool write(vector<float> data_input);
 
     // Read a vector of floats
-    bool read(float* data_output);
+    bool read(vector<float> data_output);
 
     // Write a 2D array of floats
     bool write2D(vector<vector<float>> data_input);
@@ -225,10 +225,10 @@ bool sharedMemory::closeAll()
 //=====================================================================================
 
 // Write a vector of floats
-bool sharedMemory::write(const void* data_input)
+bool sharedMemory::write(vector<float> data_input)
 {
     // Write data to shared memory
-    memcpy(shm_ptr, data_input, shm_size);
+    memcpy(shm_ptr, data_input.data(), shm_size);
     //cout << "Data written to shared memory\n"; // Debugging
 
     // Signal that data is done writing and is ready to be read
@@ -253,7 +253,7 @@ bool sharedMemory::write(const void* data_input)
 //=====================================================================================
 
 // Read a vector of floats
-bool sharedMemory::read(float* data_output)
+bool sharedMemory::read(vector<float> data_output)
 {
     // Wait until data is written
     if (sem_wait(sem_ptr_1) < 0) 
@@ -263,13 +263,6 @@ bool sharedMemory::read(float* data_output)
     }
     //cout << "Reading data.\n"; // Debugging
 
-    // Ensure data_output is correctly allocated
-    if (data_output == nullptr) 
-    {
-        cerr << "data_output is null.\n";
-        return false;
-    }
-
     // Read data from the shared memory
     if (shm_ptr == nullptr) 
     {
@@ -278,7 +271,7 @@ bool sharedMemory::read(float* data_output)
     }
 
     // Read from shared memory and write to output
-    memcpy(data_output, shm_ptr, shm_size);
+    memcpy(data_output.data(), shm_ptr, shm_size);
 
     // Signal when done reading
     if (sem_post(sem_ptr_2) < 0) 
