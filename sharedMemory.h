@@ -24,7 +24,7 @@ class sharedMemory
 public:
 
     // Initialize shared memory
-    sharedMemory(const char* name_shm, string name_sem_1, string name_sem_2, int num_rows, int num_cols);
+    sharedMemory(const char* name_shm, string name_sem_1, string name_sem_2, int num_cols, int num_rows);
 
     // Destroy shared memory
     ~sharedMemory();
@@ -38,11 +38,11 @@ public:
     // Close shared memory
     bool closeAll();
 
-    // Write a vector of floats
-    bool write(vector<float> data_input);
+    // Write a vector of ints
+    bool write(vector<int> data_input);
 
-    // Read a vector of floats
-    bool read(vector<float> data_output);
+    // Read a vector of ints
+    bool read(vector<int> data_output);
 
     // Write a 2D array of floats
     bool write2D(vector<vector<float>> data_input);
@@ -51,16 +51,17 @@ public:
     bool read2D(vector<vector<float>>& data_output);
 
 private:
-    string shm_name;   // Name of shared memory
-    size_t shm_size;   // Size of shared memory
-    int shm_fd;        // File descriptor of shared memory object
-    void* shm_ptr;     // Pointer to the mapped shared memory region
-    string sem_name_1; // Semaphore name
-    string sem_name_2; // Semaphore name
-    sem_t* sem_ptr_1;  // Pointer to the mapped semaphore region
-    sem_t* sem_ptr_2;  // Pointer to the mapped semaphore region
-    int rows;          // Number of rows
-    int cols;          // Number of columns (1 if 1D)
+    string shm_name;       // Name of shared memory
+    size_t shm_size_float; // Size of shared memory for float
+    size_t shm_size_int;   // Size of shared memory for float
+    int shm_fd;            // File descriptor of shared memory object
+    void* shm_ptr;         // Pointer to the mapped shared memory region
+    string sem_name_1;     // Semaphore name
+    string sem_name_2;     // Semaphore name
+    sem_t* sem_ptr_1;      // Pointer to the mapped semaphore region
+    sem_t* sem_ptr_2;      // Pointer to the mapped semaphore region
+    int cols;              // Number of columns
+    int rows;              // Number of rows (1 if 1D)
 };
 
 //=====================================================================================
@@ -70,8 +71,8 @@ private:
 //=====================================================================================
 
 // Initialize shared memory and semaphore
-sharedMemory::sharedMemory(const char* name_shm, string name_sem_1, string name_sem_2, int num_rows, int num_cols)
-    : shm_name(name_shm), shm_size(sizeof(float) * num_rows * num_cols), sem_name_1(name_sem_1), sem_name_2(name_sem_2), shm_fd(-1), shm_ptr(nullptr), sem_ptr_1(nullptr), sem_ptr_2(nullptr), rows(num_rows), cols(num_cols) {}
+sharedMemory::sharedMemory(const char* name_shm, string name_sem_1, string name_sem_2, int num_cols, int num_rows)
+    : shm_name(name_shm), shm_size_float(sizeof(float) * num_cols * num_rows), shm_size_int(sizeof(int) * num_cols), sem_name_1(name_sem_1), sem_name_2(name_sem_2), shm_fd(-1), shm_ptr(nullptr), sem_ptr_1(nullptr), sem_ptr_2(nullptr), rows(num_rows), cols(num_cols) {}
 
 // Destroy shared memory and semaphore
 sharedMemory::~sharedMemory()
@@ -121,17 +122,37 @@ bool sharedMemory::createAll()
         return false;
     }
 
-    // Resize the momory object to the size of the data
-    ftruncate(shm_fd, shm_size);
-
-    // Memory map the shared memory object
-    shm_ptr = mmap(0, shm_size, PROT_WRITE, MAP_SHARED, shm_fd, 0);
-
-    // Error handling
-    if (shm_ptr == MAP_FAILED)
+    // Use correct size for int or float
+    if (rows == 1)
     {
-        cerr << "mmap failed.\n";
-        return false;
+        // Resize the momory object to the size of the data
+        ftruncate(shm_fd, shm_size_int);
+
+        // Memory map the shared memory object
+        shm_ptr = mmap(0, shm_size_int, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+        // Error handling
+        if (shm_ptr == MAP_FAILED)
+        {
+            cerr << "mmap failed.\n";
+            return false;
+        }
+    }
+
+    else
+    {
+        // Resize the momory object to the size of the data
+        ftruncate(shm_fd, shm_size_float);
+
+        // Memory map the shared memory object
+        shm_ptr = mmap(0, shm_size_float, PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+        // Error handling
+        if (shm_ptr == MAP_FAILED)
+        {
+            cerr << "mmap failed.\n";
+            return false;
+        }
     }
     //cout << "Shared memory created and ready.\n"; // Debugging
 
@@ -188,7 +209,6 @@ bool sharedMemory::openAll()
     }       
     //cout << "Both semaphores opened.\n"; // Debugging
 
-
     // Open shared memory
     shm_fd = shm_open(shm_name.c_str(), O_RDWR, 0666);
     if (shm_fd == -1)
@@ -197,13 +217,29 @@ bool sharedMemory::openAll()
         return false;
     }
 
-    // Memory map the shared memory object
-    shm_ptr = mmap(0, shm_size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
-    if (shm_ptr == MAP_FAILED)
+    // Use correct size for int or float
+    if (rows == 1)
     {
-        cerr << "mmap failed: " << strerror(errno) << '\n';
-        close(shm_fd);  // Ensure file descriptor is closed on failure
-        return false;
+        // Memory map the shared memory object
+        shm_ptr = mmap(0, shm_size_int, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+        if (shm_ptr == MAP_FAILED)
+        {
+            cerr << "mmap failed: " << strerror(errno) << '\n';
+            close(shm_fd);  // Ensure file descriptor is closed on failure
+            return false;
+        }
+    }
+
+    else
+    {
+        // Memory map the shared memory object
+        shm_ptr = mmap(0, shm_size_float, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+        if (shm_ptr == MAP_FAILED)
+        {
+            cerr << "mmap failed: " << strerror(errno) << '\n';
+            close(shm_fd);  // Ensure file descriptor is closed on failure
+            return false;
+        }        
     }
     //cout << "Shared memory opened.\n"; // Debugging
 
@@ -217,7 +253,18 @@ bool sharedMemory::closeAll()
 {
     sem_close(sem_ptr_1);
     sem_close(sem_ptr_2);
-    munmap(shm_ptr, shm_size);
+
+    // Use correct size for int or float
+    if (rows == 1)
+    {
+        munmap(shm_ptr, shm_size_int);
+    }
+
+    else
+    {
+        munmap(shm_ptr, shm_size_float);
+    }
+    
     close(shm_fd);
     return true;
 } // end read
@@ -225,10 +272,10 @@ bool sharedMemory::closeAll()
 //=====================================================================================
 
 // Write a vector of floats
-bool sharedMemory::write(vector<float> data_input)
+bool sharedMemory::write(vector<int> data_input)
 {
     // Write data to shared memory
-    memcpy(shm_ptr, data_input.data(), shm_size);
+    memcpy(shm_ptr, data_input.data(), shm_size_int);
     //cout << "Data written to shared memory\n"; // Debugging
 
     // Signal that data is done writing and is ready to be read
@@ -253,7 +300,7 @@ bool sharedMemory::write(vector<float> data_input)
 //=====================================================================================
 
 // Read a vector of floats
-bool sharedMemory::read(vector<float> data_output)
+bool sharedMemory::read(vector<int> data_output)
 {
     // Wait until data is written
     if (sem_wait(sem_ptr_1) < 0) 
@@ -271,7 +318,7 @@ bool sharedMemory::read(vector<float> data_output)
     }
 
     // Read from shared memory and write to output
-    memcpy(data_output.data(), shm_ptr, shm_size);
+    memcpy(data_output.data(), shm_ptr, shm_size_int);
 
     // Signal when done reading
     if (sem_post(sem_ptr_2) < 0) 
@@ -299,7 +346,7 @@ bool sharedMemory::write2D(vector<vector<float>> data_input)
     /*
     // Debugging
     cout << "Flattened data write:\n";
-    for (int i = 0; i < rows * cols; i++)
+    for (int i = 0; i < cols * rows; i++)
     {
         cout << flattened_data[i] << " ";
     }
@@ -307,7 +354,7 @@ bool sharedMemory::write2D(vector<vector<float>> data_input)
     */
 
     // Write data to shared memory
-    memcpy(shm_ptr, flattened_data.data(), shm_size);
+    memcpy(shm_ptr, flattened_data.data(), shm_size_float);
     //cout << "Data written to shared memory\n"; // Debugging
 
     // Signal that data is done writing and is ready to be read
@@ -341,19 +388,19 @@ bool sharedMemory::read2D(vector<vector<float>>& data_output)
     }
     //cout << "Reading data.\n"; // Debugging
 
-    // Ensure output size matches the number of rows and columns
-    data_output.resize(rows, vector<float>(cols));
+    // Ensure output size matches the number of columns and rows
+    data_output.resize(cols, vector<float>(rows));
 
     // Read data from shared memory and reshape it into the 2D array
-    vector<float> flattened_data(rows * cols);
+    vector<float> flattened_data(cols * rows);
 
     // Copy the data from shared memory into the flattened vector
-    memcpy(flattened_data.data(), shm_ptr, shm_size);
+    memcpy(flattened_data.data(), shm_ptr, shm_size_float);
 
     /*
     // Debugging
     cout << "Flattened data read:\n";
-    for (int i = 0; i < rows * cols; i++)
+    for (int i = 0; i < cols * rows; i++)
     {
         cout << flattened_data[i] << " ";
     }
@@ -361,20 +408,20 @@ bool sharedMemory::read2D(vector<vector<float>>& data_output)
     */
 
     // Rebuild the 2D array from the flattened data
-    for (int i = 0; i < rows; ++i)
+    for (int i = 0; i < cols; ++i)
     {
-        for (int j = 0; j < cols; ++j)
+        for (int j = 0; j < rows; ++j)
         {
-            data_output[i][j] = flattened_data[i * cols + j];
+            data_output[i][j] = flattened_data[i * rows + j];
         }
     }
 
     /*
     // Debugging
     cout << "Reconstructed data:\n";
-    for (int i = 0; i < rows; i++)
+    for (int i = 0; i < cols; i++)
     {
-        for (int j = 0; j < cols; j++)
+        for (int j = 0; j < rows; j++)
         {
             cout << data_output[i][j] << " ";
         }

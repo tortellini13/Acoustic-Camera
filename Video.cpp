@@ -7,8 +7,6 @@
 using namespace cv;
 using namespace std;
 
-
-
 int main() 
 {
     //==============================================================================================
@@ -19,9 +17,9 @@ int main()
     // Initialize shared memory class for Audio
     sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);   
 
-    // Initializes array to send user config to Audio
-    vector<float> USER_CONFIGS = {0, 0, 0, 0};   // Is a float only so shared memory class works. Filled with default settings
-    vector<float> PREVIOUS_CONFIGS = {0, 0, 0, 0}; // For limiting amount of shm calls. Filled with default settings
+    // Initializes array to send user config to Audio. Filled with default settings
+    vector<int> USER_CONFIGS(NUM_CONFIGS, 0);     // ***Might need to manually set default settings
+    vector<int> PREVIOUS_CONFIGS(NUM_CONFIGS, 0); // For limiting amount of shm calls
 
     // Initializes shared memory class for userConfig
     sharedMemory userConfig(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
@@ -34,6 +32,8 @@ int main()
     2. 0 - 27 Third octave band selection
     3. 0 = Is not recording
        1 = Is recording
+    4. 
+    5. 
     */
 
     //==============================================================================================
@@ -56,46 +56,47 @@ int main()
   
     Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame, testframe;  // Establish matricies for 
     heatMapData = Mat(frame.size(), CV_32FC1);                                                          // Make heat map data matrix
-    VideoCapture cap(0, CAP_V4L2);                                                                      // open camera
+    VideoCapture cap(0, CAP_V4L2);                                                                      // Open camera
 
     // Video frame and capture settings
-    int width = RESOLUTION_WIDTH;               // Width from PARAMS.h
-    int height = RESOLUTION_HEIGHT;             // Height from PARAMS.h
-    double alpha = 0.5;                         // Transparency factor
-    cap.set(CAP_PROP_FRAME_WIDTH, width);       // Set frame width for capture
-    cap.set(CAP_PROP_FRAME_HEIGHT, height);     // Set frame height for capture
-    cap.set(CAP_PROP_FPS, FRAME_RATE);          // Set framerate of capture from PARAMS.h
+    int width = RESOLUTION_WIDTH;           // Width from PARAMS.h
+    int height = RESOLUTION_HEIGHT;         // Height from PARAMS.h
+    double alpha = 0.5;                     // Transparency factor
+    cap.set(CAP_PROP_FRAME_WIDTH, width);   // Set frame width for capture
+    cap.set(CAP_PROP_FRAME_HEIGHT, height); // Set frame height for capture
+    cap.set(CAP_PROP_FPS, FRAME_RATE);      // Set framerate of capture from PARAMS.h
 
-        // Heat Map settings
-        int magnitudeWidth = NUM_ANGLES;    // Set Dims of magnitude data coming in from PARAMS.h
-        int magnitudeHeight = NUM_ANGLES; 
-        double thresholdValue = -1000;          // Set minimum threshold for heatmap (all data below this value is transparent)
-        double thresholdPeak = 255;         // Set the maximum allowed value
+    // Heat Map settings
+    int magnitudeWidth = NUM_ANGLES;  // Set Dims of magnitude data coming in from PARAMS.h
+    int magnitudeHeight = NUM_ANGLES; 
+    double thresholdValue = -1000;    // Set minimum threshold for heatmap (all data below this value is transparent)
+    double thresholdPeak = 255;       // Set the maximum allowed value
 
-    Mat magnitudeFrame(magnitudeHeight, magnitudeWidth, CV_32FC1, Scalar(0)); //single channel, magnitude matrix, initialized to 0
+    Mat magnitudeFrame(magnitudeHeight, magnitudeWidth, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
 
     //==============================================================================================
 
     // Setup recording if enabled
-    VideoWriter vide0;                                      // Initialize recording vide0
-    cap >> testframe;                                       // Capture a single test frame
-    int codec = VideoWriter::fourcc('M', 'J', 'P', 'G');    // Set codec of video recording
-    string videoFileName = "./testoutput.avi";              // Set video file output file name
+    VideoWriter vide0;                                   // Initialize recording vide0
+    cap >> testframe;                                    // Capture a single test frame
+    int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
+    string videoFileName = "./testoutput.avi";           // Set video file output file name
     
-        if (recording == 1) 
-        {                                                       // Open recording if enabled, report error if it doesn't work
-            vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
-            if (!vide0.isOpened()) 
-            {
-                cerr << "Could not open the output video file for write\n";
-                return -1;
-            }
+    // Open recording if enabled, report error if it doesn't work
+    if (recording == 1) 
+    {
+        vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
+        if (!vide0.isOpened()) 
+        {
+            cerr << "Could not open the output video file for write\n";
+            return -1;
         }
+    }
 
     //==============================================================================================
       
     // Loop for capturing frames, heatmap, displaying, and recording
-    while (true) 
+    while (1) 
     {
         cap >> frame; //capture the frame
         if(!frame.empty()) 
@@ -179,7 +180,6 @@ int main()
         {
             Exit the loop if the window is closed
             break;
-
         }
         */
 
@@ -193,16 +193,15 @@ int main()
         3. send new config
         4. set previous config = new config
         */
-        /*
+        
         // Check if user configs have changed
         if (PREVIOUS_CONFIGS != USER_CONFIGS)
         {
             // Write configs to shared memory
             userConfig.write(USER_CONFIGS);
+            PREVIOUS_CONFIGS = USER_CONFIGS;
         }
-        */
-
-
+        
         //==============================================================================================
 
         // Break loop if key is pressed
