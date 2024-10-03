@@ -822,9 +822,11 @@ int main()
 	//==============================================================================================
 	
 	// Output data to Video script
+	while(true) { //do this so it aint broke ;(
 	if(!audioData.write2D(gain))
-	{
-		cerr << "1. write2D failed.\n";
+		{
+			cerr << "1. write2D failed.\n";
+		}
 	}
 
 	/*

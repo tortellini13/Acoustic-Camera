@@ -69,8 +69,8 @@ int main()
     // Heat Map settings
     int magnitudeWidth = NUM_ANGLES;  // Set Dims of magnitude data coming in from PARAMS.h
     int magnitudeHeight = NUM_ANGLES; 
-    double thresholdValue = -1000;    // Set minimum threshold for heatmap (all data below this value is transparent)
-    double thresholdPeak = 255;       // Set the maximum allowed value
+    double thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
+    
 
     Mat magnitudeFrame(magnitudeHeight, magnitudeWidth, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
 
@@ -101,7 +101,7 @@ int main()
         cap >> frame; //capture the frame
         if(!frame.empty()) 
         {
-            //cout << "Frame Captured!";
+            cout << "Frame Captured!";
         } 
         
         else 
@@ -111,7 +111,7 @@ int main()
         
         //==============================================================================================
 
-        /*   
+        
         // Read the shared memory to obtain magnitude data
         if (!audioData.read2D(magnitudeInput)) 
         { 
@@ -119,7 +119,7 @@ int main()
         } 
         else 
         {
-            cout << "Data read from shared memory";
+            //cout << "Data read from shared memory";
         }
 
         // Nested loops for converting vector vector into an OpenCV matrix
@@ -130,7 +130,7 @@ int main()
                 magnitudeFrame.at<int>(rows, columns) = magnitudeInput[rows][columns];
             }
         }      
-        */
+        
 
         //==============================================================================================
 
