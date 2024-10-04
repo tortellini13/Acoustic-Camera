@@ -19,7 +19,7 @@ int main()
 
     // Initializes array to send user config to Audio. Filled with default settings
     vector<int> USER_CONFIGS(NUM_CONFIGS, 0);     // ***Might need to manually set default settings
-    vector<int> PREVIOUS_CONFIGS(NUM_CONFIGS, 0); // For limiting amount of shm calls
+    //vector<int> PREVIOUS_CONFIGS(NUM_CONFIGS, 0); // For limiting amount of shm calls
 
     // Initializes shared memory class for userConfig
     sharedMemory userConfig(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
@@ -29,7 +29,7 @@ int main()
        1 = Full octave
        2 = Third Octave 
     1. 0 - 8 Full octave band selection
-    2. 0 - 27 Third octave band selection
+    2. 0 - 26 Third octave band selection
     3. 0 = Is not recording
        1 = Is recording
     4. 
@@ -41,7 +41,7 @@ int main()
     // Open shared memory for Audio
     if (!audioData.openAll()) 
     {                                                             
-        cerr << "2. openAll Failed\n";
+        cerr << "1. openAll Failed\n";
     }
     
     // Creates shared memory for Configs
@@ -184,23 +184,9 @@ int main()
         */
 
         //==============================================================================================
-        
-        // Disabled until full loop in Audio is made
-        // Sends user config to Audio
-        /*
-        1. set previous config
-        2. if new config != previous config
-        3. send new config
-        4. set previous config = new config
-        */
-        
-        // Check if user configs have changed
-        if (PREVIOUS_CONFIGS != USER_CONFIGS)
-        {
-            // Write configs to shared memory
-            userConfig.write(USER_CONFIGS);
-            PREVIOUS_CONFIGS = USER_CONFIGS;
-        }
+
+        // Write configs to shared memory
+        userConfig.write(USER_CONFIGS);
         
         //==============================================================================================
 

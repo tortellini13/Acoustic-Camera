@@ -141,7 +141,7 @@ bool sharedMemory::createAll()
 
     else
     {
-        // Resize the momory object to the size of the data
+        // Resize the memory object to the size of the data
         ftruncate(shm_fd, shm_size_float);
 
         // Memory map the shared memory object
@@ -271,7 +271,7 @@ bool sharedMemory::closeAll()
 
 //=====================================================================================
 
-// Write a vector of floats
+// Write a vector of ints
 bool sharedMemory::write(vector<int> data_input)
 {
     // Write data to shared memory
@@ -299,7 +299,7 @@ bool sharedMemory::write(vector<int> data_input)
 
 //=====================================================================================
 
-// Read a vector of floats
+// Read a vector of ints
 bool sharedMemory::read(vector<int> data_output)
 {
     // Wait until data is written

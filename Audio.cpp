@@ -71,166 +71,8 @@ float degtorad(float angleDEG)
 } // end degtorad
 
 //==============================================================================================
-/*
-bool audioSetup(snd_pcm_t **pcm_handle)
-{
 
-
-
-
-
-
-
-
-	return true;
-}
-
-
-
-bool captureAudioData(vector<vector<float>> dataOutputBuffered)
-{
-	short dataBuffer[BUFFER_SIZE]; // Allocates memory to write data into
-	int pcm;
-
-	pcm = snd_pcm_readi(pcm_handle, dataBuffer, FFT_SIZE);
-
-
-
-
-
-
-
-	return true;
-}
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-// Needs to be checked on Linux. Currently untested
-// Read data from interface and put into FFT_SIZE buffer
-unsigned int rate = SAMPLE_RATE;
-bool captureAudioData(const char* device, float*** audio_data)
-{
-	snd_pcm_t* handle;
-	snd_pcm_hw_params_t* params;
-	int err;
-
-	// Open PCM device for recording (capture)
-	if ((err = snd_pcm_open(&handle, device, SND_PCM_STREAM_CAPTURE, 0)) < 0) 
-	{
-		cerr << "Cannot open audio device " << device << ": " << snd_strerror(err) << endl;
-		return false;
-	}
-
-	// Allocate a hardware parameters object
-	snd_pcm_hw_params_alloca(&params);
-
-	// Fill it in with default values
-	snd_pcm_hw_params_any(handle, params);
-
-	// Set the desired hardware parameters
-	snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-	snd_pcm_hw_params_set_format(handle, params, SND_PCM_FORMAT_S16_LE);
-	
-	snd_pcm_hw_params_set_rate_near(handle, params, &rate, 0);
-	snd_pcm_hw_params_set_channels(handle, params, M_AMOUNT * N_AMOUNT); // Total number of channels
-
-	// Write the parameters to the driver
-	if ((err = snd_pcm_hw_params(handle, params)) < 0) 
-	{
-		cerr << "Unable to set HW parameters: " << snd_strerror(err) << endl;
-		return false;
-	}
-
-	// Allocate buffer to hold captured data
-	int buffer_frames = FFT_SIZE;
-	int buffer_size = buffer_frames * M_AMOUNT * N_AMOUNT * sizeof(float); // 4 bytes/sample, M*N channels
-	float* buffer = new float[M_AMOUNT * N_AMOUNT * buffer_frames];
-
-	// Capture data
-	err = snd_pcm_readi(handle, buffer, buffer_frames);
-	if (err == -EPIPE) 
-	{
-		cerr << "Overrun occurred" << endl;
-		snd_pcm_prepare(handle);
-	}
-	else if (err < 0) 
-	{
-		cerr << "Error from read: " << snd_strerror(err) << endl;
-		delete[] buffer;
-		snd_pcm_close(handle);
-		return false;
-	}
-	else if (err != buffer_frames) 
-	{
-		cerr << "Short read, read " << err << " frames" << endl;
-	}
-
-	// Store captured data into the 3D array
-	for (int m = 0; m < M_AMOUNT; ++m) 
-	{
-		for (int n = 0; n < N_AMOUNT; ++n) 
-		{
-			for (int u = 0; u < buffer_frames; ++u) 
-			{
-				audio_data[m][n][u] = buffer[(m * N_AMOUNT + n) * buffer_frames + u];
-			}
-		}
-	}
-
-	// Clean up
-	delete[] buffer;
-	snd_pcm_drain(handle);
-	snd_pcm_close(handle);
-
-	return true;
-} // end captureAudioData
-*/
+// Read audio data from interface
 
 //==============================================================================================
 
@@ -393,11 +235,11 @@ vector<vector<vector<cfloat>>> Ok(const vector<vector<vector<float>>>& rawData, 
 
 // Calculates X array (total FFT as a function of k) and sums all of the values in the desired range
 // Outputs M x N array of filtered data
-vector<vector<float>> FFTSum(vector<vector<vector<float>>>& rawData)
+vector<vector<float>> FFTSum(vector<vector<vector<float>>>& rawData, int lowerBound, int upperBound)
 {
 	// Calls Ek and Ok
-	vector<vector<vector<cfloat>>> Xcomp1 = Ek(rawData, lowerFrequency, upperFrequency); 
-	vector<vector<vector<cfloat>>> Xcomp2 = Ok(rawData, lowerFrequency, upperFrequency);
+	vector<vector<vector<cfloat>>> Xcomp1 = Ek(rawData, lowerBound, upperBound); 
+	vector<vector<vector<cfloat>>> Xcomp2 = Ok(rawData, lowerBound, upperBound);
 		
 	// Xk
 	vector<vector<vector<cfloat>>> Xresult(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
@@ -448,7 +290,7 @@ vector<vector<float>> FFTSum(vector<vector<vector<float>>>& rawData)
 // Prints 3D array of floats to the console
 void print3Dfloat(vector<vector<vector<float>>>& inputArray, string& title, int dim1, int dim2, int dim3)
 {
-	cout << "title\n";
+	cout << title << endl;
 	for (int m = 0; m < dim1; m++)
 	{
 		for (int n = 0; n < dim2; n++)
@@ -460,7 +302,7 @@ void print3Dfloat(vector<vector<vector<float>>>& inputArray, string& title, int 
 			cout << endl;
 		} // end n
 	} // end m
-	cout << "\n\n\n";
+	cout << "\n\n";
 } // end print3Dfloat
 
 //==============================================================================================
@@ -480,7 +322,7 @@ int main()
 
 	//==============================================================================================
 
-	// Create sharedMemory object
+	// Initialize shared memory class for Audio
 	sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);
 
 	if(!audioData.createAll())
@@ -488,21 +330,31 @@ int main()
 		cerr << "1. createAll failed.\n";
 	}
 
+	// Initialize shared memory class for userConfigs
+	sharedMemory userConfigs(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
+
+	if(!userConfigs.openAll())
+	{
+		cerr << "1. openAll failed.\n";
+	}
+
 	//==============================================================================================
 
 	// Initializes constants for later use
 	constantCalcs();
 	
-	// Initializes octave band selections
+	// Initializes variables
 	int bandTypeSelection = 0;
 	int thirdOctaveBandSelection = 0;
 	int fullOctaveBandSelection = 0;
-	// add user inputs for all***
+	bool isRecording = 0;
+
+	vector<int> USER_CONFIGS(NUM_CONFIGS, 0);
 	
 	//==============================================================================================
 
 	/* Switch case legend
-	legend might change when removing lower and higher frequencies***
+	dont change legend if removing frequencies. just limit user input
 	potentially remove lower frequencies due to too big bins***
 	potentially remove higher frequencies due to mic response***
 	
@@ -549,286 +401,191 @@ int main()
 	
 	//==============================================================================================
 	
-	switch (bandTypeSelection)
+	// Main loop
+	while (1)
 	{
-		// BroadBand
-		case 0:
-			// Writes gain to M x N array to be plotted
-			arrayFactor(DATA);
-		break;
-		
+		// Read USER_CONFIGS and set relevant configs
+		if(!userConfigs.read(USER_CONFIGS))
+		{
+			cerr << "1. read failed.\n";
+		}
+
+		/* Configs Legend
+		0. 0 = Broadband
+		   1 = Full octave
+		   2 = Third Octave 
+		1. 0 - 8 Full octave band selection
+		2. 0 - 26 Third octave band selection
+		3. 0 = Is not recording
+		   1 = Is recording
+		4. 
+		5. 
+		*/
+
+		bandTypeSelection = USER_CONFIGS[0];
+		fullOctaveBandSelection = USER_CONFIGS[1];
+		thirdOctaveBandSelection = USER_CONFIGS[2];
+		isRecording = USER_CONFIGS[3];
+
 		//==============================================================================================
-		
-		// Full Octave Band
-		case 1:
-		
-			switch (fullOctaveBandSelection)
-			{
-				// 63 Hz
-				case 0:	
-					lowerFrequency = 1;
-					upperFrequency = 3;
-				break;	
-				
-				// 125 Hz
-				case 1:	
-					lowerFrequency = 2;
-					upperFrequency = 5;
-				break;	
-				
-				// 250 Hz
-				case 2:	
-					lowerFrequency = 4;
-					upperFrequency = 9;
-				break;	
-				
-				// 500 Hz
-				case 3:	
-					lowerFrequency = 8;
-					upperFrequency = 17;
-				break;	
-					
-				// 1000 Hz
-				case 4:	
-					lowerFrequency = 16;
-					upperFrequency = 33;
-				break;	
-				
-				// 2000 Hz
-				case 5:	
-					lowerFrequency = 32;
-					upperFrequency = 66;
-				break;	
-				
-				// 4000 Hz
-				case 6:	
-					lowerFrequency = 65;
-					upperFrequency = 132;
-				break;	
-				
-				// 8000 Hz
-				case 7:	
-					lowerFrequency = 131;
-					upperFrequency = 264;
-				break;	
-				
-				// 16000 Hz
-				case 8:	
-					lowerFrequency = 263;
-					upperFrequency = 511;
-				break;	
-			} // end Full Octave Band
+
+		// User Configs
+		switch (bandTypeSelection)
+		{
+			// Broadband
+			case 0:
+				arrayFactor(DATA); // *** for testing only with 2-D array
+
+				//lowerFrequency = 1; upperFrequency = 511;
+			break;
 			
-		break;
-		
-		//==============================================================================================
-		
-		// Third Octave Band
-		case 2:
-		
-			switch (thirdOctaveBandSelection)
-			{
-				// 50 Hz
-				case 1:
-					lowerFrequency = 1; // idk
-					upperFrequency = 1;
-				break;
-
-				// 63 Hz
-				case 2:
-					lowerFrequency = 2; // idk
-					upperFrequency = 2;
-				break;
-
-				// 80 Hz
-				case 3:
-					lowerFrequency = 1; // idk
-					upperFrequency = 3;
-				break;
+			//==============================================================================================
 			
-				// 100 Hz
-				case 4:
-					lowerFrequency = 2;
-					upperFrequency = 3;
-				break;
-
-				// 125 Hz
-				case 5:
-					lowerFrequency = 2;
-					upperFrequency = 4;
-				break;
-
-				// 160 Hz
-				case 6:
-					lowerFrequency = 3;
-					upperFrequency = 5;
-				break;
-
-				// 200 Hz
-				case 7:
-					lowerFrequency = 4;
-					upperFrequency = 6;
-				break;		
-				// 250 Hz
-				case 8:
-					lowerFrequency = 5;
-					upperFrequency = 7;
-				break;
-
-				// 315 Hz
-				case 9:
-					lowerFrequency = 6;
-					upperFrequency = 9;
-				break;
-
-				// 400 Hz
-				case 10:
-					lowerFrequency = 8;
-					upperFrequency = 11;
-				break;
-
-				// 500 Hz
-				case 11:
-					lowerFrequency = 10;
-					upperFrequency = 14;
-				break;	
-					
-				
-				// 630 Hz
-				case 12:
-					lowerFrequency = 13;
-					upperFrequency = 17;
-				break;	
-				
+			// Full Octave Band
+			case 1:
 			
-				// 800 Hz
-				case 13:
-					lowerFrequency = 16;
-					upperFrequency = 21;
-				break;	
+				switch (fullOctaveBandSelection)
+				{
+					// 63 Hz
+					case 0:	lowerFrequency = 1;   upperFrequency = 3;   break;
+						
+					// 125 Hz
+					case 1:	lowerFrequency = 2;   upperFrequency = 5;   break;
+						
+					// 250 Hz
+					case 2:	lowerFrequency = 4;   upperFrequency = 9;   break;
 					
-				
-				// 1000 Hz
-				case 14:
-					lowerFrequency = 20;
-					upperFrequency = 27;
-				break;	
-				
+					// 500 Hz
+					case 3:	lowerFrequency = 8;   upperFrequency = 17;  break;
 
-				// 1250 Hz
-				case 15:
-					lowerFrequency = 26;
-					upperFrequency = 33;
-				break;	
+					// 1000 Hz
+					case 4:	lowerFrequency = 16;  upperFrequency = 33;  break;
 					
+					// 2000 Hz
+					case 5:	lowerFrequency = 32;  upperFrequency = 66;  break;
+
+					// 4000 Hz
+					case 6:	lowerFrequency = 65;  upperFrequency = 132; break;
+
+					// 8000 Hz
+					case 7:	lowerFrequency = 131; upperFrequency = 264; break;
+
+					// 16000 Hz
+					case 8:	lowerFrequency = 263; upperFrequency = 511; break;	
+				} // end Full Octave Band
 				
-				// 1600 Hz
-				case 16:
-					lowerFrequency = 32;
-					upperFrequency = 42;
-				break;	
-				
+			break;
 			
-				// 2000 Hz
-				case 17:
-					lowerFrequency = 41;
-					upperFrequency = 52;
-				break;	
-					
-				
-				// 2500 Hz
-				case 18:
-					lowerFrequency = 51;
-					upperFrequency = 66;
-				break;	
-				
-				
-				// 3150 Hz
-				case 19:
-					lowerFrequency = 65;
-					upperFrequency = 83;
-				break;	
-					
-				
-				// 4000 Hz
-				case 20:
-					lowerFrequency = 82;
-					upperFrequency = 104;
-				break;	
-				
+			//==============================================================================================
 			
-				// 5000 Hz
-				case 21:
-					lowerFrequency = 103;
-					upperFrequency = 131;
-				break;	
-					
-				
-				// 6300 Hz
-				case 22:
-					lowerFrequency = 130;
-					upperFrequency = 165;
-				break;	
-				
-
-				// 8000 Hz
-				case 23:
-					lowerFrequency = 164;
-					upperFrequency = 207;
-				break;	
-					
-				
-				// 10000 Hz
-				case 24:
-					lowerFrequency = 206;
-					upperFrequency = 261;
-				break;	
-				
+			// Third Octave Band
+			case 2:
 			
-				// 12500 Hz
-				case 25:
-					lowerFrequency = 260;
-					upperFrequency = 329;
-				break;	
-					
+				switch (thirdOctaveBandSelection)
+				{
+					// 50 Hz
+					case 0: lowerFrequency = 1;   upperFrequency = 1;   break; // idk
+
+					// 63 Hz
+					case 1: lowerFrequency = 2;   upperFrequency = 2;   break; // idk
+
+					// 80 Hz
+					case 2: lowerFrequency = 1;   upperFrequency = 3;   break; // idk
 				
-				// 16000 Hz
-				case 26:
-					lowerFrequency = 328;
-					upperFrequency = 413;
-				break;	
-				
+					// 100 Hz
+					case 3: lowerFrequency = 2;   upperFrequency = 3;   break;
 
-				// 20000 Hz
-				case 27:
-					lowerFrequency = 412;
-					upperFrequency = 511;
-				break;				
-			} // end Third Octave Band		
-		
-		//==============================================================================================
-		
-		// Filters data to remove unneeded frequencies and sums all frequency bins
-		//vector<vector<float>> filteredData = FFTSum(DATA);	***disabled until data aquisition is made***
+					// 125 Hz
+					case 4: lowerFrequency = 2;   upperFrequency = 4;   break;
 
+					// 160 Hz
+					case 5: lowerFrequency = 3;   upperFrequency = 5;   break;
 
-		// Writes gain to M x N array to be plotted
-		//arrayFactor(filteredData);	***disabled until data aquisition is made***	
-		
-		
-		break;
-	} // end Frequency Selection
+					// 200 Hz
+					case 6: lowerFrequency = 4;   upperFrequency = 6;   break;
+
+					// 250 Hz
+					case 7: lowerFrequency = 5;   upperFrequency = 7;   break;
+
+					// 315 Hz
+					case 8: lowerFrequency = 6;   upperFrequency = 9;   break;
+
+					// 400 Hz
+					case 9: lowerFrequency = 8;   upperFrequency = 11;  break;
+
+					// 500 Hz
+					case 10: lowerFrequency = 10;  upperFrequency = 14;  break;
+
+					// 630 Hz
+					case 11: lowerFrequency = 13;  upperFrequency = 17;  break;
+
+					// 800 Hz
+					case 12: lowerFrequency = 16;  upperFrequency = 21;  break;
+
+					// 1000 Hz
+					case 13: lowerFrequency = 20;  upperFrequency = 27;  break;
+
+					// 1250 Hz
+					case 14: lowerFrequency = 26;  upperFrequency = 33;  break;
+
+					// 1600 Hz
+					case 16: lowerFrequency = 32;  upperFrequency = 42;  break;
+
+					// 2000 Hz
+					case 17: lowerFrequency = 41;  upperFrequency = 52;  break;
+
+					// 2500 Hz
+					case 18: lowerFrequency = 51;  upperFrequency = 66;  break;
 	
-	//==============================================================================================
-	
-	// Output data to Video script
-	while(true) { //do this so it aint broke ;(
-	if(!audioData.write2D(gain))
+					// 3150 Hz
+					case 19: lowerFrequency = 65;  upperFrequency = 83;  break;
+
+					// 4000 Hz
+					case 20: lowerFrequency = 82;  upperFrequency = 104; break;
+
+					// 5000 Hz
+					case 21: lowerFrequency = 103; upperFrequency = 131; break;
+
+					// 6300 Hz
+					case 22: lowerFrequency = 130; upperFrequency = 165; break;
+
+					// 8000 Hz
+					case 23: lowerFrequency = 164; upperFrequency = 207; break;
+
+					// 10000 Hz
+					case 24: lowerFrequency = 206; upperFrequency = 261; break;
+
+					// 12500 Hz
+					case 25: lowerFrequency = 260; upperFrequency = 329; break;
+					
+					// 16000 Hz
+					case 26: lowerFrequency = 328; upperFrequency = 413; break;
+					
+					// 20000 Hz
+					case 27: lowerFrequency = 412; upperFrequency = 511; break;			
+				} // end Third Octave Band		
+			
+			//==============================================================================================
+			
+			// Filters data to remove unneeded frequencies and sums all frequency bins
+			// Applies per-band calibration
+			//vector<vector<float>> filteredData = FFTSum(DATA); ***disabled until data acquisition is made***
+
+			// Does beamforming algorithm and converts to gain
+			//arrayFactor(filteredData);	***disabled until data acquisition is made***	
+			
+			break; // end frequency selection
+		} // end main loop
+		
+		//==============================================================================================
+		
+		// Output data to Video script
+		if(!audioData.write2D(gain))
 		{
 			cerr << "1. write2D failed.\n";
 		}
 	}
-
+	
 	/*
 	// Print gain array in .csv format (debugging)
 	for (int index1 = 0; index1 < ANGLE_AMOUNT; ++index1)
