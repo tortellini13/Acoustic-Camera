@@ -77,7 +77,7 @@ float degtorad(float angleDEG)
 //==============================================================================================
 
 // Calculates Array Factor and outputs gain
-void arrayFactor(const vector<vector<float>>& Data)
+void arrayFactor(const vector<vector<float>>& data)
 {
 	// Initialize Array Factor array
 	vector<vector<cfloat>> AF(ANGLE_AMOUNT, vector<cfloat>(ANGLE_AMOUNT));
@@ -96,7 +96,7 @@ void arrayFactor(const vector<vector<float>>& Data)
 				{
 					// Calculate the phase shift for each element
 					float angle = degtorad(THETA * m + PHI * n);
-					sum += Data[m][n] * cfloat(cos(angle), sin(angle));
+					sum += data[m][n] * cfloat(cos(angle), sin(angle));
 				}
 			}
 			AF[indexTHETA][indexPHI] = sum; // Writes sum to Array Factor array
@@ -285,6 +285,105 @@ vector<vector<float>> FFTSum(vector<vector<vector<float>>>& rawData, int lowerBo
 	return result;
 }// end FFTSum
 
+
+
+
+// Set up parameters for audio interface
+int setupAudio(snd_pcm_t **pcm_handle, snd_pcm_uframes_t *frames) 
+{
+    snd_pcm_hw_params_t *params;
+    unsigned int rate = SAMPLE_RATE;
+    int dir, pcm;
+
+    // Open the PCM device in capture mode
+    pcm = snd_pcm_open(pcm_handle, "default", SND_PCM_STREAM_CAPTURE, 0);
+    if (pcm < 0) 
+    {
+        cerr << "Unable to open PCM device: " << snd_strerror(pcm) << endl;
+        return pcm;
+    }
+    //cout << "PCM device opened in capture mode.\n"; // Debugging
+
+    // Allocate a hardware parameters object
+    snd_pcm_hw_params_alloca(&params);
+    //cout << "Hardware parameter object allocated.\n"; // Debugging
+
+    // Set the desired hardware parameters
+    snd_pcm_hw_params_any(*pcm_handle, params);
+    snd_pcm_hw_params_set_access(*pcm_handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
+    snd_pcm_hw_params_set_format(*pcm_handle, params, SND_PCM_FORMAT_FLOAT_LE);  // 32-bit float PCM
+    snd_pcm_hw_params_set_channels(*pcm_handle, params, NUM_CHANNELS); 
+    snd_pcm_hw_params_set_rate_near(*pcm_handle, params, &rate, &dir);
+    cout << "Hardware parameters set.\n";
+
+    // Write the parameters to the PCM device
+    pcm = snd_pcm_hw_params(*pcm_handle, params);
+    if (pcm < 0) 
+    {
+        cerr << "Unable to set HW parameters: " << snd_strerror(pcm) << endl;
+        return pcm;
+    }
+    //cout << "Parameters written to device.\n"; // Debugging
+
+    // Get the period size (frames per buffer)
+    snd_pcm_hw_params_get_period_size(params, frames, &dir);
+
+    return 0;
+} // end setupAudio
+
+//==============================================================================================
+
+// Function to capture audio into a 3D vector (M_AMOUNT x N_AMOUNT x FFT_SIZE)
+int captureAudio(vector<vector<vector<float>>> &data_output, snd_pcm_t *pcm_handle) {
+    vector<float> buffer(FFT_SIZE * NUM_CHANNELS);  // Flat buffer for data
+    int pcm;
+
+    // Capture PCM audio
+    while (1) 
+    {
+        pcm = snd_pcm_readi(pcm_handle, buffer.data(), FFT_SIZE);
+        if (pcm == -EPIPE) 
+        {
+            // Buffer overrun
+            snd_pcm_prepare(pcm_handle);
+            cerr << "Buffer overrun occurred, PCM prepared.\n";
+            continue;  // Try reading again
+        } 
+        else if (pcm < 0) 
+        {
+            cerr << "Error reading PCM data: " << snd_strerror(pcm) << endl;
+            return pcm;
+        }
+        else if (pcm != FFT_SIZE)
+        {
+            cerr << "Short read, read " << pcm << " frames\n";
+            continue;  // Try reading again
+        }
+        else
+        {
+            break; // Successful read
+        }
+    }
+    // cout << "Data read from device.\n"; // Debugging
+
+    // Populate the 3D vector with captured data (Unflatten the buffer)
+    for (int k = 0; k < FFT_SIZE; ++k) 
+    {
+        for (int m = 0; m < M_AMOUNT; ++m) 
+        {
+            for (int n = 0; n < N_AMOUNT; ++n) 
+            {
+                int channel = m * N_AMOUNT + n;
+                // No need for channel bounds check since we ensured sizes match
+                data_output[m][n][k] = buffer[k * NUM_CHANNELS + channel];
+            }
+        }
+    }
+    // cout << "3D data vector populated with audio data.\n"; // Optional
+
+    return 0;
+} // end captureAudio
+
 //==============================================================================================
 
 // Prints 3D array of floats to the console
@@ -312,7 +411,7 @@ int main()
 	// Needs to be 3D for input***
 	// 3rd dimension is buffered data***
 	// Will be made 3D after data acquisition is made***
-	vector<vector<float>> DATA =
+	vector<vector<float>> DATA = // For testing***
 	{
 		{1, 1, 1, 1},
 		{1, 1, 1, 1},
@@ -340,6 +439,22 @@ int main()
 
 	//==============================================================================================
 
+	// Initialize variables for audio handling
+    snd_pcm_t *pcm_handle;
+    snd_pcm_uframes_t frames;
+    int pcm;
+
+    // 3D vector to hold float data for M_AMOUNT x N_AMOUNT microphones and FFT_SIZE samples
+    vector<vector<vector<float>>> audio_data(M_AMOUNT, vector<vector<float>>(N_AMOUNT, vector<float>(FFT_SIZE)));
+
+	//==============================================================================================
+
+    // Setup audio
+    pcm = setupAudio(&pcm_handle, &frames);
+    if (pcm < 0) 
+    {
+        return 1;  // Exit if setup fails
+    }
 	// Initializes constants for later use
 	constantCalcs();
 	
@@ -429,6 +544,21 @@ int main()
 
 		//==============================================================================================
 
+		// Read data from microphones
+        pcm = captureAudio(audio_data, pcm_handle);
+        if (pcm < 0) 
+        {
+            cerr << "Error capturing audio" << endl;
+            // Decide whether to break or continue
+            break;
+        }
+
+
+
+
+		//==============================================================================================
+
+		// Change input to audio_data*******
 		// User Configs
 		switch (bandTypeSelection)
 		{
@@ -569,7 +699,7 @@ int main()
 			
 			// Filters data to remove unneeded frequencies and sums all frequency bins
 			// Applies per-band calibration
-			//vector<vector<float>> filteredData = FFTSum(DATA); ***disabled until data acquisition is made***
+			//vector<vector<float>> filteredData = FFTSum(audio_data); ***disabled until data acquisition is made***
 
 			// Does beamforming algorithm and converts to gain
 			//arrayFactor(filteredData);	***disabled until data acquisition is made***	
@@ -602,4 +732,15 @@ int main()
 		cout << endl;
 	} // end print gain
 	*/
+
+    // Clean up ALSA
+    snd_pcm_drain(pcm_handle);
+    snd_pcm_close(pcm_handle);
+
+	// Clean up shm
+	audioData.closeAll();
+	audioData.~sharedMemory();
+	userConfigs.closeAll();
+	userConfigs.~sharedMemory();
+
 } // end main
