@@ -11,7 +11,7 @@
 #define NUM_ANGLES ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP)
 
 #define FFT_SIZE 1024     // Amount of samples in one frame of the FFT
-#define SAMPLE_RATE 44100 // Audio sample rate
+#define SAMPLE_RATE 48000 // Audio sample rate
 #define BUFFER_SIZE (FFT_SIZE * NUM_CHANNELS * sizeof(float)) // Size of buffer for all channels
 
 #define FRAME_RATE 30         // Frame rate of the camera

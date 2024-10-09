@@ -72,10 +72,6 @@ float degtorad(float angleDEG)
 
 //==============================================================================================
 
-// Read audio data from interface
-
-//==============================================================================================
-
 // Calculates Array Factor and outputs gain
 void arrayFactor(const vector<vector<float>>& data)
 {
@@ -103,7 +99,6 @@ void arrayFactor(const vector<vector<float>>& data)
 		}
 	}
 
-
 	// Calculate gain 10log10(signal)
 	for (int indexTHETA = 0; indexTHETA < ANGLE_AMOUNT; ++indexTHETA)
 	{
@@ -114,20 +109,6 @@ void arrayFactor(const vector<vector<float>>& data)
 		}
 	}
 
-
-	/*
-	// Print the result array (for debugging)
-	for (int index1 = 0; index1 < ANGLE_AMOUNT; index1++)
-	{
-		for (int index2 = 0; index2 < ANGLE_AMOUNT; index2++)
-		{
-			cout << AF[index1][index2] << ", ";
-		}
-		cout << "\n";
-	}
-
-	cout << "\n\n\n\n\n\n";
-	*/
 } // end arrayFactor
 
 //==============================================================================================
@@ -140,7 +121,7 @@ void constantCalcs()
 {
 	for (int k = 0; k < HALF_FFT_SIZE; k++)
 	{
-		vk = (2 * M_PI * k) / FFT_SIZE;     // some vector as a function of k
+		vk = (2 * M_PI * k) / FFT_SIZE;    // some vector as a function of k
 		ev[k] = cfloat(cos(vk), -sin(vk)); // some complex vector as a function of k
 		for (int m = 0; m < HALF_FFT_SIZE; m++)
 		{
@@ -285,8 +266,7 @@ vector<vector<float>> FFTSum(vector<vector<vector<float>>>& rawData, int lowerBo
 	return result;
 }// end FFTSum
 
-
-
+//==============================================================================================
 
 // Set up parameters for audio interface
 int setupAudio(snd_pcm_t **pcm_handle, snd_pcm_uframes_t *frames) 
