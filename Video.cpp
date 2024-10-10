@@ -20,14 +20,14 @@ int main()
     vector<vector<float>> magnitudeInput(NUM_ANGLES, vector<float>(NUM_ANGLES));        
     
     // Initialize shared memory class for Audio
-  //  sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);   
+    sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);   
 
     // Initializes array to send user config to Audio. Filled with default settings
-  //  vector<int> USER_CONFIGS(NUM_CONFIGS, 0);     // ***Might need to manually set default settings
+    vector<int> USER_CONFIGS(NUM_CONFIGS, 0);     // ***Might need to manually set default settings
     //vector<int> PREVIOUS_CONFIGS(NUM_CONFIGS, 0); // For limiting amount of shm calls
 
     // Initializes shared memory class for userConfig
-  //  sharedMemory userConfig(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
+    sharedMemory userConfig(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
     
     /* Configs Legend
     0. 0 = Broadband
@@ -44,7 +44,7 @@ int main()
     //==============================================================================================
 
     // Open shared memory for Audio
-   /* if (!audioData.openAll()) 
+    if (!audioData.openAll()) 
     {                                                             
         cerr << "1. openAll Failed\n";
     }
@@ -54,10 +54,10 @@ int main()
 	{
 		cerr << "1. createAll failed.\n";
 	}
-*/
+    //cout << "Shared Memory Configured!\n"; // For debugging
+
     //==============================================================================================
     
-    cout << "Shared Memory Configured!";
     int recording = 0; // Recording setting
   
     Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame, testframe;  // Establish matricies for 
@@ -88,57 +88,53 @@ int main()
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
     string videoFileName = "./testoutput.avi";           // Set video file output file name
     imshow("Heat Map Overlay", testframe); 
+    
     // Open recording if enabled, report error if it doesn't work
     if (recording == 1) 
     {
         vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
         if (!vide0.isOpened()) 
         {
-            cerr << "Could not open the output video file for write\n";
-            return -1;
+            cerr << "Could not open the output video file for write.\n";
+            return 1;
         }
     }
 
     //==============================================================================================
       
-    // Loop for capturing frames, heatmap, displaying, and recording
-    cout << "starting main loop!";
-
-
-    //Trackbars ===========================================================================
+    // Trackbars
     int threshTrackMax = 1000;
     createTrackbar("Threshold", "Heat Map Overlay", &thresholdValue, threshTrackMax, thresholdChange);
+
+    //==============================================================================================
+
+    // Loop for capturing frames, heatmap, displaying, and recording
+    cout << "Starting main loop.\n";
     
-    while (true) 
+    while (1) 
     {
-        cap >> frame; //capture the frame
-        if(!frame.empty()) 
+        cap >> frame; // Capture the frame
+        if(frame.empty()) 
         {
-           // cout << "Frame Captured!";
+           cout << "Frame is empty ;(\n";
+           //cout << "Frame Captured!\n";
         } 
-        
-        else 
-        {
-            cout << "Frame is empty ;(";
-        }
+        //cout << "Frame Captured!\n"; // For debugging
         
         //==============================================================================================
 
-        /*
+        
         // Read the shared memory to obtain magnitude data
         if (!audioData.read2D(magnitudeInput)) 
         { 
             cerr << "2. read2D Failed\n";
         } 
-        else 
-        {
-            //cout << "Data read from shared memory";
-        }
-*/
-        // Nested loops for converting vector vector into an OpenCV matrix
-        for(int rows = 0; rows < NUM_ANGLES; rows++) 
+        //cout << "Data read from shared memory\n"; // For debugging
+
+        // Converts vector<vector<float>> into an OpenCV matrix
+        for (int rows = 0; rows < NUM_ANGLES; rows++) 
         { 
-            for(int columns = 0; columns < NUM_ANGLES; columns++)
+            for (int columns = 0; columns < NUM_ANGLES; columns++)
             {
                 magnitudeFrame.at<int>(rows, columns) = magnitudeInput[rows][columns];
             }
@@ -148,18 +144,18 @@ int main()
         //==============================================================================================
 
         // Magnitude Data Proccessing
-        resize(magnitudeFrame, heatMapData, Size(width, height), 0, 0, INTER_LINEAR);       //Scaling and interpolating into camera resolution
-        //threshold(heatMapData, heatMapData, thresholdValue, thresholdPeak, THRESH_TOZERO);  //Apply a threshold to the magnitude data
-        normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX);                     //Normalize the data into a (0-255) range
-        heatMapData.convertTo(heatMapData, CV_8UC1);                                        //Convert heat map data data type
-        heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);                            //Convert normalized heat map data data type
+        resize(magnitudeFrame, heatMapData, Size(width, height), 0, 0, INTER_LINEAR);       // Scaling and interpolating into camera resolution
+        //threshold(heatMapData, heatMapData, thresholdValue, thresholdPeak, THRESH_TOZERO);  // Apply a threshold to the magnitude data
+        normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX);                     // Normalize the data into a (0-255) range
+        heatMapData.convertTo(heatMapData, CV_8UC1);                                        // Convert heat map data data type
+        heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);                            // Convert normalized heat map data data type
 
         //==============================================================================================
         
         // Colormap creation
-        applyColorMap(heatMapDataNormal, heatMapRGB, COLORMAP_INFERNO);                     //Convert the normalized heat map data into a colormap
-        cvtColor(heatMapRGB, heatMapRGBA, COLOR_RGB2RGBA);                                  //Convert heat map from RGB to RGBA
-        cvtColor(frame, frameRGBA, COLOR_RGB2RGBA);                                         //Convert video frame from RGB to RGBA
+        applyColorMap(heatMapDataNormal, heatMapRGB, COLORMAP_INFERNO);                     // Convert the normalized heat map data into a colormap
+        cvtColor(heatMapRGB, heatMapRGBA, COLOR_RGB2RGBA);                                  // Convert heat map from RGB to RGBA
+        cvtColor(frame, frameRGBA, COLOR_RGB2RGBA);                                         // Convert video frame from RGB to RGBA
         
         //==============================================================================================
 
@@ -199,7 +195,10 @@ int main()
         //==============================================================================================
 
         // Write configs to shared memory
-        userConfig.write(USER_CONFIGS);
+        if(!userConfig.write(USER_CONFIGS))
+        {
+            cerr << "2. write failed.\n";
+        }
         
         //==============================================================================================
 
@@ -210,9 +209,16 @@ int main()
 
     //==============================================================================================
 
+    // Close video
     cap.release();
     vide0.release();
     //destroyAllWindows(); 
+
+    // Close shm
+    audioData.closeAll();
+    audioData.~sharedMemory();
+    userConfig.closeAll();
+    userConfig.~sharedMemory();
 
     return 0;
 } // end main
