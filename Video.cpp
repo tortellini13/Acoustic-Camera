@@ -7,6 +7,11 @@
 using namespace cv;
 using namespace std;
 
+void thresholdChange (int thresholdValue, void* userdata) {
+cout << thresholdValue;
+}
+
+
 int main() 
 {
     //==============================================================================================
@@ -15,14 +20,14 @@ int main()
     vector<vector<float>> magnitudeInput(NUM_ANGLES, vector<float>(NUM_ANGLES));        
     
     // Initialize shared memory class for Audio
-    sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);   
+  //  sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);   
 
     // Initializes array to send user config to Audio. Filled with default settings
-    vector<int> USER_CONFIGS(NUM_CONFIGS, 0);     // ***Might need to manually set default settings
+  //  vector<int> USER_CONFIGS(NUM_CONFIGS, 0);     // ***Might need to manually set default settings
     //vector<int> PREVIOUS_CONFIGS(NUM_CONFIGS, 0); // For limiting amount of shm calls
 
     // Initializes shared memory class for userConfig
-    sharedMemory userConfig(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
+  //  sharedMemory userConfig(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
     
     /* Configs Legend
     0. 0 = Broadband
@@ -39,7 +44,7 @@ int main()
     //==============================================================================================
 
     // Open shared memory for Audio
-    if (!audioData.openAll()) 
+   /* if (!audioData.openAll()) 
     {                                                             
         cerr << "1. openAll Failed\n";
     }
@@ -49,9 +54,10 @@ int main()
 	{
 		cerr << "1. createAll failed.\n";
 	}
-
+*/
     //==============================================================================================
     
+    cout << "Shared Memory Configured!";
     int recording = 0; // Recording setting
   
     Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame, testframe;  // Establish matricies for 
@@ -69,7 +75,7 @@ int main()
     // Heat Map settings
     int magnitudeWidth = NUM_ANGLES;  // Set Dims of magnitude data coming in from PARAMS.h
     int magnitudeHeight = NUM_ANGLES; 
-    double thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
+    int thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
     
 
     Mat magnitudeFrame(magnitudeHeight, magnitudeWidth, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
@@ -81,7 +87,7 @@ int main()
     cap >> testframe;                                    // Capture a single test frame
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
     string videoFileName = "./testoutput.avi";           // Set video file output file name
-    
+    imshow("Heat Map Overlay", testframe); 
     // Open recording if enabled, report error if it doesn't work
     if (recording == 1) 
     {
@@ -96,12 +102,19 @@ int main()
     //==============================================================================================
       
     // Loop for capturing frames, heatmap, displaying, and recording
-    while (1) 
+    cout << "starting main loop!";
+
+
+    //Trackbars ===========================================================================
+    int threshTrackMax = 1000;
+    createTrackbar("Threshold", "Heat Map Overlay", &thresholdValue, threshTrackMax, thresholdChange);
+    
+    while (true) 
     {
         cap >> frame; //capture the frame
         if(!frame.empty()) 
         {
-            cout << "Frame Captured!";
+           // cout << "Frame Captured!";
         } 
         
         else 
@@ -111,7 +124,7 @@ int main()
         
         //==============================================================================================
 
-        
+        /*
         // Read the shared memory to obtain magnitude data
         if (!audioData.read2D(magnitudeInput)) 
         { 
@@ -121,7 +134,7 @@ int main()
         {
             //cout << "Data read from shared memory";
         }
-
+*/
         // Nested loops for converting vector vector into an OpenCV matrix
         for(int rows = 0; rows < NUM_ANGLES; rows++) 
         { 
@@ -186,7 +199,7 @@ int main()
         //==============================================================================================
 
         // Write configs to shared memory
-        userConfig.write(USER_CONFIGS);
+        //userConfig.write(USER_CONFIGS);
         
         //==============================================================================================
 
