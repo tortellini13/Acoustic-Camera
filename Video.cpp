@@ -17,17 +17,15 @@ int main()
     //==============================================================================================
     
     // Initializes array to receive data from Audio
-    vector<vector<float>> magnitudeInput(NUM_ANGLES, vector<float>(NUM_ANGLES));        
-    
-    // Initialize shared memory class for Audio
-    sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);   
+    vector<vector<float>> magnitudeInput(NUM_ANGLES, vector<float>(NUM_ANGLES));   
 
     // Initializes array to send user config to Audio. Filled with default settings
-    vector<int> USER_CONFIGS(NUM_CONFIGS, 0);     // ***Might need to manually set default settings
-    //vector<int> PREVIOUS_CONFIGS(NUM_CONFIGS, 0); // For limiting amount of shm calls
+    vector<int> userConfigs(NUM_CONFIGS, 0);     // ***Might need to manually set default settings     
+    
+    // Initialize shared memory class
+    sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);   
 
-    // Initializes shared memory class for userConfig
-    sharedMemory userConfig(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
+
     
     /* Configs Legend
     0. 0 = Broadband
@@ -44,17 +42,11 @@ int main()
     //==============================================================================================
 
     // Open shared memory for Audio
-    if (!audioData.openAll()) 
+    if (!shm.shmStart2()) 
     {                                                             
-        cerr << "1. openAll Failed\n";
+        cerr << "2. shmStart2 Failed\n";
     }
-    
-    // Creates shared memory for Configs
-	if(!userConfig.createAll())
-	{
-		cerr << "1. createAll failed.\n";
-	}
-    //cout << "Shared Memory Configured!\n"; // For debugging
+    //cout << "Shared Memory Configured.\n"; // For debugging
 
     //==============================================================================================
     
@@ -123,11 +115,10 @@ int main()
         
         //==============================================================================================
 
-        
-        // Read the shared memory to obtain magnitude data
-        if (!audioData.read2D(magnitudeInput)) 
+        // Read audio data and write user configs to Audio
+        if (!shm.readWrite2(magnitudeInput, userConfigs)) 
         { 
-            cerr << "2. read2D Failed\n";
+            cerr << "2. readWrite2 Failed\n";
         } 
         //cout << "Data read from shared memory\n"; // For debugging
 
@@ -140,7 +131,6 @@ int main()
             }
         }      
         
-
         //==============================================================================================
 
         // Magnitude Data Proccessing
@@ -194,14 +184,6 @@ int main()
 
         //==============================================================================================
 
-        // Write configs to shared memory
-        if(!userConfig.write(USER_CONFIGS))
-        {
-            cerr << "2. write failed.\n";
-        }
-        
-        //==============================================================================================
-
         // Break loop if key is pressed
         if (waitKey(30) >= 0) break;
 
@@ -215,10 +197,8 @@ int main()
     //destroyAllWindows(); 
 
     // Close shm
-    audioData.closeAll();
-    audioData.~sharedMemory();
-    userConfig.closeAll();
-    userConfig.~sharedMemory();
+    shm.closeAll();
+    shm.~sharedMemory();
 
     return 0;
 } // end main

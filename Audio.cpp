@@ -39,20 +39,12 @@ int main()
 {
 	//==============================================================================================
 
-	// Initialize shared memory class for Audio
-	sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);
+	// Initialize shared memory class
+	sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);
 
-	if(!audioData.createAll())
+	if(!shm.shmStart1())
 	{
-		cerr << "1. createAll failed.\n";
-	}
-
-	// Initialize shared memory class for userConfigs
-	sharedMemory userConfigs(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
-
-	if(!userConfigs.openAll())
-	{
-		cerr << "1. openAll failed.\n";
+		cerr << "1. shmStart1 failed.\n";
 	}
 
 	//==============================================================================================
@@ -85,7 +77,7 @@ int main()
 	int fullOctaveBandSelection = 0;
 	bool isRecording = 0;
 
-	vector<int> USER_CONFIGS(NUM_CONFIGS, 0); // Main user config array
+	vector<int> userConfigs(NUM_CONFIGS, 0); // Main user config array
 
 	// Initialize variables for audio data 
 	vector<vector<float>> audioDataFFT; // Data after FFT
@@ -144,12 +136,6 @@ int main()
 	// Main loop
 	while (1)
 	{
-		// Read USER_CONFIGS and set relevant configs
-		if(!userConfigs.read(USER_CONFIGS))
-		{
-			cerr << "1. read failed.\n";
-		}
-
 		/* Configs Legend
 		0. 0 = Broadband
 		   1 = Full octave
@@ -162,10 +148,10 @@ int main()
 		5. 
 		*/
 
-		bandTypeSelection = USER_CONFIGS[0];
-		fullOctaveBandSelection = USER_CONFIGS[1];
-		thirdOctaveBandSelection = USER_CONFIGS[2];
-		isRecording = USER_CONFIGS[3];
+		bandTypeSelection = userConfigs[0];
+		fullOctaveBandSelection = userConfigs[1];
+		thirdOctaveBandSelection = userConfigs[2];
+		isRecording = userConfigs[3];
 
 		//==============================================================================================
 
@@ -331,10 +317,10 @@ int main()
 		
 		//==============================================================================================
 		
-		// Output data to Video script
-		if(!audioData.write2D(audioDataOut))
+		// Write audio data to Video and read user configs
+		if(!shm.writeRead1(audioDataOut, userConfigs))
 		{
-			cerr << "1. write2D failed.\n";
+			cerr << "1. writeRead1 failed.\n";
 		}
 	}
 	
@@ -360,9 +346,7 @@ int main()
     snd_pcm_close(pcm_handle);
 
 	// Clean up shm
-	audioData.closeAll();
-	audioData.~sharedMemory();
-	userConfigs.closeAll();
-	userConfigs.~sharedMemory();
+	shm.closeAll();
+	shm.~sharedMemory();
 
 } // end main
