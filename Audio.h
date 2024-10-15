@@ -19,10 +19,6 @@ using namespace std;
 // Definitions
 typedef complex<float> cfloat;
 
-// Defines amount of angles to sweep through (coordinates)
-// CHANGE THIS TO USE THE ONE IN PARAMS*******
-const int ANGLE_AMOUNT = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP + 1);
-
 // CHANGE THIS TO USE THE ONE IN PARAMS*******
 // Half of FFT_SIZE
 const int HALF_FFT_SIZE = FFT_SIZE / 2;
@@ -42,14 +38,14 @@ float degtorad(float angleDEG)
 void arrayFactor(const vector<vector<float>>& AUDIO_DATA, vector<vector<float>> output)
 {
 	// Initialize Array Factor array
-	vector<vector<cfloat>> AF(ANGLE_AMOUNT, vector<cfloat>(ANGLE_AMOUNT));
+	vector<vector<cfloat>> AF(NUM_ANGLES + 1, vector<cfloat>(NUM_ANGLES + 1));
 
 	// Calculate phase shift for every angle
 	int indexTHETA = 0; // Reset theta index
-	for (int THETA = MIN_ANGLE; indexTHETA < ANGLE_AMOUNT; THETA += ANGLE_STEP, ++indexTHETA)
+	for (int THETA = MIN_ANGLE; indexTHETA < NUM_ANGLES + 1; THETA += ANGLE_STEP, indexTHETA++)
 	{
 		int indexPHI = 0; // Reset phi index
-		for (int PHI = MIN_ANGLE; indexPHI < ANGLE_AMOUNT; PHI += ANGLE_STEP, ++indexPHI)
+		for (int PHI = MIN_ANGLE; indexPHI < NUM_ANGLES + 1; PHI += ANGLE_STEP, indexPHI++)
 		{
 			cfloat sum = 0;  // To accumulate results
 			for (int m = 0; m < M_AMOUNT; m++)
@@ -66,9 +62,9 @@ void arrayFactor(const vector<vector<float>>& AUDIO_DATA, vector<vector<float>> 
 	}
 
 	// Calculate gain 10log10(signal)
-	for (int indexTHETA = 0; indexTHETA < ANGLE_AMOUNT; ++indexTHETA)
+	for (int indexTHETA = 0; indexTHETA < NUM_ANGLES + 1; indexTHETA++)
 	{
-		for (int indexPHI = 0; indexPHI < ANGLE_AMOUNT; ++indexPHI)
+		for (int indexPHI = 0; indexPHI < NUM_ANGLES + 1; indexPHI++)
 		{
 			output[indexTHETA][indexPHI] = 10 * log10(norm(AF[indexTHETA][indexPHI]));
 
@@ -80,15 +76,13 @@ void arrayFactor(const vector<vector<float>>& AUDIO_DATA, vector<vector<float>> 
 //==============================================================================================
 
 // Calculate all constants and write to arrays to access later
-//float vectork; // (2 * M_PI * k) / FFT_SIZE
-//vector<cfloat> complexVectorFirst(HALF_FFT_SIZE); // exp((-2 * M_PI * k) / FFT_SIZE)
-//vector<vector<cfloat>> complexVectorSecond(HALF_FFT_SIZE, vector<cfloat>(HALF_FFT_SIZE)); // exp((-2 * M_PI * k * 2 * m) / FFT_SIZE)
 void constantCalcs(vector<cfloat> complexVectorFirst, vector<vector<cfloat>> complexVectorSecond)
 {
 	for (int k = 0; k < HALF_FFT_SIZE; k++)
 	{
-		float vectork = (2 * M_PI * k) / FFT_SIZE;    // some vector as a function of k
+		float vectork = (2 * M_PI * k) / FFT_SIZE;                   // some vector as a function of k
 		complexVectorFirst[k] = cfloat(cos(vectork), -sin(vectork)); // some complex vector as a function of k
+		
 		for (int b = 0; b < HALF_FFT_SIZE; b++)
 		{
 			complexVectorSecond[k][b] = cfloat(cos(vectork * 2 * b), -sin(vectork * 2 * b)); // some complex vector as a function of k with a factor of 2m in exponent

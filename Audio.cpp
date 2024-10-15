@@ -306,7 +306,7 @@ int main()
 			//==============================================================================================
 			
 			// Filters data to remove unneeded frequencies and sums all frequency bins
-			// Applies per-band calibration
+			// Applies per-band calibration?
 			//FFTSum(audioDataIn, audioDataFFT); ***disabled until data acquisition is made***
 
 			// Does beamforming algorithm and converts to gain
@@ -322,7 +322,7 @@ int main()
 		{
 			cerr << "1. writeRead1 failed.\n";
 		}
-	}
+	} // end loop
 	
 	/*
 	// Print gain array in .csv format (debugging)
