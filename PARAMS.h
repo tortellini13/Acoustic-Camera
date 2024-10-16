@@ -22,13 +22,10 @@
 #define MAP_THRESHOLD_MIN -100 //Minimum threshold for heat map
 #define MAP_THRESHOLD_MAX 1000 //Minimum threshold for heat map
 
-const char* AUDIO_SHM = "/AUDIO_SHM"; // Shared memory name for audio data
-#define AUDIO_SEM_1 "/AUDIO_SEM_1"    // Semaphore for audio data
-#define AUDIO_SEM_2 "/AUDIO_SEM_2"    // Semaphore for audio data
-
+const char* AUDIO_SHM = "/AUDIO_SHM";   // Shared memory name for audio data
 const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
-#define CONFIG_SEM_1 "/CONFIG_SEM_1"    // Semaphore for user config
-#define CONFIG_SEM_2 "/CONFIG_SEM_2"    // Semaphore for user config
+#define SEM_1 "/SEM_1"                  // Semaphore
+#define SEM_2 "/SEM_2"                  // Semaphore
 #define NUM_CONFIGS 5                   // Number of user configs
 
 #endif

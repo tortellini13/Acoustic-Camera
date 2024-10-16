@@ -7,414 +7,44 @@
 #include <iomanip>
 #include <sys/mman.h>
 
-// Additional libraries
-#include <alsa/asoundlib.h> // Need to install
-
 // User headers
 #include "PARAMS.h"
 #include "sharedMemory.h"
+#include "Audio.h"
 
 using namespace std;
 
-/* Todo:
-Audio
-	-read data from audio interface (ALSA)
-	-buffer data in 1024 sample chunks into DATA array
-	-dBZ and dBA
-	-calculate spl
-	
-Gui
-	-open cv
-	-square camera display
-	-draw gain to heatmap
-	-overlay gain heatmap and camera
-	-user controls
-	-user selections on gui for 1/3 octave band, 1 octave band, or BB
-	-add ability to click a location and read the spl at that point (take average around point)
-	-support to connect multiple screens and duplicate
-	
-Recording
-	-raw data & camera recording and playback
-	-record and playback just screen
-	-create filepath system like B&K
-	
-Misc
-	-make calibration program
-*/
-
 //==============================================================================================
 
-// Custom type declaration for ease of use
-typedef complex<float> cfloat;
-
-// Defines amount of angles to sweep through (coordinates)
-const int ANGLE_AMOUNT = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP + 1);
-
-// Half of FFT_SIZE
-const int HALF_FFT_SIZE = FFT_SIZE / 2;
-
-// Initializes gain array
-vector<vector<float>> gain(ANGLE_AMOUNT, vector<float>(ANGLE_AMOUNT));
-
 // Initialize upper and lower frequencies
-// Changed by user input
 int lowerFrequency;
 int upperFrequency; 
 
 //==============================================================================================
 
-// Converts degrees to radians
-float degtorad(float angleDEG)
+// Needs to be 3D for input***
+// 3rd dimension is buffered data***
+// Will be made 3D after data acquisition is made***
+vector<vector<float>> DATA = // For testing***
 {
-	float result = angleDEG * (M_PI / 180);
-	return result;
-} // end degtorad
-
-//==============================================================================================
-
-// Calculates Array Factor and outputs gain
-void arrayFactor(const vector<vector<float>>& data)
-{
-	// Initialize Array Factor array
-	vector<vector<cfloat>> AF(ANGLE_AMOUNT, vector<cfloat>(ANGLE_AMOUNT));
-
-	// Calculate phase shift for every angle
-	int indexTHETA = 0; // Reset theta index
-	for (int THETA = MIN_ANGLE; indexTHETA < ANGLE_AMOUNT; THETA += ANGLE_STEP, ++indexTHETA)
-	{
-		int indexPHI = 0; // Reset phi index
-		for (int PHI = MIN_ANGLE; indexPHI < ANGLE_AMOUNT; PHI += ANGLE_STEP, ++indexPHI)
-		{
-			cfloat sum = 0;  // To accumulate results
-			for (int m = 0; m < M_AMOUNT; m++)
-			{
-				for (int n = 0; n < N_AMOUNT; n++)
-				{
-					// Calculate the phase shift for each element
-					float angle = degtorad(THETA * m + PHI * n);
-					sum += data[m][n] * cfloat(cos(angle), sin(angle));
-				}
-			}
-			AF[indexTHETA][indexPHI] = sum; // Writes sum to Array Factor array
-		}
-	}
-
-	// Calculate gain 10log10(signal)
-	for (int indexTHETA = 0; indexTHETA < ANGLE_AMOUNT; ++indexTHETA)
-	{
-		for (int indexPHI = 0; indexPHI < ANGLE_AMOUNT; ++indexPHI)
-		{
-			gain[indexTHETA][indexPHI] = 10 * log10(norm(AF[indexTHETA][indexPHI]));
-
-		}
-	}
-
-} // end arrayFactor
-
-//==============================================================================================
-
-// Calculate all constants and write to arrays to access later
-float vk; // (2 * M_PI * k) / FFT_SIZE
-vector<cfloat> ev(HALF_FFT_SIZE); // exp((-2 * M_PI * k) / FFT_SIZE)
-vector<vector<cfloat>> ev2m(HALF_FFT_SIZE, vector<cfloat>(HALF_FFT_SIZE)); // exp((-2 * M_PI * k * 2 * m) / FFT_SIZE)
-void constantCalcs()
-{
-	for (int k = 0; k < HALF_FFT_SIZE; k++)
-	{
-		vk = (2 * M_PI * k) / FFT_SIZE;    // some vector as a function of k
-		ev[k] = cfloat(cos(vk), -sin(vk)); // some complex vector as a function of k
-		for (int m = 0; m < HALF_FFT_SIZE; m++)
-		{
-			ev2m[k][m] = cfloat(cos(vk * 2 * m), -sin(vk * 2 * m)); // some complex vector as a function of k with a factor of 2m in exponent
-		}
-	}
-} // end constantCalcs
-
-//==============================================================================================
-
-// Calculates Ek (first component of FFT for even samples in buffer as a function of k)
-vector<vector<vector<cfloat>>> Ek(const vector<vector<vector<float>>>& rawData, int lowerBound, int upperBound)
-{
-	vector<vector<vector<cfloat>>> result(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
-
-	for (int x = 0; x < M_AMOUNT; x++) // Loop through M-axis
-	{
-		for (int y = 0; y < N_AMOUNT; y++) // Loop through N-axis
-		{
-			for (int k = 0; k < HALF_FFT_SIZE; k++) // k (frequency bin)
-			{
-				// Set result = 0 for all k lower than lowerBound
-				if (k < lowerBound)
-				{
-					result[x][y][k] = 0;
-				}
-					
-				// Set result = 0 for all k greater than upperBound
-				else if (k > upperBound)
-				{
-					result[x][y][k] = 0;
-				}
-					
-				// Calculates Ek array
-				else
-				{
-					cfloat sum = 0;
-					for (int m = 0; m < HALF_FFT_SIZE; m += 2) // m (buffered sample index)
-					{
-						sum += rawData[x][y][m] * ev2m[k][m]; // Calculates Ek array
-					}
-					result[x][y][k] = sum;	
-				} // end Ek calc
-			} // end k
-		} // end y
-	} // end x
-	return result;
-} // end Ek
-
-//==============================================================================================
-
-// Calculates Ok (second component of FFT for odd samples in buffer as a function of k)
-vector<vector<vector<cfloat>>> Ok(const vector<vector<vector<float>>>& rawData, int lowerBound, int upperBound)
-{
-	vector<vector<vector<cfloat>>> result(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
-
-	for (int x = 0; x < M_AMOUNT; x++) // Loop through M-axis
-	{
-		for (int y = 0; y < N_AMOUNT; y++) // Loop through N-axis
-		{
-			for (int k = 0; k < HALF_FFT_SIZE; k++) // k (frequency bin)
-			{
-				// Set result = 0 for all k lower than lowerBound
-				if (k < lowerBound - HALF_FFT_SIZE)
-				{
-					result[x][y][k] = 0;
-				}
-					
-				// Set result = 0 for all k greater than upperBound
-				else if (k > upperBound - HALF_FFT_SIZE)
-				{
-					result[x][y][k] = 0;
-				}
-					
-				// Calculates Ok array
-				else
-				{
-					cfloat sum = 0;
-					for (int m = 1; m < HALF_FFT_SIZE; m += 2) // m (buffered sample index)
-					{
-						sum += rawData[x][y][m] * ev2m[k][m]; // Calculates Ok array
-					}
-					result[x][y][k] = sum;	
-				} // end Ok calc
-			} // end k
-		} // end y
-	} // end x
-	return result;
-} // end Ok
-
-//==============================================================================================
-
-// Calculates X array (total FFT as a function of k) and sums all of the values in the desired range
-// Outputs M x N array of filtered data
-vector<vector<float>> FFTSum(vector<vector<vector<float>>>& rawData, int lowerBound, int upperBound)
-{
-	// Calls Ek and Ok
-	vector<vector<vector<cfloat>>> Xcomp1 = Ek(rawData, lowerBound, upperBound); 
-	vector<vector<vector<cfloat>>> Xcomp2 = Ok(rawData, lowerBound, upperBound);
-		
-	// Xk
-	vector<vector<vector<cfloat>>> Xresult(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
-	for (int x = 0; x < M_AMOUNT; x++)
-	{
-		for (int y = 0; y < N_AMOUNT; y++)
-		{
-			for (int k = 0; k < HALF_FFT_SIZE; k++)
-			{
-				Xresult[x][y][k] = Xcomp1[x][y][k] + ev[k] * Xcomp2[x][y][k];
-			}
-		}
-	}
-
-	/* Don't need. Produces reflection (-freq)
-	// Xk+N/2
-	for (int x = 0; x < M_AMOUNT; x++)
-	{
-		for (int y = 0; y < N_AMOUNT; y++)
-		{
-			for (int k = 0; k < HALF_FFT_SIZE; k++)
-			{
-				Xresult[x][y][k + HALF_FFT_SIZE] = Xcomp1[x][y][k + HALF_FFT_SIZE] + ev[k + HALF_FFT_SIZE] * Xcomp1[x][y][k + HALF_FFT_SIZE];
-			}
-		}
-	}
-	*/
-	
-	// Sum all X array values to convert frequency bins into a full band (user defined)
-	vector<vector<float>> result(M_AMOUNT, vector<float>(N_AMOUNT));
-	for (int x = 0; x < M_AMOUNT; x++)
-	{
-		for (int y = 0; y < N_AMOUNT; y++)
-		{
-			float sum = 0; // To accumulate results
-			for (int k = 0; k < HALF_FFT_SIZE; k++)
-			{
-				sum += norm(Xresult[x][y][k]); // magnitude of complex number sqrt(a^2 + b^2)
-			}
-			result[x][y] = sum;
-		}
-	}
-	return result;
-}// end FFTSum
-
-//==============================================================================================
-
-// Set up parameters for audio interface
-int setupAudio(snd_pcm_t **pcm_handle, snd_pcm_uframes_t *frames) 
-{
-    snd_pcm_hw_params_t *params;
-    unsigned int rate = SAMPLE_RATE;
-    int dir, pcm;
-
-    // Open the PCM device in capture mode
-    pcm = snd_pcm_open(pcm_handle, "default", SND_PCM_STREAM_CAPTURE, 0);
-    if (pcm < 0) 
-    {
-        cerr << "Unable to open PCM device: " << snd_strerror(pcm) << endl;
-        return pcm;
-    }
-    //cout << "PCM device opened in capture mode.\n"; // Debugging
-
-    // Allocate a hardware parameters object
-    snd_pcm_hw_params_alloca(&params);
-    //cout << "Hardware parameter object allocated.\n"; // Debugging
-
-    // Set the desired hardware parameters
-    snd_pcm_hw_params_any(*pcm_handle, params);
-    snd_pcm_hw_params_set_access(*pcm_handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
-    snd_pcm_hw_params_set_format(*pcm_handle, params, SND_PCM_FORMAT_FLOAT_LE);  // 32-bit float PCM
-    snd_pcm_hw_params_set_channels(*pcm_handle, params, NUM_CHANNELS); 
-    snd_pcm_hw_params_set_rate_near(*pcm_handle, params, &rate, &dir);
-    cout << "Hardware parameters set.\n";
-
-    // Write the parameters to the PCM device
-    pcm = snd_pcm_hw_params(*pcm_handle, params);
-    if (pcm < 0) 
-    {
-        cerr << "Unable to set HW parameters: " << snd_strerror(pcm) << endl;
-        return pcm;
-    }
-    //cout << "Parameters written to device.\n"; // Debugging
-
-    // Get the period size (frames per buffer)
-    snd_pcm_hw_params_get_period_size(params, frames, &dir);
-
-    return 0;
-} // end setupAudio
-
-//==============================================================================================
-
-// Function to capture audio into a 3D vector (M_AMOUNT x N_AMOUNT x FFT_SIZE)
-int captureAudio(vector<vector<vector<float>>> &data_output, snd_pcm_t *pcm_handle) {
-    vector<float> buffer(FFT_SIZE * NUM_CHANNELS);  // Flat buffer for data
-    int pcm;
-
-    // Capture PCM audio
-    while (1) 
-    {
-        pcm = snd_pcm_readi(pcm_handle, buffer.data(), FFT_SIZE);
-        if (pcm == -EPIPE) 
-        {
-            // Buffer overrun
-            snd_pcm_prepare(pcm_handle);
-            cerr << "Buffer overrun occurred, PCM prepared.\n";
-            continue;  // Try reading again
-        } 
-        else if (pcm < 0) 
-        {
-            cerr << "Error reading PCM data: " << snd_strerror(pcm) << endl;
-            return pcm;
-        }
-        else if (pcm != FFT_SIZE)
-        {
-            cerr << "Short read, read " << pcm << " frames\n";
-            continue;  // Try reading again
-        }
-        else
-        {
-            break; // Successful read
-        }
-    }
-    // cout << "Data read from device.\n"; // Debugging
-
-    // Populate the 3D vector with captured data (Unflatten the buffer)
-    for (int k = 0; k < FFT_SIZE; ++k) 
-    {
-        for (int m = 0; m < M_AMOUNT; ++m) 
-        {
-            for (int n = 0; n < N_AMOUNT; ++n) 
-            {
-                int channel = m * N_AMOUNT + n;
-                // No need for channel bounds check since we ensured sizes match
-                data_output[m][n][k] = buffer[k * NUM_CHANNELS + channel];
-            }
-        }
-    }
-    // cout << "3D data vector populated with audio data.\n"; // Optional
-
-    return 0;
-} // end captureAudio
-
-//==============================================================================================
-
-// Prints 3D array of floats to the console
-void print3Dfloat(vector<vector<vector<float>>>& inputArray, string& title, int dim1, int dim2, int dim3)
-{
-	cout << title << endl;
-	for (int m = 0; m < dim1; m++)
-	{
-		for (int n = 0; n < dim2; n++)
-		{
-			for (int k = 0; k < dim3; k++)
-			{
-				cout << left << setw(15) << inputArray[m][n][k] << ", ";
-			} // end k
-			cout << endl;
-		} // end n
-	} // end m
-	cout << "\n\n";
-} // end print3Dfloat
+	{1, 1, 1, 1},
+	{1, 1, 1, 1},
+	{1, 1, 1, 1},
+	{1, 1, 1, 1}
+};
 
 //==============================================================================================
 
 int main()
 {
-	// Needs to be 3D for input***
-	// 3rd dimension is buffered data***
-	// Will be made 3D after data acquisition is made***
-	vector<vector<float>> DATA = // For testing***
-	{
-		{1, 1, 1, 1},
-		{1, 1, 1, 1},
-		{1, 1, 1, 1},
-		{1, 1, 1, 1}
-	};
-
 	//==============================================================================================
 
-	// Initialize shared memory class for Audio
-	sharedMemory audioData(AUDIO_SHM, AUDIO_SEM_1, AUDIO_SEM_2, NUM_ANGLES, NUM_ANGLES);
+	// Initialize shared memory class
+	sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);
 
-	if(!audioData.createAll())
+	if(!shm.shmStart1())
 	{
-		cerr << "1. createAll failed.\n";
-	}
-
-	// Initialize shared memory class for userConfigs
-	sharedMemory userConfigs(CONFIG_SHM, CONFIG_SEM_1, CONFIG_SEM_2, NUM_CONFIGS, 1);
-
-	if(!userConfigs.openAll())
-	{
-		cerr << "1. openAll failed.\n";
+		cerr << "1. shmStart1 failed.\n";
 	}
 
 	//==============================================================================================
@@ -425,7 +55,7 @@ int main()
     int pcm;
 
     // 3D vector to hold float data for M_AMOUNT x N_AMOUNT microphones and FFT_SIZE samples
-    vector<vector<vector<float>>> audio_data(M_AMOUNT, vector<vector<float>>(N_AMOUNT, vector<float>(FFT_SIZE)));
+    vector<vector<vector<float>>> audioDataIn(M_AMOUNT, vector<vector<float>>(N_AMOUNT, vector<float>(FFT_SIZE)));
 
 	//==============================================================================================
 
@@ -435,17 +65,24 @@ int main()
     {
         return 1;  // Exit if setup fails
     }
+
 	// Initializes constants for later use
-	constantCalcs();
+	vector<cfloat> complexVector1;
+	vector<vector<cfloat>> complexVector2;
+	constantCalcs(complexVector1, complexVector2);
 	
-	// Initializes variables
+	// Initializes variables for user configs
 	int bandTypeSelection = 0;
 	int thirdOctaveBandSelection = 0;
 	int fullOctaveBandSelection = 0;
 	bool isRecording = 0;
 
-	vector<int> USER_CONFIGS(NUM_CONFIGS, 0);
-	
+	vector<int> userConfigs(NUM_CONFIGS, 0); // Main user config array
+
+	// Initialize variables for audio data 
+	vector<vector<float>> audioDataFFT; // Data after FFT
+	vector<vector<float>> audioDataOut; // Fully processed data
+
 	//==============================================================================================
 
 	/* Switch case legend
@@ -499,12 +136,6 @@ int main()
 	// Main loop
 	while (1)
 	{
-		// Read USER_CONFIGS and set relevant configs
-		if(!userConfigs.read(USER_CONFIGS))
-		{
-			cerr << "1. read failed.\n";
-		}
-
 		/* Configs Legend
 		0. 0 = Broadband
 		   1 = Full octave
@@ -517,15 +148,15 @@ int main()
 		5. 
 		*/
 
-		bandTypeSelection = USER_CONFIGS[0];
-		fullOctaveBandSelection = USER_CONFIGS[1];
-		thirdOctaveBandSelection = USER_CONFIGS[2];
-		isRecording = USER_CONFIGS[3];
+		bandTypeSelection = userConfigs[0];
+		fullOctaveBandSelection = userConfigs[1];
+		thirdOctaveBandSelection = userConfigs[2];
+		isRecording = userConfigs[3];
 
 		//==============================================================================================
 
 		// Read data from microphones
-        pcm = captureAudio(audio_data, pcm_handle);
+        pcm = captureAudio(audioDataIn, pcm_handle);
         if (pcm < 0) 
         {
             cerr << "Error capturing audio" << endl;
@@ -533,18 +164,15 @@ int main()
             break;
         }
 
-
-
-
 		//==============================================================================================
 
-		// Change input to audio_data*******
+		// Change input to audioDataIn*******
 		// User Configs
 		switch (bandTypeSelection)
 		{
 			// Broadband
 			case 0:
-				arrayFactor(DATA); // *** for testing only with 2-D array
+				arrayFactor(DATA, audioDataOut); // *** for testing only with 2-D array
 
 				//lowerFrequency = 1; upperFrequency = 511;
 			break;
@@ -678,23 +306,23 @@ int main()
 			//==============================================================================================
 			
 			// Filters data to remove unneeded frequencies and sums all frequency bins
-			// Applies per-band calibration
-			//vector<vector<float>> filteredData = FFTSum(audio_data); ***disabled until data acquisition is made***
+			// Applies per-band calibration?
+			//FFTSum(audioDataIn, audioDataFFT); ***disabled until data acquisition is made***
 
 			// Does beamforming algorithm and converts to gain
-			//arrayFactor(filteredData);	***disabled until data acquisition is made***	
+			//arrayFactor(filteredData, audioDataOut);	***disabled until data acquisition is made***	
 			
 			break; // end frequency selection
 		} // end main loop
 		
 		//==============================================================================================
 		
-		// Output data to Video script
-		if(!audioData.write2D(gain))
+		// Write audio data to Video and read user configs
+		if(!shm.writeRead1(audioDataOut, userConfigs))
 		{
-			cerr << "1. write2D failed.\n";
+			cerr << "1. writeRead1 failed.\n";
 		}
-	}
+	} // end loop
 	
 	/*
 	// Print gain array in .csv format (debugging)
@@ -718,9 +346,7 @@ int main()
     snd_pcm_close(pcm_handle);
 
 	// Clean up shm
-	audioData.closeAll();
-	audioData.~sharedMemory();
-	userConfigs.closeAll();
-	userConfigs.~sharedMemory();
+	shm.closeAll();
+	shm.~sharedMemory();
 
 } // end main
