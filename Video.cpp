@@ -11,6 +11,14 @@ void thresholdChange (int thresholdValue, void* userdata) {
 cout << thresholdValue;
 }
 
+void recordingConfig () {
+    
+
+}
+
+
+
+
 
 int main() 
 {
@@ -57,42 +65,21 @@ int main()
     //cout << "Shared Memory Configured!\n"; // For debugging
 
     //==============================================================================================
-    
-    int recording = 0; // Recording setting
-  
-    Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame, testframe;  // Establish matricies for 
-    heatMapData = Mat(frame.size(), CV_32FC1);                                                          // Make heat map data matrix
-    VideoCapture cap(0, CAP_V4L2);                                                                      // Open camera
-
-    // Video frame and capture settings
-    int width = RESOLUTION_WIDTH;           // Width from PARAMS.h
-    int height = RESOLUTION_HEIGHT;         // Height from PARAMS.h
-    double alpha = 0.5;                     // Transparency factor
-    cap.set(CAP_PROP_FRAME_WIDTH, width);   // Set frame width for capture
-    cap.set(CAP_PROP_FRAME_HEIGHT, height); // Set frame height for capture
-    cap.set(CAP_PROP_FPS, FRAME_RATE);      // Set framerate of capture from PARAMS.h
-
-    // Heat Map settings
-    int magnitudeWidth = NUM_ANGLES;  // Set Dims of magnitude data coming in from PARAMS.h
-    int magnitudeHeight = NUM_ANGLES; 
-    int thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
-    
-
-    Mat magnitudeFrame(magnitudeHeight, magnitudeWidth, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
-
-    //==============================================================================================
 
     // Setup recording if enabled
-    VideoWriter vide0;                                   // Initialize recording vide0
-    cap >> testframe;                                    // Capture a single test frame
+    int recording = 0; // Recording setting
+    VideoCapture cap(0, CAP_V4L2);
+    VideoWriter vide0;
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
+    Mat testframe;                                   // Initialize recording vide0
+    cap >> testframe;                                    // Capture a single test frame
     string videoFileName = "./testoutput.avi";           // Set video file output file name
     imshow("Heat Map Overlay", testframe); 
-    
-    // Open recording if enabled, report error if it doesn't work
+     // Open recording if enabled, report error if it doesn't work
     if (recording == 1) 
     {
         vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
+        
         if (!vide0.isOpened()) 
         {
             cerr << "Could not open the output video file for write.\n";
@@ -100,52 +87,52 @@ int main()
         }
     }
 
+    Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame, testframe;  // Establish matricies for 
+    heatMapData = Mat(frame.size(), CV_32FC1);                                                          // Make heat map data matrix
+    Mat magnitudeFrame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
+
+    // Video frame and capture settings
+    double alpha = 0.5;                     // Transparency factor
+    cap.set(CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH);   // Set frame width for capture
+    cap.set(CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT); // Set frame height for capture
+    cap.set(CAP_PROP_FPS, FRAME_RATE);      // Set framerate of capture from PARAMS.h
+
     //==============================================================================================
       
     // Trackbars
-    int threshTrackMax = 1000;
+    int thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
+    int threshTrackMax = MAP_THRESHOLD_MAX;
+    int threshTrackMin = MAP_THRESHOLD_MIN;
     createTrackbar("Threshold", "Heat Map Overlay", &thresholdValue, threshTrackMax, thresholdChange);
 
     //==============================================================================================
 
     // Loop for capturing frames, heatmap, displaying, and recording
-    cout << "Starting main loop.\n";
-    
-    while (1) 
+    while                                                                                                                                                                                                                                                                                                                                                                                                                           (true) 
     {
         cap >> frame; // Capture the frame
         if(frame.empty()) 
         {
            cout << "Frame is empty ;(\n";
-           //cout << "Frame Captured!\n";
         } 
-        //cout << "Frame Captured!\n"; // For debugging
-        
-        //==============================================================================================
 
-        
-        // Read the shared memory to obtain magnitude data
-        if (!audioData.read2D(magnitudeInput)) 
+        if (!audioData.read2D(magnitudeInput)) // Read the shared memory to obtain magnitude data
         { 
             cerr << "2. read2D Failed\n";
         } 
-        //cout << "Data read from shared memory\n"; // For debugging
-
-        // Converts vector<vector<float>> into an OpenCV matrix
-        for (int rows = 0; rows < NUM_ANGLES; rows++) 
+        
+        for (int rows = 0; rows < NUM_ANGLES; rows++) // Converts vector<vector<float>> into an OpenCV matrix
         { 
             for (int columns = 0; columns < NUM_ANGLES; columns++)
             {
                 magnitudeFrame.at<int>(rows, columns) = magnitudeInput[rows][columns];
             }
         }      
-        
 
         //==============================================================================================
 
         // Magnitude Data Proccessing
-        resize(magnitudeFrame, heatMapData, Size(width, height), 0, 0, INTER_LINEAR);       // Scaling and interpolating into camera resolution
-        //threshold(heatMapData, heatMapData, thresholdValue, thresholdPeak, THRESH_TOZERO);  // Apply a threshold to the magnitude data
+        resize(magnitudeFrame, heatMapData, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 0, 0, INTER_LINEAR);       // Scaling and interpolating into camera resolution
         normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX);                     // Normalize the data into a (0-255) range
         heatMapData.convertTo(heatMapData, CV_8UC1);                                        // Convert heat map data data type
         heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);                            // Convert normalized heat map data data type
