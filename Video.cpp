@@ -7,15 +7,14 @@
 using namespace cv;
 using namespace std;
 
+//==============================================================================================
 
-void thresholdChange (int thresholdValue, void* userdata) {
+void thresholdChange (int thresholdValue, void* userdata) 
+{
 //cout << thresholdValue;
 }
 
-
-
-
-
+//==============================================================================================
 
 int main() 
 {
@@ -28,7 +27,7 @@ int main()
     vector<int> userConfigs(NUM_CONFIGS, 0);     // ***Might need to manually set default settings     
     
     // Initialize shared memory class
-   // sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);   
+    sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);   
 
 
     
@@ -47,24 +46,26 @@ int main()
     //==============================================================================================
 
     // Open shared memory for Audio
-   // if (!shm.shmStart2()) 
-    //{                                                             
-      //  cerr << "2. shmStart2 Failed\n";
-    //}
+    if (!shm.shmStart2()) 
+    {                                                             
+        cerr << "2. shmStart2 Failed\n";
+    }
     //cout << "Shared Memory Configured.\n"; // For debugging
 
     //==============================================================================================
 
+    // ***Clean this up***
     // Setup recording if enabled
     int recording = 0; // Recording setting
     VideoCapture cap(0, CAP_V4L2);
     VideoWriter vide0;
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
-    Mat testframe;                                   // Initialize recording vide0
+    Mat testframe;                                       // Initialize recording vide0
     cap >> testframe;                                    // Capture a single test frame
     string videoFileName = "./testoutput.avi";           // Set video file output file name
     imshow("Heat Map Overlay", testframe); 
-     // Open recording if enabled, report error if it doesn't work
+    
+    // Open recording if enabled, report error if it doesn't work
     if (recording == 1) 
     {
         vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
@@ -81,41 +82,31 @@ int main()
     Mat magnitudeFrame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
 
     // Video frame and capture settings
-    double alpha = 0.6;                     // Transparency factor
     cap.set(CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH);   // Set frame width for capture
     cap.set(CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT); // Set frame height for capture
-    cap.set(CAP_PROP_FPS, FRAME_RATE);      // Set framerate of capture from PARAMS.h
+    cap.set(CAP_PROP_FPS, FRAME_RATE);                 // Set framerate of capture from PARAMS.h
 
     //==============================================================================================
-      
+    
+    // ***Why are you reassigning them?***
     // Trackbars
     int thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
     int threshTrackMax = MAP_THRESHOLD_MAX;
     int threshTrackMin = MAP_THRESHOLD_MIN;
-    
 
     //==============================================================================================
 
     // Loop for capturing frames, heatmap, displaying, and recording
-    while                                                                                                                                                                                                                                                                                                                                                                                                                           (true) 
+    while                                                                                                                                                                                                                                                                                                                                                                                                                           (1) 
     {
         cap >> frame; // Capture the frame
         if(frame.empty()) 
         {
            cout << "Frame is empty ;(\n";
-           //cout << "Frame Captured!\n";
         } 
         //cout << "Frame Captured!\n"; // For debugging
         
-        //==============================================================================================
-
-        // Read audio data and write user configs to Audio
-       // if (!shm.readWrite2(magnitudeInput, userConfigs)) 
-       // { 
-         //   cerr << "2. readWrite2 Failed\n";
-       // } 
-
-       
+        //==============================================================================================       
         
         for (int rows = 0; rows < NUM_ANGLES; rows++) // Converts vector<vector<float>> into an OpenCV matrix
         { 
@@ -123,61 +114,57 @@ int main()
             {
                 magnitudeFrame.at<int>(rows, columns) = magnitudeInput[rows][columns];
             }
-        }      
+        } 
+
+        // Generates random data for testing
         randu(magnitudeFrame, Scalar(0), Scalar(300));
+
         //==============================================================================================
 
         // Magnitude Data Proccessing
         resize(magnitudeFrame, heatMapData, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 0, 0, INTER_LINEAR);       // Scaling and interpolating into camera resolution
-        normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX);                     // Normalize the data into a (0-255) range
-        heatMapData.convertTo(heatMapData, CV_32FC1);                                        // Convert heat map data data type
-        heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);                             // Convert normalized heat map data data type
+        normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX); // Normalize the data into a (0-255) range
+        heatMapData.convertTo(heatMapData, CV_32FC1);                   // Convert heat map data data type
+        heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);        // Convert normalized heat map data data type
 
         //==============================================================================================
         
         // Colormap creation
-        applyColorMap(heatMapDataNormal, heatMapRGB, COLORMAP_INFERNO);                     // Convert the normalized heat map data into a colormap
-        cvtColor(heatMapRGB, heatMapRGBA, COLOR_RGB2RGBA);                                  // Convert heat map from RGB to RGBA
-        cvtColor(frame, frameRGBA, COLOR_RGB2RGBA);                                         // Convert video frame from RGB to RGBA
+        applyColorMap(heatMapDataNormal, heatMapRGB, COLORMAP_INFERNO); // Convert the normalized heat map data into a colormap
+        cvtColor(heatMapRGB, heatMapRGBA, COLOR_RGB2RGBA);              // Convert heat map from RGB to RGBA
+        cvtColor(frame, frameRGBA, COLOR_RGB2RGBA);                     // Convert video frame from RGB to RGBA
         
         //==============================================================================================
 
-        // Scary nested for loops to iterate through each value and set to clear if 0
+        // Compare value of input array to threshold. Don't render heatmap if below threshold
         for (int y = 0; y < heatMapData.rows; ++y) 
         {
             for (int x = 0; x < heatMapData.cols; ++x) 
             {
                 if (heatMapData.at<uchar>(y, x) > thresholdValue) 
                 {
-                    //heatMapRGBA.at<Vec4s>(y, x)[0] = 100; // Set alpha channel 0 if the threshold data is zero
-                    //heatMapRGBA.at<Vec4s>(y, x)[1] = 100; // Set alpha channel 0 if the threshold data is zero
-                    //heatMapRGBA.at<Vec4s>(y, x)[2] = 100; // Set alpha channel 0 if the threshold data is zero
-                    //heatMapRGBA.at<Vec4s>(y, x)[3] = 0; // Set alpha channel 0 if the threshold data is zero
-                    Vec4b& pixel = frameRGBA.at<Vec4b>(y, x);
-                    Vec4b heatMapPixel = heatMapRGBA.at<Vec4b>(y, x);
-                    for (int c = 0; c < 3; c++) {
+                    Vec4b& pixel = frameRGBA.at<Vec4b>(y, x);         // Current pixel in camera
+                    Vec4b heatMapPixel = heatMapRGBA.at<Vec4b>(y, x); // Current pixel in heatmap
 
-                        pixel[c] = static_cast<uchar>(alpha * heatMapPixel[c] + (1 - alpha) * pixel[c]);
+                    // Loops through R G & B channels
+                    for (int c = 0; c < 3; c++) 
+                    {
+                        // Merges heatmap with video and applies alpha value
+                        pixel[c] = static_cast<uchar>(ALPHA * heatMapPixel[c] + (1 - ALPHA) * pixel[c]);
                     } 
-
                 }
-                //cout << heatMapRGBA.at<Vec4s>(y, x)[7] << endl;
             }
-        }   
-        
-    
-        // Merge the heat map and video frame
-        //addWeighted(heatMapRGBA, alpha, frameRGBA, 1.0 - alpha, 0.0, blended);  
-        // Display the merged frame
-        //cvtColor(blended, blended, COLOR_RGBA2RGB);
+        } // end alphaMerge
 
-
-
-
-
+        // Shows frame
         imshow("Heat Map Overlay", frameRGBA);
+
+        //==============================================================================================
+
+        // Creates trackbar object
         createTrackbar("Threshold", "Heat Map Overlay", &thresholdValue, threshTrackMax, thresholdChange);    
-        cout << thresholdValue;                                
+
+        //==============================================================================================                               
 
         // Record if set to record
         if (recording == 1) 
@@ -209,8 +196,8 @@ int main()
     //destroyAllWindows(); 
 
     // Close shm
-   // shm.closeAll();
-    //shm.~sharedMemory();
+    shm.closeAll();
+    shm.~sharedMemory();
 
     return 0;
 } // end main

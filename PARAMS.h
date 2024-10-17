@@ -18,9 +18,10 @@
 #define RESOLUTION_WIDTH 640  // Width of the camera
 #define RESOLUTION_HEIGHT 480 // Height of the camera
 
-#define MAP_THRESHOLD 100 // Initial threshold for heat map
-#define MAP_THRESHOLD_MIN -100 //Minimum threshold for heat map
-#define MAP_THRESHOLD_MAX 300 //Minimum threshold for heat map
+#define MAP_THRESHOLD 100      // Initial threshold for heat map
+#define MAP_THRESHOLD_MIN -100 // Minimum threshold for heat map
+#define MAP_THRESHOLD_MAX 300  // Minimum threshold for heat map
+#define ALPHA 0.6              // Transparency of heatmap
 
 const char* AUDIO_SHM = "/AUDIO_SHM";   // Shared memory name for audio data
 const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
