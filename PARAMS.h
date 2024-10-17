@@ -20,7 +20,7 @@
 
 #define MAP_THRESHOLD 100 // Initial threshold for heat map
 #define MAP_THRESHOLD_MIN -100 //Minimum threshold for heat map
-#define MAP_THRESHOLD_MAX 1000 //Minimum threshold for heat map
+#define MAP_THRESHOLD_MAX 300 //Minimum threshold for heat map
 
 const char* AUDIO_SHM = "/AUDIO_SHM";   // Shared memory name for audio data
 const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config

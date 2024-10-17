@@ -7,14 +7,11 @@
 using namespace cv;
 using namespace std;
 
+
 void thresholdChange (int thresholdValue, void* userdata) {
-cout << thresholdValue;
+//cout << thresholdValue;
 }
 
-void recordingConfig () {
-    
-
-}
 
 
 
@@ -31,7 +28,7 @@ int main()
     vector<int> userConfigs(NUM_CONFIGS, 0);     // ***Might need to manually set default settings     
     
     // Initialize shared memory class
-    sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);   
+   // sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);   
 
 
     
@@ -50,10 +47,10 @@ int main()
     //==============================================================================================
 
     // Open shared memory for Audio
-    if (!shm.shmStart2()) 
-    {                                                             
-        cerr << "2. shmStart2 Failed\n";
-    }
+   // if (!shm.shmStart2()) 
+    //{                                                             
+      //  cerr << "2. shmStart2 Failed\n";
+    //}
     //cout << "Shared Memory Configured.\n"; // For debugging
 
     //==============================================================================================
@@ -79,12 +76,12 @@ int main()
         }
     }
 
-    Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame, testframe;  // Establish matricies for 
+    Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame;  // Establish matricies for 
     heatMapData = Mat(frame.size(), CV_32FC1);                                                          // Make heat map data matrix
     Mat magnitudeFrame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
 
     // Video frame and capture settings
-    double alpha = 0.5;                     // Transparency factor
+    double alpha = 0.6;                     // Transparency factor
     cap.set(CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH);   // Set frame width for capture
     cap.set(CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT); // Set frame height for capture
     cap.set(CAP_PROP_FPS, FRAME_RATE);      // Set framerate of capture from PARAMS.h
@@ -95,7 +92,7 @@ int main()
     int thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
     int threshTrackMax = MAP_THRESHOLD_MAX;
     int threshTrackMin = MAP_THRESHOLD_MIN;
-    createTrackbar("Threshold", "Heat Map Overlay", &thresholdValue, threshTrackMax, thresholdChange);
+    
 
     //==============================================================================================
 
@@ -113,10 +110,12 @@ int main()
         //==============================================================================================
 
         // Read audio data and write user configs to Audio
-        if (!shm.readWrite2(magnitudeInput, userConfigs)) 
-        { 
-            cerr << "2. readWrite2 Failed\n";
-        } 
+       // if (!shm.readWrite2(magnitudeInput, userConfigs)) 
+       // { 
+         //   cerr << "2. readWrite2 Failed\n";
+       // } 
+
+       
         
         for (int rows = 0; rows < NUM_ANGLES; rows++) // Converts vector<vector<float>> into an OpenCV matrix
         { 
@@ -125,14 +124,14 @@ int main()
                 magnitudeFrame.at<int>(rows, columns) = magnitudeInput[rows][columns];
             }
         }      
-        
+        randu(magnitudeFrame, Scalar(0), Scalar(300));
         //==============================================================================================
 
         // Magnitude Data Proccessing
         resize(magnitudeFrame, heatMapData, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 0, 0, INTER_LINEAR);       // Scaling and interpolating into camera resolution
         normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX);                     // Normalize the data into a (0-255) range
-        heatMapData.convertTo(heatMapData, CV_8UC1);                                        // Convert heat map data data type
-        heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);                            // Convert normalized heat map data data type
+        heatMapData.convertTo(heatMapData, CV_32FC1);                                        // Convert heat map data data type
+        heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);                             // Convert normalized heat map data data type
 
         //==============================================================================================
         
@@ -148,23 +147,42 @@ int main()
         {
             for (int x = 0; x < heatMapData.cols; ++x) 
             {
-                if (heatMapData.at<uchar>(y, x) < thresholdValue) 
+                if (heatMapData.at<uchar>(y, x) > thresholdValue) 
                 {
-                    heatMapRGBA.at<Vec4b>(y, x)[4] = 0; // Set alpha channel 0 if the threshold data is zero
+                    //heatMapRGBA.at<Vec4s>(y, x)[0] = 100; // Set alpha channel 0 if the threshold data is zero
+                    //heatMapRGBA.at<Vec4s>(y, x)[1] = 100; // Set alpha channel 0 if the threshold data is zero
+                    //heatMapRGBA.at<Vec4s>(y, x)[2] = 100; // Set alpha channel 0 if the threshold data is zero
+                    //heatMapRGBA.at<Vec4s>(y, x)[3] = 0; // Set alpha channel 0 if the threshold data is zero
+                    Vec4b& pixel = frameRGBA.at<Vec4b>(y, x);
+                    Vec4b heatMapPixel = heatMapRGBA.at<Vec4b>(y, x);
+                    for (int c = 0; c < 3; c++) {
+
+                        pixel[c] = static_cast<uchar>(alpha * heatMapPixel[c] + (1 - alpha) * pixel[c]);
+                    } 
+
                 }
+                //cout << heatMapRGBA.at<Vec4s>(y, x)[7] << endl;
             }
         }   
         
+    
         // Merge the heat map and video frame
-        addWeighted(heatMapRGBA, alpha, frameRGBA, 1.0 - alpha, 0.0, blended);  
-        
+        //addWeighted(heatMapRGBA, alpha, frameRGBA, 1.0 - alpha, 0.0, blended);  
         // Display the merged frame
-        imshow("Heat Map Overlay", blended);                                    
+        //cvtColor(blended, blended, COLOR_RGBA2RGB);
+
+
+
+
+
+        imshow("Heat Map Overlay", frameRGBA);
+        createTrackbar("Threshold", "Heat Map Overlay", &thresholdValue, threshTrackMax, thresholdChange);    
+        cout << thresholdValue;                                
 
         // Record if set to record
         if (recording == 1) 
         { 
-            cvtColor(blended, blended, COLOR_RGBA2RGB);
+            
             vide0.write(blended);
         }
         
@@ -191,8 +209,8 @@ int main()
     //destroyAllWindows(); 
 
     // Close shm
-    shm.closeAll();
-    shm.~sharedMemory();
+   // shm.closeAll();
+    //shm.~sharedMemory();
 
     return 0;
 } // end main
