@@ -23,6 +23,16 @@
 #define MAP_THRESHOLD_MAX 300  // Minimum threshold for heat map
 #define ALPHA 0.6              // Transparency of heatmap
 
+#define FONT_TYPE FONT_HERSHEY_PLAIN   // Font for overlayed text
+#define FONT_THICKNESS 1               // Font thickness for overlayed text
+#define FONT_SCALE 1                   // Font scale for overlayed text
+#define MAX_LABEL_POS_X 10             // Horizontal location of maximum value overlayed text
+#define MAX_LABEL_POS_Y 20             // Vertical location of maximum value overlayed text
+#define LABEL_PRECISION 1              // Number of decimal places to be shown on screen
+
+#define CROSS_THICKNESS 2   // Thicnkess for cross at maximum magnitude
+#define CROSS_SIZE 20       // Size of cross at maximum magnitude
+
 const char* AUDIO_SHM = "/AUDIO_SHM";   // Shared memory name for audio data
 const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
 #define SEM_1 "/SEM_1"                  // Semaphore

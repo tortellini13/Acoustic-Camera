@@ -8,13 +8,18 @@ using namespace cv;
 using namespace std;
 
 //==============================================================================================
+int listMaxMagState = 1;
+int markMaxMagState = 1;
 
-void thresholdChange (int thresholdValue, void* userdata) 
-{
-//cout << thresholdValue;
+void onListMaxMag(int state, void* userdata) {
+    listMaxMagState = state; // Update button state
 }
-
+void onMarkMaxMag(int state, void* userdata) {
+    markMaxMagState = state; // Update button state
+}
 //==============================================================================================
+
+
 
 int main() 
 {
@@ -53,50 +58,62 @@ int main()
     //cout << "Shared Memory Configured.\n"; // For debugging
 
     //==============================================================================================
-
-    // ***Clean this up***
-    // Setup recording if enabled
-    int recording = 0; // Recording setting
-    VideoCapture cap(0, CAP_V4L2);
-    VideoWriter vide0;
-    int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
-    Mat testframe;                                       // Initialize recording vide0
-    cap >> testframe;                                    // Capture a single test frame
-    string videoFileName = "./testoutput.avi";           // Set video file output file name
-    imshow("Heat Map Overlay", testframe); 
+    // Setup video capture
     
+    VideoCapture cap(0, CAP_V4L2);
+    VideoWriter video1;
+    
+    // Video frame and capture settings
+    cap.set(CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH);   // Set frame width for capture
+    cap.set(CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT); // Set frame height for capture
+    cap.set(CAP_PROP_FPS, FRAME_RATE);                 // Set framerate of capture from PARAMS.h
+
+    int recording = 0; // Recording setting
+    int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
+    string videoFileName = "./testoutput.avi";           // Set video file output file name
+
+
     // Open recording if enabled, report error if it doesn't work
     if (recording == 1) 
     {
-        vide0.open(videoFileName, codec, FRAME_RATE, testframe.size(), 1);
+        video1.open(videoFileName, codec, FRAME_RATE, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 1);
         
-        if (!vide0.isOpened()) 
+        if (!video1.isOpened()) 
         {
             cerr << "Could not open the output video file for write.\n";
             return 1;
         }
     }
 
+    //initialize a ton of stuff
+    double magnitudeMax;
+    Point maxPoint;
     Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame;  // Establish matricies for 
     heatMapData = Mat(frame.size(), CV_32FC1);                                                          // Make heat map data matrix
     Mat magnitudeFrame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
 
-    // Video frame and capture settings
-    cap.set(CAP_PROP_FRAME_WIDTH, RESOLUTION_WIDTH);   // Set frame width for capture
-    cap.set(CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT); // Set frame height for capture
-    cap.set(CAP_PROP_FPS, FRAME_RATE);                 // Set framerate of capture from PARAMS.h
+    
 
     //==============================================================================================
     
     // ***Why are you reassigning them?***
-    // Trackbars
-    int thresholdValue = MAP_THRESHOLD;    // Set minimum threshold for heatmap (all data below this value is transparent)
+    int thresholdValue;
     int threshTrackMax = MAP_THRESHOLD_MAX;
     int threshTrackMin = MAP_THRESHOLD_MIN;
 
     //==============================================================================================
+    
+    //Initially open window
+    cap >> frame;
+    imshow("Heat Map Overlay", frame);
+
+    // Create trackbar and buttons
+    createTrackbar("Threshold", "Heat Map Overlay", nullptr, MAP_THRESHOLD_MAX);    
+    createButton("List Maximum Magnitude",onListMaxMag, NULL, QT_CHECKBOX,1);
+    createButton("Mark Maximum Magnitude",onMarkMaxMag, NULL, QT_CHECKBOX,1);
 
     // Loop for capturing frames, heatmap, displaying, and recording
+    //int i = 15; //temp int for testing 
     while                                                                                                                                                                                                                                                                                                                                                                                                                           (1) 
     {
         cap >> frame; // Capture the frame
@@ -122,11 +139,28 @@ int main()
         //==============================================================================================
 
         // Magnitude Data Proccessing
-        resize(magnitudeFrame, heatMapData, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 0, 0, INTER_LINEAR);       // Scaling and interpolating into camera resolution
+        resize(magnitudeFrame, heatMapData, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 0, 0, INTER_CUBIC);       // Scaling and interpolating into camera resolution
         normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX); // Normalize the data into a (0-255) range
         heatMapData.convertTo(heatMapData, CV_32FC1);                   // Convert heat map data data type
         heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);        // Convert normalized heat map data data type
 
+        //==============================================================================================
+        //Finding maximum magnitude in incoming data, scaling location for marking
+       
+        //only update maximum every 15 frames for dev and testing purposes
+        //Point maxPoint(10,10);
+        //if(i == 15) {
+            minMaxLoc(magnitudeFrame, NULL, &magnitudeMax, NULL, &maxPoint); //Find maximum magnitude from incoming data with location
+           // i = 0;
+        //}
+       // ++i;
+     
+        int scaledPointX = (static_cast<double>(maxPoint.x)/static_cast<double>(magnitudeFrame.cols)) * RESOLUTION_WIDTH; //Scale max point to video resolution 
+        int scaledPointY = (static_cast<double>(maxPoint.y)/static_cast<double>(magnitudeFrame.rows)) * RESOLUTION_HEIGHT;
+        Point maxPointScaled(scaledPointX, scaledPointY);
+        ostringstream magnitudeMaxStream;
+        magnitudeMaxStream << fixed << setprecision(LABEL_PRECISION) << magnitudeMax;
+        String maximumText = "Maximum = " + magnitudeMaxStream.str();
         //==============================================================================================
         
         // Colormap creation
@@ -136,7 +170,13 @@ int main()
         
         //==============================================================================================
 
+        
+        
+        //==============================================================================================
+
         // Compare value of input array to threshold. Don't render heatmap if below threshold
+        thresholdValue = getTrackbarPos("Threshold", "Heat Map Overlay");
+        
         for (int y = 0; y < heatMapData.rows; ++y) 
         {
             for (int x = 0; x < heatMapData.cols; ++x) 
@@ -156,30 +196,41 @@ int main()
             }
         } // end alphaMerge
 
+        // Graphics and Text
+        Point maxTextLocation(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
+    
+        int textBaseline=0;
+        Size textSize = getTextSize(maximumText, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &textBaseline);
+        if(listMaxMagState == 1){
+        rectangle(frameRGBA, maxTextLocation + Point(0, textBaseline), maxTextLocation + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+        putText(frameRGBA, maximumText, maxTextLocation + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
+        }
+
+        if(markMaxMagState == 1) {
+        drawMarker(frameRGBA, maxPointScaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
+        }
+        
         // Shows frame
         imshow("Heat Map Overlay", frameRGBA);
 
-        //==============================================================================================
-
-        // Creates trackbar object
-        createTrackbar("Threshold", "Heat Map Overlay", &thresholdValue, threshTrackMax, thresholdChange);    
-
+       
+ 
         //==============================================================================================                               
 
         // Record if set to record
         if (recording == 1) 
         { 
             
-            vide0.write(blended);
+            video1.write(blended);
         }
         
-        /*
+        
         if (getWindowProperty("Heat Map Overlay", WND_PROP_VISIBLE) < 1) 
         {
-            Exit the loop if the window is closed
+            //Exit the loop if the window is closed
             break;
         }
-        */
+        
 
         //==============================================================================================
 
@@ -192,7 +243,7 @@ int main()
 
     // Close video
     cap.release();
-    vide0.release();
+    video1.release();
     //destroyAllWindows(); 
 
     // Close shm
