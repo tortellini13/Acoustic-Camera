@@ -30,6 +30,12 @@
 #define MAX_LABEL_POS_Y 20             // Vertical location of maximum value overlayed text
 #define LABEL_PRECISION 1              // Number of decimal places to be shown on screen
 
+#define SCALE_WIDTH 40      // Width of the color scale
+#define SCALE_HEIGHT 400    // Height of the color scale
+#define SCALE_POS_X 580     // X Position of color scale
+#define SCALE_POS_Y 40      // Y Position of color scale
+#define SCALE_BORDER 5      // Thicnkess of border around scale
+
 #define CROSS_THICKNESS 2   // Thicnkess for cross at maximum magnitude
 #define CROSS_SIZE 20       // Size of cross at maximum magnitude
 

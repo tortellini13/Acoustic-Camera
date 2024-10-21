@@ -10,6 +10,7 @@ using namespace std;
 //==============================================================================================
 int listMaxMagState = 1;
 int markMaxMagState = 1;
+int colorScaleState = 1;
 
 void onListMaxMag(int state, void* userdata) {
     listMaxMagState = state; // Update button state
@@ -17,8 +18,10 @@ void onListMaxMag(int state, void* userdata) {
 void onMarkMaxMag(int state, void* userdata) {
     markMaxMagState = state; // Update button state
 }
+void onColorScaleState(int state, void* userdata) {
+    colorScaleState = state;
+}
 //==============================================================================================
-
 
 
 int main() 
@@ -86,6 +89,7 @@ int main()
     }
 
     //initialize a ton of stuff
+    double magnitudeMin;
     double magnitudeMax;
     Point maxPoint;
     Mat heatMapData, heatMapDataNormal, heatMapRGB, heatMapRGBA, blended, frameRGBA, frame;  // Establish matricies for 
@@ -111,9 +115,27 @@ int main()
     createTrackbar("Threshold", "Heat Map Overlay", nullptr, MAP_THRESHOLD_MAX);    
     createButton("List Maximum Magnitude",onListMaxMag, NULL, QT_CHECKBOX,1);
     createButton("Mark Maximum Magnitude",onMarkMaxMag, NULL, QT_CHECKBOX,1);
+    createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
 
-    // Loop for capturing frames, heatmap, displaying, and recording
+    
     //int i = 15; //temp int for testing 
+    Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
+    Mat scaleColor(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC1);
+
+    for(int y = 0; y < SCALE_HEIGHT; y++) {
+
+        int scaleIntensity = 255 * (static_cast<double>((SCALE_HEIGHT - y)) / static_cast<double>(SCALE_HEIGHT));
+        
+        for(int x = 0; x < SCALE_WIDTH; x++) {
+            scaleColor.at<uchar>(y, x) = scaleIntensity;
+
+        }
+    }
+    
+    applyColorMap(scaleColor, colorBar, COLORMAP_INFERNO);
+    cvtColor(colorBar, colorBar, COLOR_RGB2RGBA);
+    Point colorBarPosition(SCALE_POS_X, SCALE_POS_Y);
+
     while                                                                                                                                                                                                                                                                                                                                                                                                                           (1) 
     {
         cap >> frame; // Capture the frame
@@ -150,7 +172,7 @@ int main()
         //only update maximum every 15 frames for dev and testing purposes
         //Point maxPoint(10,10);
         //if(i == 15) {
-            minMaxLoc(magnitudeFrame, NULL, &magnitudeMax, NULL, &maxPoint); //Find maximum magnitude from incoming data with location
+            minMaxLoc(magnitudeFrame, &magnitudeMin, &magnitudeMax, NULL, &maxPoint); //Find maximum magnitude from incoming data with location
            // i = 0;
         //}
        // ++i;
@@ -202,14 +224,20 @@ int main()
         int textBaseline=0;
         Size textSize = getTextSize(maximumText, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &textBaseline);
         if(listMaxMagState == 1){
-        rectangle(frameRGBA, maxTextLocation + Point(0, textBaseline), maxTextLocation + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
-        putText(frameRGBA, maximumText, maxTextLocation + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
+            
+            rectangle(frameRGBA, maxTextLocation + Point(0, textBaseline), maxTextLocation + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+            putText(frameRGBA, maximumText, maxTextLocation + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
         }
 
         if(markMaxMagState == 1) {
-        drawMarker(frameRGBA, maxPointScaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
+            
+            drawMarker(frameRGBA, maxPointScaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
         }
-        
+
+        if(colorScaleState == 1) {
+            rectangle(frameRGBA, colorBarPosition + Point(-SCALE_BORDER, -SCALE_BORDER), colorBarPosition + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER - 1), Scalar(0, 0, 0), FILLED);
+            colorBar.copyTo(frameRGBA(Rect(colorBarPosition.x, colorBarPosition.y, SCALE_WIDTH, SCALE_HEIGHT)));
+        }
         // Shows frame
         imshow("Heat Map Overlay", frameRGBA);
 
