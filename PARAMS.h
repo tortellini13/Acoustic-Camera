@@ -35,6 +35,7 @@
 #define SCALE_POS_X 580     // X Position of color scale
 #define SCALE_POS_Y 40      // Y Position of color scale
 #define SCALE_BORDER 5      // Thicnkess of border around scale
+#define SCALE_POINTS 5      // Quantity of points on the scale to be marked
 
 #define CROSS_THICKNESS 2   // Thicnkess for cross at maximum magnitude
 #define CROSS_SIZE 20       // Size of cross at maximum magnitude

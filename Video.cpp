@@ -235,8 +235,27 @@ int main()
         }
 
         if(colorScaleState == 1) {
-            rectangle(frameRGBA, colorBarPosition + Point(-SCALE_BORDER, -SCALE_BORDER), colorBarPosition + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER - 1), Scalar(0, 0, 0), FILLED);
-            colorBar.copyTo(frameRGBA(Rect(colorBarPosition.x, colorBarPosition.y, SCALE_WIDTH, SCALE_HEIGHT)));
+            rectangle(frameRGBA, colorBarPosition + Point(-SCALE_BORDER, -SCALE_BORDER), colorBarPosition + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER - 1), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+            colorBar.copyTo(frameRGBA(Rect(colorBarPosition.x, colorBarPosition.y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
+
+            //Draw text indicating various points on the scale
+
+            float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
+            for (int i = 0; i < (SCALE_POINTS + 1); i++) {
+                
+                double scaleTextStartX = colorBarPosition.x + 5;
+                double scaleTextStartY = colorBarPosition.y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT);
+                Point scaleTextStart(scaleTextStartX, scaleTextStartY); //Starting point for the text
+                double scaleTextValue = ((static_cast<double>(magnitudeMax - magnitudeMin) * scaleTextRatio * static_cast<double>(i)) + magnitudeMin); //Value of text for each point
+
+                ostringstream scaleTextStream;
+                scaleTextStream << fixed << setprecision(LABEL_PRECISION) << scaleTextValue;
+                String scaleTextString = scaleTextStream.str() + " ";
+
+                putText(frameRGBA, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS);
+                cout << scaleTextStartY << "; " << i << "; " << scaleTextRatio << "; " << SCALE_HEIGHT << endl;
+            }
+
         }
         // Shows frame
         imshow("Heat Map Overlay", frameRGBA);
