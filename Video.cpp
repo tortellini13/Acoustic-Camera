@@ -41,8 +41,6 @@ int main()
     // Initialize shared memory class
     sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);   
 
-
-    
     /* Configs Legend
     0. 0 = Broadband
        1 = Full octave
@@ -65,8 +63,8 @@ int main()
     //cout << "Shared Memory Configured.\n"; // For debugging
 
     //==============================================================================================
+
     // Setup video capture
-    
     VideoCapture cap(0, CAP_V4L2);
     VideoWriter video1;
     
@@ -188,6 +186,7 @@ int main()
         ostringstream magnitudeMaxStream;
         magnitudeMaxStream << fixed << setprecision(LABEL_PRECISION) << magnitudeMax;
         String maximumText = "Maximum = " + magnitudeMaxStream.str();
+        
         //==============================================================================================
         
         // Colormap creation
