@@ -11,6 +11,7 @@ using namespace std;
 int listMaxMagState = 1;
 int markMaxMagState = 1;
 int colorScaleState = 1;
+int heatMapState = 1;
 
 void onListMaxMag(int state, void* userdata) {
     listMaxMagState = state; // Update button state
@@ -20,6 +21,9 @@ void onMarkMaxMag(int state, void* userdata) {
 }
 void onColorScaleState(int state, void* userdata) {
     colorScaleState = state;
+}
+void onHeatMap(int state, void* userdata) {
+    heatMapState = state;
 }
 //==============================================================================================
 
@@ -116,7 +120,7 @@ int main()
     createButton("List Maximum Magnitude",onListMaxMag, NULL, QT_CHECKBOX,1);
     createButton("Mark Maximum Magnitude",onMarkMaxMag, NULL, QT_CHECKBOX,1);
     createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
-
+    createButton("Show Heat Map",onHeatMap, NULL, QT_CHECKBOX,1);
     
     //int i = 15; //temp int for testing 
     Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
@@ -199,6 +203,7 @@ int main()
         // Compare value of input array to threshold. Don't render heatmap if below threshold
         thresholdValue = getTrackbarPos("Threshold", "Heat Map Overlay");
         
+        if (heatMapState == 1) {
         for (int y = 0; y < heatMapData.rows; ++y) 
         {
             for (int x = 0; x < heatMapData.cols; ++x) 
@@ -217,6 +222,7 @@ int main()
                 }
             }
         } // end alphaMerge
+    }
 
         // Graphics and Text
         Point maxTextLocation(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
@@ -235,7 +241,7 @@ int main()
         }
 
         if(colorScaleState == 1) {
-            rectangle(frameRGBA, colorBarPosition + Point(-SCALE_BORDER, -SCALE_BORDER), colorBarPosition + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER - 1), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+            rectangle(frameRGBA, colorBarPosition + Point(-SCALE_BORDER, -SCALE_BORDER - 10), colorBarPosition + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
             colorBar.copyTo(frameRGBA(Rect(colorBarPosition.x, colorBarPosition.y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
 
             //Draw text indicating various points on the scale
@@ -243,8 +249,8 @@ int main()
             float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
             for (int i = 0; i < (SCALE_POINTS + 1); i++) {
                 
-                double scaleTextStartX = colorBarPosition.x + 5;
-                double scaleTextStartY = colorBarPosition.y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT);
+                double scaleTextStartX = colorBarPosition.x ;
+                double scaleTextStartY = colorBarPosition.y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3;
                 Point scaleTextStart(scaleTextStartX, scaleTextStartY); //Starting point for the text
                 double scaleTextValue = ((static_cast<double>(magnitudeMax - magnitudeMin) * scaleTextRatio * static_cast<double>(i)) + magnitudeMin); //Value of text for each point
 
@@ -252,8 +258,8 @@ int main()
                 scaleTextStream << fixed << setprecision(LABEL_PRECISION) << scaleTextValue;
                 String scaleTextString = scaleTextStream.str() + " ";
 
-                putText(frameRGBA, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS);
-                cout << scaleTextStartY << "; " << i << "; " << scaleTextRatio << "; " << SCALE_HEIGHT << endl;
+                putText(frameRGBA, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
+                line(frameRGBA, Point(scaleTextStartX, scaleTextStartY + 3), Point(scaleTextStartX + SCALE_WIDTH, scaleTextStartY + 3), Scalar(255, 255, 255), 1, 8, 0);
             }
 
         }
