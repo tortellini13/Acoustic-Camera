@@ -114,9 +114,10 @@ int main()
     //Initially open window
     cap >> frame;
     imshow("Heat Map Overlay", frame);
-
+    double alpha = ALPHA;
     // Create trackbar and buttons
     createTrackbar("Threshold", "Heat Map Overlay", nullptr, MAP_THRESHOLD_MAX);    
+    createTrackbar("Alpha", "Heat Map Overlay", nullptr, 100);
     createButton("List Maximum Magnitude",onListMaxMag, NULL, QT_CHECKBOX,1);
     createButton("Mark Maximum Magnitude",onMarkMaxMag, NULL, QT_CHECKBOX,1);
     createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
@@ -202,6 +203,7 @@ int main()
 
         // Compare value of input array to threshold. Don't render heatmap if below threshold
         thresholdValue = getTrackbarPos("Threshold", "Heat Map Overlay");
+        alpha = static_cast<double>(getTrackbarPos("Alpha", "Heat Map Overlay"))/100;
         
         if (heatMapState == 1) {
         for (int y = 0; y < heatMapData.rows; ++y) 
@@ -217,7 +219,7 @@ int main()
                     for (int c = 0; c < 3; c++) 
                     {
                         // Merges heatmap with video and applies alpha value
-                        pixel[c] = static_cast<uchar>(ALPHA * heatMapPixel[c] + (1 - ALPHA) * pixel[c]);
+                        pixel[c] = static_cast<uchar>(alpha * heatMapPixel[c] + (1 - alpha) * pixel[c]);
                     } 
                 }
             }
