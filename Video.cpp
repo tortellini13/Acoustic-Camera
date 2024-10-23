@@ -8,29 +8,74 @@ using namespace cv;
 using namespace std;
 
 //==============================================================================================
+//Configuration of callbacks for buttons
 int listMaxMagState = 1;
 int markMaxMagState = 1;
 int colorScaleState = 1;
 int heatMapState = 1;
 int FPSCountState = 1;
 
+int UIChangeFlag = 1;
+
 void onListMaxMag(int state, void* userdata) {
     listMaxMagState = state; // Update button state
+    UIChangeFlag = 1;
 }
 void onMarkMaxMag(int state, void* userdata) {
     markMaxMagState = state; // Update button state
+    UIChangeFlag = 1;
 }
 void onColorScaleState(int state, void* userdata) {
     colorScaleState = state;
+    UIChangeFlag = 1;
 }
 void onHeatMap(int state, void* userdata) {
     heatMapState = state;
+    UIChangeFlag = 1;
 }
 void onFPSCount(int state, void* userdata) {
     FPSCountState = state;
+    UIChangeFlag = 1;
 }
 //==============================================================================================
 
+void initializeWindow() {
+ // Create trackbar and buttons
+    createTrackbar("Threshold", "Heat Map Overlay", nullptr, MAP_THRESHOLD_MAX);    
+    createTrackbar("Alpha", "Heat Map Overlay", nullptr, 100);
+    createButton("List Maximum Magnitude",onListMaxMag, NULL, QT_CHECKBOX,1);
+    createButton("Mark Maximum Magnitude",onMarkMaxMag, NULL, QT_CHECKBOX,1);
+    createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
+    createButton("Show Heat Map",onHeatMap, NULL, QT_CHECKBOX,1);
+    createButton("Show FPS", onFPSCount, NULL, QT_CHECKBOX, 1);
+    //Set initial trackbar positions
+    setTrackbarPos("Threshold", "Heat Map Overlay", DEFAULT_THRESHOLD);
+    setTrackbarPos("Alpha", "Heat Map Overlay", DEFAULT_ALPHA);   
+}
+
+UMat UILayer(int listMaxMagState, int markMaxMagState, int colorScaleState, int FPSCountState) {
+    UMat UIBackdrop(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_8UC4);
+    if (listMaxMagState == 1) {
+        cout << "listMaxMagState" << endl;
+
+    }
+
+    if (markMaxMagState == 1) {
+        cout << "markMaxMagState" << endl;
+    }
+    
+    if (colorScaleState == 1) {
+        cout << "colorScaleState" << endl;
+        
+    }
+
+    if (FPSCountState == 1) {
+        cout << "FPSCountState" << endl;
+    }
+    
+    UIChangeFlag = 0;
+    return UIBackdrop;
+}
 
 int main() 
 {
@@ -118,20 +163,11 @@ int main()
     //Initially open window
     cap >> frame;
     imshow("Heat Map Overlay", frame);
-    double alpha = ALPHA;
-    // Create trackbar and buttons
-    createTrackbar("Threshold", "Heat Map Overlay", nullptr, MAP_THRESHOLD_MAX);    
-    createTrackbar("Alpha", "Heat Map Overlay", nullptr, 100);
-    createButton("List Maximum Magnitude",onListMaxMag, NULL, QT_CHECKBOX,1);
-    createButton("Mark Maximum Magnitude",onMarkMaxMag, NULL, QT_CHECKBOX,1);
-    createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
-    createButton("Show Heat Map",onHeatMap, NULL, QT_CHECKBOX,1);
-    createButton("Show FPS", onFPSCount, NULL, QT_CHECKBOX, 1);
-    //Set initial trackbar positions
-    setTrackbarPos("Threshold", "Heat Map Overlay", DEFAULT_THRESHOLD);
-    setTrackbarPos("Alpha", "Heat Map Overlay", DEFAULT_ALPHA);
+    double alpha;
+    initializeWindow();
+    UILayer(1,1,1,1);
 
-    //int i = 15; //temp int for testing 
+    
     Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
     Mat scaleColor(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC1);
 
@@ -147,7 +183,7 @@ int main()
     
     applyColorMap(scaleColor, colorBar, COLORMAP_INFERNO);
     cvtColor(colorBar, colorBar, COLOR_RGB2RGBA);
-    Point colorBarPosition(SCALE_POS_X, SCALE_POS_Y);
+    Mat UIlayerout(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC4);
 
     int frameCount = 0;
     double FPS = 0;
@@ -234,6 +270,12 @@ int main()
     }
 
         // Graphics and Text
+        
+        if (UIChangeFlag == 1) {
+            UMat UIlayeroutUMAT = UILayer(listMaxMagState, markMaxMagState, colorScaleState, FPSCountState);
+        }
+        
+        
         Point maxTextLocation(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
     
         int textBaseline=0;
@@ -250,17 +292,17 @@ int main()
         }
 
         if(colorScaleState == 1) {
-            rectangle(frameRGBA, colorBarPosition + Point(-SCALE_BORDER, -SCALE_BORDER - 10), colorBarPosition + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-            colorBar.copyTo(frameRGBA(Rect(colorBarPosition.x, colorBarPosition.y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
+            
+            rectangle(frameRGBA, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+            colorBar.copyTo(frameRGBA(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
 
             //Draw text indicating various points on the scale
 
             float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
             for (int i = 0; i < (SCALE_POINTS + 1); i++) {
                 
-                double scaleTextStartX = colorBarPosition.x ;
-                double scaleTextStartY = colorBarPosition.y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3;
-                Point scaleTextStart(scaleTextStartX, scaleTextStartY); //Starting point for the text
+                
+                Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
                 double scaleTextValue = ((static_cast<double>(magnitudeMax - magnitudeMin) * scaleTextRatio * static_cast<double>(i)) + magnitudeMin); //Value of text for each point
 
                 ostringstream scaleTextStream;
@@ -268,7 +310,7 @@ int main()
                 String scaleTextString = scaleTextStream.str() + " ";
 
                 putText(frameRGBA, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
-                line(frameRGBA, Point(scaleTextStartX, scaleTextStartY + 3), Point(scaleTextStartX + SCALE_WIDTH, scaleTextStartY + 3), Scalar(255, 255, 255), 1, 8, 0);
+                line(frameRGBA, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
             }
 
         }
@@ -280,9 +322,9 @@ int main()
             int FPSBaseline = 0;
             Point FPSTextLocation(20, 460);
             Size FPStextSize = getTextSize(FPSString, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &FPSBaseline);
-            rectangle(frameRGBA, FPSTextLocation + Point(0, FPSBaseline), FPSTextLocation + Point(FPStextSize.width, - FPStextSize.height - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+            rectangle(frameRGBA, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
             putText(frameRGBA, FPSString, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
-            //cout << FPSString << endl;
+            
         }
         
         
@@ -298,7 +340,7 @@ int main()
         if (recording == 1) 
         { 
             
-            video1.write(blended);
+            video1.write(frameRGBA);
         }
         
         
