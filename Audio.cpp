@@ -317,11 +317,13 @@ int main()
 		
 		//==============================================================================================
 		
+		/*
 		// Write audio data to Video and read user configs
-		if(!shm.writeRead1(audioDataOut, userConfigs))
+		if(!shm.handleshm1(audioDataOut, userConfigs))
 		{
 			cerr << "1. writeRead1 failed.\n";
 		}
+		*/
 	} // end loop
 	
 	/*
