@@ -206,7 +206,7 @@ int main()
         alpha = static_cast<double>(getTrackbarPos("Alpha", "Heat Map Overlay"))/100;
         
         if (heatMapState == 1) {
-        for (int y = 0; y < heatMapData.rows; ++y) 
+        for(int y = 0; y < heatMapData.rows; ++y)
         {
             for (int x = 0; x < heatMapData.cols; ++x) 
             {
