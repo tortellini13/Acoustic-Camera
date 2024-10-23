@@ -12,6 +12,7 @@ int listMaxMagState = 1;
 int markMaxMagState = 1;
 int colorScaleState = 1;
 int heatMapState = 1;
+int FPSCountState = 1;
 
 void onListMaxMag(int state, void* userdata) {
     listMaxMagState = state; // Update button state
@@ -24,6 +25,9 @@ void onColorScaleState(int state, void* userdata) {
 }
 void onHeatMap(int state, void* userdata) {
     heatMapState = state;
+}
+void onFPSCount(int state, void* userdata) {
+    FPSCountState = state;
 }
 //==============================================================================================
 
@@ -120,7 +124,11 @@ int main()
     createButton("Mark Maximum Magnitude",onMarkMaxMag, NULL, QT_CHECKBOX,1);
     createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
     createButton("Show Heat Map",onHeatMap, NULL, QT_CHECKBOX,1);
+    createButton("Show FPS", onFPSCount, NULL, QT_CHECKBOX, 1);
     
+    setTrackbarPos("Threshold", "Heat Map Overlay", 150);
+    setTrackbarPos("Alpha", "Heat Map Overlay", 75);
+
     //int i = 15; //temp int for testing 
     Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
     Mat scaleColor(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC1);
@@ -138,6 +146,10 @@ int main()
     applyColorMap(scaleColor, colorBar, COLORMAP_INFERNO);
     cvtColor(colorBar, colorBar, COLOR_RGB2RGBA);
     Point colorBarPosition(SCALE_POS_X, SCALE_POS_Y);
+
+    int frameCount = 0;
+    double FPS = 0;
+    double FPSTimeStart = getTickCount();
 
     while                                                                                                                                                                                                                                                                                                                                                                                                                           (1) 
     {
@@ -171,14 +183,8 @@ int main()
 
         //==============================================================================================
         //Finding maximum magnitude in incoming data, scaling location for marking
-       
-        //only update maximum every 15 frames for dev and testing purposes
-        //Point maxPoint(10,10);
-        //if(i == 15) {
-            minMaxLoc(magnitudeFrame, &magnitudeMin, &magnitudeMax, NULL, &maxPoint); //Find maximum magnitude from incoming data with location
-           // i = 0;
-        //}
-       // ++i;
+        minMaxLoc(magnitudeFrame, &magnitudeMin, &magnitudeMax, NULL, &maxPoint); //Find maximum magnitude from incoming data with location
+        
      
         int scaledPointX = (static_cast<double>(maxPoint.x)/static_cast<double>(magnitudeFrame.cols)) * RESOLUTION_WIDTH; //Scale max point to video resolution 
         int scaledPointY = (static_cast<double>(maxPoint.y)/static_cast<double>(magnitudeFrame.rows)) * RESOLUTION_HEIGHT;
@@ -264,7 +270,22 @@ int main()
             }
 
         }
+        
+        if (FPSCountState == 1) {
+            ostringstream FPSStream;
+            FPSStream << fixed << setprecision(LABEL_PRECISION) << FPS;
+            String FPSString = "FPS: " + FPSStream.str();
+            int FPSBaseline = 0;
+            Point FPSTextLocation(20, 460);
+            Size FPStextSize = getTextSize(FPSString, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &FPSBaseline);
+            rectangle(frameRGBA, FPSTextLocation + Point(0, FPSBaseline), FPSTextLocation + Point(FPStextSize.width, - FPStextSize.height - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+            putText(frameRGBA, FPSString, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
+            //cout << FPSString << endl;
+        }
+        
+        
         // Shows frame
+
         imshow("Heat Map Overlay", frameRGBA);
 
        
@@ -287,6 +308,22 @@ int main()
         
 
         //==============================================================================================
+
+        if (FPSCountState == 1) {
+            frameCount++;
+            if (frameCount == 15) {
+                double FPSTimeEnd = getTickCount();
+                double FPSTimeDifference = (FPSTimeEnd - FPSTimeStart) / getTickFrequency();
+                FPSTimeStart = FPSTimeEnd;
+                FPS = frameCount / FPSTimeDifference;
+                frameCount = 0;
+                //cout << FPS << endl;
+            }
+        
+        }
+
+
+
 
         // Break loop if key is pressed
         if (waitKey(30) >= 0) break;
