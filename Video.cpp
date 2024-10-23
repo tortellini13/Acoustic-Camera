@@ -34,6 +34,8 @@ void onFPSCount(int state, void* userdata) {
 
 int main() 
 {
+
+    
     //==============================================================================================
     
     // Initializes array to receive data from Audio
@@ -125,9 +127,9 @@ int main()
     createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
     createButton("Show Heat Map",onHeatMap, NULL, QT_CHECKBOX,1);
     createButton("Show FPS", onFPSCount, NULL, QT_CHECKBOX, 1);
-    
-    setTrackbarPos("Threshold", "Heat Map Overlay", 150);
-    setTrackbarPos("Alpha", "Heat Map Overlay", 75);
+    //Set initial trackbar positions
+    setTrackbarPos("Threshold", "Heat Map Overlay", DEFAULT_THRESHOLD);
+    setTrackbarPos("Alpha", "Heat Map Overlay", DEFAULT_ALPHA);
 
     //int i = 15; //temp int for testing 
     Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
@@ -326,7 +328,7 @@ int main()
 
 
         // Break loop if key is pressed
-        if (waitKey(30) >= 0) break;
+        if (waitKey(1) >= 0) break;
 
     } // end loop
 

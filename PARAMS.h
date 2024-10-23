@@ -18,10 +18,12 @@
 #define RESOLUTION_WIDTH 640  // Width of the camera
 #define RESOLUTION_HEIGHT 480 // Height of the camera
 
-#define MAP_THRESHOLD 100      // Initial threshold for heat map
+#define MAP_THRESHOLD 100      // Initial threshold for heat map ***SOME OF THESE ARE REDUNDANT/NOT NEEDED< WILL FIX WHEN THRESHOLD IS OVERHAULED***
 #define MAP_THRESHOLD_MIN -100 // Minimum threshold for heat map
 #define MAP_THRESHOLD_MAX 300  // Minimum threshold for heat map
 #define ALPHA 0.6              // Transparency of heatmap
+#define DEFAULT_ALPHA 60       // Default alpha value (ALPHA * 100)
+#define DEFAULT_THRESHOLD 150  // Default threshold value
 
 #define FONT_TYPE FONT_HERSHEY_PLAIN   // Font for overlayed text
 #define FONT_THICKNESS 1               // Font thickness for overlayed text
