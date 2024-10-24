@@ -13,6 +13,7 @@
 #define FFT_SIZE 1024     // Amount of samples in one frame of the FFT
 #define SAMPLE_RATE 48000 // Audio sample rate
 #define BUFFER_SIZE (FFT_SIZE * NUM_CHANNELS * sizeof(float)) // Size of buffer for all channels
+const char* AUDIO_INPUT_NAME = "hw:3,0"; // arecord -l (type in console to find)
 
 #define FRAME_RATE 30         // Frame rate of the camera
 #define RESOLUTION_WIDTH 640  // Width of the camera

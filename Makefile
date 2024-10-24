@@ -1,4 +1,4 @@
-OPENCV_FLAGS = `pkg-config --cflags --libs opencv4`
+OPENCV_FLAGS = "-I/usr/local/include/" `pkg-config --cflags --libs opencv4`
 
 FLAGS = -lrt -lpthread -lasound
 

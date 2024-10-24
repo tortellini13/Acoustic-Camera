@@ -76,7 +76,7 @@ void arrayFactor(const vector<vector<float>>& AUDIO_DATA, vector<vector<float>> 
 //==============================================================================================
 
 // Calculate all constants and write to arrays to access later
-void constantCalcs(vector<cfloat> complexVectorFirst, vector<vector<cfloat>> complexVectorSecond)
+void constantCalcs(vector<cfloat>& complexVectorFirst, vector<vector<cfloat>>& complexVectorSecond)
 {
 	for (int k = 0; k < HALF_FFT_SIZE; k++)
 	{
@@ -235,14 +235,14 @@ void FFTSum(vector<vector<vector<float>>>& AUDIO_DATA, vector<vector<float>> out
 //==============================================================================================
 
 // Set up parameters for audio interface
-int setupAudio(snd_pcm_t **pcm_handle, snd_pcm_uframes_t *frames) 
+int setupAudio(snd_pcm_t **pcm_handle, snd_pcm_uframes_t *frames, const char* audio_input) 
 {
     snd_pcm_hw_params_t *params;
     unsigned int rate = SAMPLE_RATE;
     int dir, pcm;
 
     // Open the PCM device in capture mode
-    pcm = snd_pcm_open(pcm_handle, "default", SND_PCM_STREAM_CAPTURE, 0);
+    pcm = snd_pcm_open(pcm_handle, audio_input, SND_PCM_STREAM_CAPTURE, 0);
     if (pcm < 0) 
     {
         cerr << "Unable to open PCM device: " << snd_strerror(pcm) << endl;

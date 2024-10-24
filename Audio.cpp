@@ -60,16 +60,18 @@ int main()
 	//==============================================================================================
 
     // Setup audio
-    pcm = setupAudio(&pcm_handle, &frames);
+    pcm = setupAudio(&pcm_handle, &frames, AUDIO_INPUT_NAME);
     if (pcm < 0) 
     {
         return 1;  // Exit if setup fails
     }
+	cout << "1. setupAudio done.\n";
 
 	// Initializes constants for later use
-	vector<cfloat> complexVector1;
-	vector<vector<cfloat>> complexVector2;
+	vector<cfloat> complexVector1(HALF_FFT_SIZE);
+	vector<vector<cfloat>> complexVector2(HALF_FFT_SIZE, vector<cfloat>(HALF_FFT_SIZE));
 	constantCalcs(complexVector1, complexVector2);
+	cout << "1. constantCalcs done.\n";
 	
 	// Initializes variables for user configs
 	int bandTypeSelection = 0;
@@ -133,6 +135,7 @@ int main()
 	
 	//==============================================================================================
 	
+	cout << "1. Main loop starting.\n";
 	// Main loop
 	while (1)
 	{
@@ -155,6 +158,7 @@ int main()
 
 		//==============================================================================================
 
+		cout << "1. captureAudio start.\n";
 		// Read data from microphones
         pcm = captureAudio(audioDataIn, pcm_handle);
         if (pcm < 0) 
@@ -163,18 +167,20 @@ int main()
             // Decide whether to break or continue
             break;
         }
+		cout << "1. captureAudio done.\n";
 
 		//==============================================================================================
 
 		// Change input to audioDataIn*******
 		// User Configs
+		cout << "1. Selecting band type - ";
 		switch (bandTypeSelection)
 		{
-			// Broadband
 			case 0:
-				arrayFactor(DATA, audioDataOut); // *** for testing only with 2-D array
+				//arrayFactor(DATA, audioDataOut); // *** for testing only with 2-D array
 
-				//lowerFrequency = 1; upperFrequency = 511;
+				lowerFrequency = 1; upperFrequency = 511;
+				cout << "BroadBand" << endl;
 			break;
 			
 			//==============================================================================================
@@ -305,25 +311,28 @@ int main()
 			
 			//==============================================================================================
 			
+			cout << "1. FFT bounds: " << lowerFrequency << " - " << upperFrequency << endl;
 			// Filters data to remove unneeded frequencies and sums all frequency bins
 			// Applies per-band calibration?
-			//FFTSum(audioDataIn, audioDataFFT); ***disabled until data acquisition is made***
+			FFTSum(audioDataIn, audioDataFFT, complexVector1, complexVector2, lowerFrequency, upperFrequency); 
+			cout << "1. FFTSum done.\n";
 
 			// Does beamforming algorithm and converts to gain
-			//arrayFactor(filteredData, audioDataOut);	***disabled until data acquisition is made***	
+			arrayFactor(audioDataFFT, audioDataOut);
+			cout << "1. arrayFactor done.\n";
 			
 			break; // end frequency selection
 		} // end main loop
 		
 		//==============================================================================================
 		
-		/*
 		// Write audio data to Video and read user configs
 		if(!shm.handleshm1(audioDataOut, userConfigs))
 		{
 			cerr << "1. writeRead1 failed.\n";
 		}
-		*/
+		cout << "1. handleshm1 done.\n";
+		
 	} // end loop
 	
 	/*

@@ -369,7 +369,7 @@ bool sharedMemory::handleshm1(vector<vector<float>> data_input_1, vector<int>& d
 
     
     // Debugging
-    cout << "Flattened data write:\n";
+    cout << "1. Flattened data write:\n";
     for (int i = 0; i < rows_1 * cols_1; i++)
     {
         cout << flattened_data[i] << " ";

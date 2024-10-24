@@ -53,8 +53,8 @@ void initializeWindow() {
     setTrackbarPos("Alpha", "Heat Map Overlay", DEFAULT_ALPHA);   
 }
 
-UMat UILayer(int listMaxMagState, int markMaxMagState, int colorScaleState, int FPSCountState) {
-    UMat UIBackdrop(RESOLUTION_HEIGHT, RESOLUTION_WIDTH, CV_8UC3);
+Mat UILayer(int listMaxMagState, int markMaxMagState, int colorScaleState, int FPSCountState) {
+    Mat UIBackdrop(RESOLUTION_HEIGHT, RESOLUTION_WIDTH, CV_8UC3);
     if (listMaxMagState == 1) {
         cout << "listMaxMagState" << endl;
 
@@ -171,7 +171,7 @@ int main()
     {                                                             
         cerr << "2. shmStart2 Failed\n";
     }
-    //cout << "Shared Memory Configured.\n"; // For debugging
+    cout << "2. Shared Memory Configured.\n"; // For debugging
 
     //==============================================================================================
 
@@ -201,7 +201,7 @@ int main()
         }
     }
 
-    //initialize a ton of stuff
+    // Initialize a ton of stuff
     double magnitudeMin;
     double magnitudeMax;
     double alpha;
@@ -231,12 +231,21 @@ int main()
     
     double FPSTimeStart = getTickCount();
 
+    cout << "2. Starting main loop.\n";
     while                                                                                                                                                                                                                                                                                                                                                                                                                           (1) 
     {
         cap >> frame; // Capture the frame
         
         //==============================================================================================       
         
+        /*
+        // Reads audio data from shared memory and writes user configs to shared memory
+        if (!shm.handleshm2(magnitudeInput, userConfigs))
+        {
+            cerr << "2. handleshm2 failed.\n";
+        }
+        */
+
         for (int rows = 0; rows < NUM_ANGLES; rows++) // Converts vector<vector<float>> into an OpenCV matrix
         { 
             for (int columns = 0; columns < NUM_ANGLES; columns++)
@@ -257,9 +266,9 @@ int main()
         heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);        // Convert normalized heat map data data type
 
         //==============================================================================================
-        //Finding maximum magnitude in incoming data, scaling location for marking
+
+        // Finding maximum magnitude in incoming data, scaling location for marking
         minMaxLoc(magnitudeFrame, &magnitudeMin, &magnitudeMax, NULL, &maxPoint); //Find maximum magnitude from incoming data with location
-        
      
         int scaledPointX = (static_cast<double>(maxPoint.x)/static_cast<double>(magnitudeFrame.cols)) * RESOLUTION_WIDTH; //Scale max point to video resolution 
         int scaledPointY = (static_cast<double>(maxPoint.y)/static_cast<double>(magnitudeFrame.rows)) * RESOLUTION_HEIGHT;
@@ -308,11 +317,11 @@ int main()
 
         // Graphics and Text
         
-        if (UIChangeFlag == 1) {
-            UMat UIlayeroutUMAT = UILayer(listMaxMagState, markMaxMagState, colorScaleState, FPSCountState);
+        //if (UIChangeFlag == 1) {
+            Mat UIlayeroutUMAT = UILayer(listMaxMagState, markMaxMagState, colorScaleState, FPSCountState);
             UIlayeroutUMAT.copyTo(UIlayerout);
             
-        }
+        //}
 
          //Merge UI Backdrop onto frame ***IN PROGRESS***
 
