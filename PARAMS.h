@@ -42,6 +42,8 @@
 #define CROSS_THICKNESS 2   // Thicnkess for cross at maximum magnitude
 #define CROSS_SIZE 20       // Size of cross at maximum magnitude
 
+#define FPS_COUNTER_AVERAGE 5 //Number of frames to be averaged for calculating FPS
+
 const char* AUDIO_SHM = "/AUDIO_SHM";   // Shared memory name for audio data
 const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
 #define SEM_1 "/SEM_1"                  // Semaphore
