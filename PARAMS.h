@@ -4,7 +4,7 @@
 // Mic channels
 #define M_AMOUNT 4 // Amount of mics in the M direction
 #define N_AMOUNT 4 // Amount of mics in the N direction
-#define NUM_CHANNELS (M_AMOUNT * N_AMOUNT) // Total number of channels
+const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
 
 // Angles
 #define ANGLE_STEP 4  // Amount of degrees that the beamforming algorithm sweeps in each step
@@ -17,10 +17,10 @@ const int NUM_ANGLES ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP); // Number of angles
 const int HALF_FFT_SIZE = FFT_SIZE / 2; // Half of FFT_SIZE
 
 // Data sizes
-#define BUFFER_SIZE (FFT_SIZE * NUM_CHANNELS * sizeof(float))   // Size of buffer for all channels
-const int TOTAL_ANGLES = NUM_ANGLES * NUM_ANGLES;               // For final data
-const int DATA_SIZE_BUFFER = TOTAL_ANGLES * FFT_SIZE;           // For beamformed data
-const int DATA_SIZE_BUFFER_HALF = TOTAL_ANGLES * HALF_FFT_SIZE; // For FFT data
+const int BUFFER_SIZE = (FFT_SIZE * NUM_CHANNELS * sizeof(float)); // Size of buffer for all channels
+const int TOTAL_ANGLES = NUM_ANGLES * NUM_ANGLES;                  // For final data
+const int DATA_SIZE_BUFFER = TOTAL_ANGLES * FFT_SIZE;              // For beamformed data
+const int DATA_SIZE_BUFFER_HALF = TOTAL_ANGLES * HALF_FFT_SIZE;    // For FFT data
 
 // Audio
 const char* AUDIO_INPUT_NAME = "hw:3,0"; // arecord -l (type in console to find)
@@ -47,6 +47,7 @@ const char* AUDIO_INPUT_NAME = "hw:3,0"; // arecord -l (type in console to find)
 #define MAX_LABEL_POS_Y 20           // Vertical location of maximum value overlayed text
 #define LABEL_PRECISION 1            // Number of decimal places to be shown on screen
 
+// Scale
 #define SCALE_WIDTH 40   // Width of the color scale
 #define SCALE_HEIGHT 400 // Height of the color scale
 #define SCALE_POS_X 580  // X Position of color scale
@@ -54,11 +55,14 @@ const char* AUDIO_INPUT_NAME = "hw:3,0"; // arecord -l (type in console to find)
 #define SCALE_BORDER 5   // Thickness of border around scale
 #define SCALE_POINTS 5   // Quantity of points on the scale to be marked
 
+// Crosshair
 #define CROSS_THICKNESS 2 // Thickness for cross at maximum magnitude
 #define CROSS_SIZE 20     // Size of cross at maximum magnitude
 
+// FPS counter
 #define FPS_COUNTER_AVERAGE 5 // Number of frames to be averaged for calculating FPS
 
+// SHM and SEM
 const char* AUDIO_SHM = "/AUDIO_SHM";   // Shared memory name for audio data
 const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
 #define SEM_1 "/SEM_1"                  // Semaphore

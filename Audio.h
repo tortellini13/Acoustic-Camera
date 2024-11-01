@@ -1,14 +1,18 @@
 #ifndef AUDIO
 #define AUDIO
 
+// Internal Libraries
 #include <iostream>
 #include <complex>
 #include <vector>
 #include <cmath>
 #include <omp.h> // For OpenMP parallelization if available
+
+// External Libraries
 #include <fftw3.h> // FFT library
 #include <alsa/asoundlib.h> // For audio input
 
+// Header Files
 #include "PARAMS.h"
 
 using namespace std;
@@ -109,6 +113,7 @@ void FFTCalc(const cfloat inputData[DATA_SIZE_BUFFER], double outputData[DATA_SI
 void FFTCollapse(const double inputData[DATA_SIZE_BUFFER_HALF], float dataOutput[TOTAL_ANGLES],
                 int lowerBound, int upperBound)
 {
+    int k_amount = upperBound - lowerBound;
     for (int theta = 0; theta < NUM_ANGLES; theta++)
     {
         for (int phi = 0; phi < NUM_ANGLES; phi++)
@@ -116,22 +121,25 @@ void FFTCollapse(const double inputData[DATA_SIZE_BUFFER_HALF], float dataOutput
             float sum = 0;
             for (int k = lowerBound; k <= upperBound; k++)
             {
-                sum += inputData[theta * NUM_ANGLES * HALF_FFT_SIZE + phi * HALF_FFT_SIZE + k];
+                sum += abs(inputData[theta * NUM_ANGLES * HALF_FFT_SIZE + phi * HALF_FFT_SIZE + k]);
             } // end k
+            dataOutput[theta * NUM_ANGLES + phi] = sum / k_amount;
         } // end phi
     } // end theta
 } // end FFTCollapse
 
 //=====================================================================================
 
-// Calculates dB Full Scale
+// Calculates dB Full Scale (-inf, 0)
 void dBfs(const float dataInput[TOTAL_ANGLES], float dataOutput[TOTAL_ANGLES])
 {
     for (int theta = 0; theta < NUM_ANGLES; theta++)
     {
         for (int phi = 0; phi < NUM_ANGLES; phi++)
         {
-            dataOutput[theta * NUM_ANGLES + phi] = 20 * log10(dataOutput[theta * NUM_ANGLES + phi]);
+            // ***Not sure if need to abs() before adding signals***
+            // 20 * log10(abs(signal) / num_signals)
+            dataOutput[theta * NUM_ANGLES + phi] = 20 * log10(abs(dataInput[theta * NUM_ANGLES + phi]) / TOTAL_ANGLES);
         }
     }
 } // end dBfs
