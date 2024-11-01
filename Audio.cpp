@@ -20,6 +20,18 @@ using namespace std;
 int lowerFrequency;
 int upperFrequency; 
 
+// Audio Data
+float AUDIO_DATA[BUFFER_SIZE];
+cfloat AUDIO_DATA_BEAMFORM[NUM_ANGLES * NUM_ANGLES * FFT_SIZE];
+double AUDIO_DATA_FFT[DATA_SIZE_BUFFER_HALF];
+float AUDIO_DATA_FFTCOLLAPSE[TOTAL_ANGLES];
+float AUDIO_DATA_dBfs[TOTAL_ANGLES];
+
+// Constants
+cfloat CONSTANT_1[HALF_FFT_SIZE];
+cfloat CONSTANT_2[HALF_FFT_SIZE * HALF_FFT_SIZE];
+cfloat ANGLES[NUM_ANGLES * NUM_ANGLES];
+
 //==============================================================================================
 
 // Needs to be 3D for input***
@@ -68,10 +80,8 @@ int main()
 	cout << "1. setupAudio done.\n";
 
 	// Initializes constants for later use
-	vector<cfloat> complexVector1(HALF_FFT_SIZE);
-	vector<vector<cfloat>> complexVector2(HALF_FFT_SIZE, vector<cfloat>(HALF_FFT_SIZE));
-	constantCalcs(complexVector1, complexVector2);
-	cout << "1. constantCalcs done.\n";
+	setupConstants(CONSTANT_1, CONSTANT_2, ANGLES);
+	cout << "1. setupCalcs done.\n";
 	
 	// Initializes variables for user configs
 	int bandTypeSelection = 0;
@@ -314,11 +324,8 @@ int main()
 			cout << "1. FFT bounds: " << lowerFrequency << " - " << upperFrequency << endl;
 			// Filters data to remove unneeded frequencies and sums all frequency bins
 			// Applies per-band calibration?
-			FFTSum(audioDataIn, audioDataFFT, complexVector1, complexVector2, lowerFrequency, upperFrequency); 
-			cout << "1. FFTSum done.\n";
-
-			// Does beamforming algorithm and converts to gain
-			arrayFactor(audioDataFFT, audioDataOut);
+    		handleData(AUDIO_DATA, AUDIO_DATA_BEAMFORM, AUDIO_DATA_FFT,
+          			   AUDIO_DATA_FFTCOLLAPSE, AUDIO_DATA_dBfs, 257, 511, ANGLES);
 			cout << "1. arrayFactor done.\n";
 			
 			break; // end frequency selection
