@@ -3,6 +3,7 @@
 #include "PARAMS.h"
 #include "sharedMemory.h"
 #include <vector>
+#include <ctime>
 
 using namespace cv;
 using namespace std;
@@ -15,6 +16,8 @@ int colorScaleState = 1;
 int heatMapState = 1;
 int FPSCountState = 1;
 int resetUIState = 0;
+int recordingState = 0;
+int recordingStateChangeFlag = 0;
 void onListMaxMag(int state, void* userdata) {
     listMaxMagState = state; // Update button state
 }
@@ -30,6 +33,10 @@ void onHeatMap(int state, void* userdata) {
 }
 void onFPSCount(int state, void* userdata) {
     FPSCountState = state;
+}
+void onRecording(int state, void* userdata) {
+    recordingState = state;
+    recordingStateChangeFlag = 1;
 }
 void onResetUI(int state, void* userdata) {
     //Set initial trackbar positions
@@ -48,7 +55,8 @@ void initializeWindow() {
     createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
     createButton("Show Heat Map",onHeatMap, NULL, QT_CHECKBOX,1);
     createButton("Show FPS", onFPSCount, NULL, QT_CHECKBOX, 1);
-    createButton("ResetUI", onResetUI, NULL, QT_CHECKBOX, 0);
+    //createButton("ResetUI", onResetUI, NULL, QT_CHECKBOX, 0);
+    createButton("Record Video", onRecording, NULL, QT_CHECKBOX, 0);
     
 }
 Mat makeColorBar() {
@@ -116,22 +124,8 @@ int main()
     cap.set(CAP_PROP_FRAME_HEIGHT, RESOLUTION_HEIGHT); // Set frame height for capture
     cap.set(CAP_PROP_FPS, FRAME_RATE);                 // Set framerate of capture from PARAMS.h
 
-    int recording = 0; // Recording setting
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
-    string videoFileName = "./testoutput.avi";           // Set video file output file name
-
-
-    // Open recording if enabled, report error if it doesn't work
-    if (recording == 1) 
-    {
-        video1.open(videoFileName, codec, FRAME_RATE, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 1);
-        
-        if (!video1.isOpened()) 
-        {
-            cerr << "Could not open the output video file for write.\n";
-            return 1;
-        }
-    }
+    string videoFileName = "testoutput";           // Set video file output file name
 
     // Initialize a ton of stuff
     double magnitudeMin;
@@ -167,6 +161,23 @@ int main()
     cout << "2. Starting main loop.\n";
     while                                                                                                                                                                                                                                                                                                                                                                                                                           (1) 
     {
+        //==============================================================================================
+        // Video Recording setup when enabled
+        if (recordingStateChangeFlag == 1) {
+            if (recordingState == 1) {
+                ostringstream videoFileStream;
+                videoFileStream << "./" << videoFileName << " " << time(nullptr) << ".avi" ;
+                string videoFileFullOutput = videoFileStream.str();
+                video1.open(videoFileFullOutput, codec, FRAME_RATE, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 1);
+            }
+            if (recordingState == 0) {
+                video1.release();
+            }
+            recordingStateChangeFlag = 0;
+        }
+
+        //==============================================================================================
+
         cap >> frame; // Capture the frame
         
         //==============================================================================================       
@@ -307,7 +318,8 @@ int main()
         //==============================================================================================                               
 
         // Record if set to record
-        if (recording == 1) { 
+        
+        if (recordingState == 1) { 
             video1.write(frameRGB);
         }
         
