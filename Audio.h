@@ -1,29 +1,24 @@
 #ifndef AUDIO
 #define AUDIO
 
-// Libraries
+// Internal Libraries
 #include <iostream>
-#include <cmath>
-#include <vector>
-#include <math.h>
 #include <complex>
-#include <alsa/asoundlib.h>
+#include <vector>
+#include <cmath>
+#include <omp.h> // For OpenMP parallelization if available
 
-// User files
+// External Libraries
+#include <fftw3.h> // FFT library
+#include <alsa/asoundlib.h> // For audio input
+
+// Header Files
 #include "PARAMS.h"
 
 using namespace std;
-
-//==============================================================================================
-
-// Definitions
 typedef complex<float> cfloat;
 
-// CHANGE THIS TO USE THE ONE IN PARAMS*******
-// Half of FFT_SIZE
-const int HALF_FFT_SIZE = FFT_SIZE / 2;
-
-//==============================================================================================
+//=====================================================================================
 
 // Converts degrees to radians
 float degtorad(float angleDEG)
@@ -32,206 +27,146 @@ float degtorad(float angleDEG)
 	return result;
 } // end degtorad
 
-//==============================================================================================
+//=====================================================================================
 
-// Calculates Array Factor
-void arrayFactor(const vector<vector<float>>& AUDIO_DATA, vector<vector<float>> output)
+// Calculates constants 
+void FFTConstants(cfloat constant1[HALF_FFT_SIZE], cfloat constant2[HALF_FFT_SIZE * HALF_FFT_SIZE])
 {
-	// Initialize Array Factor array
-	vector<vector<cfloat>> AF(NUM_ANGLES + 1, vector<cfloat>(NUM_ANGLES + 1));
+    // Iterates through frequency mins
+    for (int k = 0; k < HALF_FFT_SIZE; k++)
+    {
+        float exponent1 = (-2 * M_PI * k) / HALF_FFT_SIZE;
+        constant1[k] = cfloat(cos(exponent1), sin(exponent1)); // e^(i * 2 * pi * k / (N / 2))
 
-	// Calculate phase shift for every angle
-	int indexTHETA = 0; // Reset theta index
-	for (int THETA = MIN_ANGLE; indexTHETA < NUM_ANGLES + 1; THETA += ANGLE_STEP, indexTHETA++)
-	{
-		int indexPHI = 0; // Reset phi index
-		for (int PHI = MIN_ANGLE; indexPHI < NUM_ANGLES + 1; PHI += ANGLE_STEP, indexPHI++)
-		{
-			cfloat sum = 0;  // To accumulate results
-			for (int m = 0; m < M_AMOUNT; m++)
-			{
-				for (int n = 0; n < N_AMOUNT; n++)
-				{
-					// Calculate the phase shift for each element
-					float angle = degtorad(THETA * m + PHI * n);
-					sum += AUDIO_DATA[m][n] * cfloat(cos(angle), sin(angle));
-				}
-			}
-			AF[indexTHETA][indexPHI] = sum; // Writes sum to Array Factor array
-		}
-	}
+        // Produces constants for HALF_FFT_SIZE x HALF_BUFFER
+        for (int b = 0; b < HALF_FFT_SIZE; b++)
+        {
+            float exponent2 = exponent1 * b;
+            constant2[k * HALF_FFT_SIZE + b] = cfloat(cos(exponent2), sin(exponent2)); // e^(i * 2 * pi * k * b / (N / 2))
+        }
+    }
+} // end FFTConstants
 
-	// Calculate gain 10log10(signal)
-	for (int indexTHETA = 0; indexTHETA < NUM_ANGLES + 1; indexTHETA++)
-	{
-		for (int indexPHI = 0; indexPHI < NUM_ANGLES + 1; indexPHI++)
-		{
-			output[indexTHETA][indexPHI] = 10 * log10(norm(AF[indexTHETA][indexPHI]));
+//=====================================================================================
 
-		}
-	}
-
-} // end arrayFactor
-
-//==============================================================================================
-
-// Calculate all constants and write to arrays to access later
-void constantCalcs(vector<cfloat>& complexVectorFirst, vector<vector<cfloat>>& complexVectorSecond)
+// Precompute cos/sin values
+void FFTAngles(cfloat angles[TOTAL_ANGLES])
 {
-	for (int k = 0; k < HALF_FFT_SIZE; k++)
-	{
-		float vectork = (2 * M_PI * k) / FFT_SIZE;                   // some vector as a function of k
-		complexVectorFirst[k] = cfloat(cos(vectork), -sin(vectork)); // some complex vector as a function of k
-		
-		for (int b = 0; b < HALF_FFT_SIZE; b++)
-		{
-			complexVectorSecond[k][b] = cfloat(cos(vectork * 2 * b), -sin(vectork * 2 * b)); // some complex vector as a function of k with a factor of 2m in exponent
-		}
-	}
-} // end constantCalcs
+    for (int theta = MIN_ANGLE, thetaIndex = 0; theta < NUM_ANGLES; theta += ANGLE_STEP, thetaIndex++) 
+    {
+        for (int phi = MIN_ANGLE, phiIndex = 0; phi < NUM_ANGLES; phi += ANGLE_STEP, phiIndex++) 
+        {
+            float angle = degtorad(theta * M_AMOUNT + phi * N_AMOUNT);
+            angles[thetaIndex * NUM_ANGLES + phiIndex] = cfloat(cos(angle), sin(angle));
+        }
+    }
+}
 
-//==============================================================================================
+//=====================================================================================
 
-// Calculates Ek (first component of FFT for even samples in buffer as a function of k)
-void evenConstants(const vector<vector<vector<float>>>& AUDIO_DATA, vector<vector<vector<cfloat>>> output, vector<vector<cfloat>> complexVectorSecond, int lowerBound, int upperBound)
+void handleBeamforming(float dataInput[BUFFER_SIZE], cfloat dataOutput[DATA_SIZE_BUFFER],
+                       cfloat angles[TOTAL_ANGLES]) 
 {
-	//vector<vector<vector<cfloat>>> result(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
+    #pragma omp parallel for collapse(2) // Parallelize theta and phi loops
+    for (int thetaIndex = 0; thetaIndex < NUM_ANGLES; thetaIndex++) 
+    {
+        for (int phiIndex = 0; phiIndex < NUM_ANGLES; phiIndex++) 
+        {
+            for (int b = 0; b < FFT_SIZE; b++) 
+            {
+                cfloat sum = {0.0f, 0.0f}; // Accumulate results
 
-    // Loop through M-axis
-	for (int m = 0; m < M_AMOUNT; m++) 
-	{
-        // Loop through N-axis
-		for (int n = 0; n < N_AMOUNT; n++) 
-		{
-            // k (frequency bin)
-			for (int k = 0; k < HALF_FFT_SIZE; k++) 
-			{
-				// Set result = 0 for all k lower than lowerBound
-				if (k < lowerBound)
-				{
-					output[m][n][k] = 0;
-				}
-					
-				// Set result = 0 for all k greater than upperBound
-				else if (k > upperBound)
-				{
-					output[m][n][k] = 0;
-				}
-					
-				// Calculates evenConstant array
-				else
-				{
-					cfloat sum = 0;
+                // Use precomputed angles
+                cfloat angleComplex = angles[thetaIndex * NUM_ANGLES + phiIndex];
+                for (int m = 0; m < M_AMOUNT; m++) 
+                {
+                    for (int n = 0; n < N_AMOUNT; n++) 
+                    {
+                        sum += dataInput[m * N_AMOUNT * FFT_SIZE + n * FFT_SIZE + b] * angleComplex;
+                    }
+                }
+                dataOutput[thetaIndex * NUM_ANGLES * FFT_SIZE + phiIndex * FFT_SIZE + b] = sum;
+            } // end b
+        } // end phi
+    } // end theta
+} // end handleBeamforming
 
-                    // b (buffered sample index)
-					for (int b = 0; b < HALF_FFT_SIZE; b += 2) 
-					{
-						sum += AUDIO_DATA[m][n][b] * complexVectorSecond[k][b];
-					}
-					output[m][n][k] = sum;	
-				} // end evenConstant calcs
-			} // end k
-		} // end n
-	} // end m
-} // end evenConstants
+//=====================================================================================
 
-//==============================================================================================
+void FFTCalc(const cfloat inputData[DATA_SIZE_BUFFER], double outputData[DATA_SIZE_BUFFER_HALF]) 
+{    
+    // Create a plan for the complex-to-real 3D FFT
+    fftw_plan plan = fftw_plan_dft_c2r_3d(NUM_ANGLES, NUM_ANGLES, FFT_SIZE, 
+                                           reinterpret_cast<fftw_complex*>(const_cast<cfloat*>(inputData)), 
+                                           outputData, 
+                                           FFTW_ESTIMATE);
+    
+    // Execute the 3D FFT
+    fftw_execute(plan);
+    
+    // Cleanup
+    fftw_destroy_plan(plan);
+}
 
-// Calculates oddConstants (second component of FFT for odd samples in buffer as a function of k)
-void oddConstants(const vector<vector<vector<float>>>& AUDIO_DATA, vector<vector<vector<cfloat>>> output, vector<vector<cfloat>> complexVectorSecond, int lowerBound, int upperBound)
+//=====================================================================================
+
+void FFTCollapse(const double inputData[DATA_SIZE_BUFFER_HALF], float dataOutput[TOTAL_ANGLES],
+                int lowerBound, int upperBound)
 {
-	//vector<vector<vector<cfloat>>> result(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
+    int k_amount = upperBound - lowerBound;
+    for (int theta = 0; theta < NUM_ANGLES; theta++)
+    {
+        for (int phi = 0; phi < NUM_ANGLES; phi++)
+        {
+            float sum = 0;
+            for (int k = lowerBound; k <= upperBound; k++)
+            {
+                sum += abs(inputData[theta * NUM_ANGLES * HALF_FFT_SIZE + phi * HALF_FFT_SIZE + k]);
+            } // end k
+            dataOutput[theta * NUM_ANGLES + phi] = sum / k_amount;
+        } // end phi
+    } // end theta
+} // end FFTCollapse
 
-	for (int m = 0; m < M_AMOUNT; m++) // Loop through M-axis
-	{
-		for (int n = 0; n < N_AMOUNT; n++) // Loop through N-axis
-		{
-			for (int k = 0; k < HALF_FFT_SIZE; k++) // k (frequency bin)
-			{
-				// Set result = 0 for all k lower than lowerBound
-				if (k < lowerBound - HALF_FFT_SIZE)
-				{
-					output[m][n][k] = 0;
-				}
-					
-				// Set result = 0 for all k greater than upperBound
-				else if (k > upperBound - HALF_FFT_SIZE)
-				{
-					output[m][n][k] = 0;
-				}
-					
-				// Calculates Ok array
-				else
-				{
-					cfloat sum = 0;
-					for (int b = 1; b < HALF_FFT_SIZE; b += 2) // b (buffered sample index)
-					{
-						sum += AUDIO_DATA[m][n][b] * complexVectorSecond[k][b]; // Calculates oddConstants array
-					}
-					output[m][n][k] = sum;	
-				} // end odConstant calc
-			} // end k
-		} // end n
-	} // end m
-} // end oddConstants
+//=====================================================================================
 
-//==============================================================================================
-
-// Calculates X array (total FFT as a function of k) and sums all of the values in the desired range
-// Outputs M x N array of filtered data
-void FFTSum(vector<vector<vector<float>>>& AUDIO_DATA, vector<vector<float>> output, vector<cfloat> complexVectorFirst, vector<vector<cfloat>> complexVectorSecond, int lowerBound, int upperBound)
+// Calculates dB Full Scale (-inf, 0)
+void dBfs(const float dataInput[TOTAL_ANGLES], float dataOutput[TOTAL_ANGLES])
 {
-	// Calls evenConstants
-	vector<vector<vector<cfloat>>> Xcomp1;
-    evenConstants(AUDIO_DATA, Xcomp1, complexVectorSecond, lowerBound, upperBound); 
+    for (int theta = 0; theta < NUM_ANGLES; theta++)
+    {
+        for (int phi = 0; phi < NUM_ANGLES; phi++)
+        {
+            // ***Not sure if need to abs() before adding signals***
+            // 20 * log10(abs(signal) / num_signals)
+            dataOutput[theta * NUM_ANGLES + phi] = 20 * log10(abs(dataInput[theta * NUM_ANGLES + phi]) / TOTAL_ANGLES);
+        }
+    }
+} // end dBfs
 
-    // Calls oddConstants
-	vector<vector<vector<cfloat>>> Xcomp2;
-    oddConstants(AUDIO_DATA, Xcomp2, complexVectorSecond, lowerBound, upperBound);
-		
-	// Xvector
-	vector<vector<vector<cfloat>>> Xresult(HALF_FFT_SIZE, vector<vector<cfloat>>(M_AMOUNT, vector<cfloat>(N_AMOUNT, 0)));
-	for (int m = 0; m < M_AMOUNT; m++)
-	{
-		for (int n = 0; n < N_AMOUNT; n++)
-		{
-			for (int k = 0; k < HALF_FFT_SIZE; k++)
-			{
-				Xresult[m][n][k] = Xcomp1[m][n][k] + complexVectorFirst[k] * Xcomp2[m][n][k];
-			}
-		}
-	}
+//=====================================================================================
 
-	/* Don't need. Produces reflection (-freq)
-	// Xk+N/2
-	for (int x = 0; x < M_AMOUNT; x++)
-	{
-		for (int y = 0; y < N_AMOUNT; y++)
-		{
-			for (int k = 0; k < HALF_FFT_SIZE; k++)
-			{
-				Xresult[x][y][k + HALF_FFT_SIZE] = Xcomp1[x][y][k + HALF_FFT_SIZE] + ev[k + HALF_FFT_SIZE] * Xcomp1[x][y][k + HALF_FFT_SIZE];
-			}
-		}
-	}
-	*/
-	
-	// Sum all X array values to convert frequency bins into a full band (user defined)
-	//vector<vector<float>> result(M_AMOUNT, vector<float>(N_AMOUNT));
-	for (int m = 0; m < M_AMOUNT; m++)
-	{
-		for (int n = 0; n < N_AMOUNT; n++)
-		{
-			float sum = 0; // To accumulate results
-			for (int k = 0; k < HALF_FFT_SIZE; k++)
-			{
-				sum += norm(Xresult[m][n][k]); // magnitude of complex number sqrt(a^2 + b^2)
-			}
-			output[m][n] = sum;
-		}
-	}
-}// end FFTSum
+// Sets up all constants required for beamforming and FFT
+void setupConstants(cfloat constant1[HALF_FFT_SIZE], cfloat constant2[HALF_FFT_SIZE * HALF_FFT_SIZE],
+                    cfloat angles[TOTAL_ANGLES])
+{
+    FFTConstants(constant1, constant2);
+    FFTAngles(angles);
+} // end setupConstants
 
+//=====================================================================================
+
+// Performs all functions needed to go from raw data to fully processed beamformed and FFT data
+void handleData(float dataRaw[BUFFER_SIZE], cfloat dataBeamform[DATA_SIZE_BUFFER],
+                double dataFFT[DATA_SIZE_BUFFER_HALF], float dataFFTCollapse[TOTAL_ANGLES],
+                float datadBfs[TOTAL_ANGLES],
+                int lowerBound, int upperBound, cfloat angles[TOTAL_ANGLES])
+{
+    handleBeamforming(dataRaw, dataBeamform, angles);
+    FFTCalc(dataBeamform, dataFFT);
+    FFTCollapse(dataFFT, dataFFTCollapse, lowerBound, upperBound);
+    dBfs(dataFFTCollapse, datadBfs);
+} // end handleData
 //==============================================================================================
 
 // Set up parameters for audio interface
@@ -329,4 +264,5 @@ int captureAudio(vector<vector<vector<float>>> &output, snd_pcm_t *pcm_handle) {
 } // end captureAudio
 
 //==============================================================================================
-#endif AUDIO
+
+#endif
