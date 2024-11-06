@@ -14,33 +14,33 @@ int markMaxMagState = 1;
 int colorScaleState = 1;
 int heatMapState = 1;
 int FPSCountState = 1;
-
-int UIChangeFlag = 1;
-
+int resetUIState = 0;
 void onListMaxMag(int state, void* userdata) {
     listMaxMagState = state; // Update button state
-    UIChangeFlag = 1;
 }
 void onMarkMaxMag(int state, void* userdata) {
     markMaxMagState = state; // Update button state
-    UIChangeFlag = 1;
 }
 void onColorScaleState(int state, void* userdata) {
     colorScaleState = state;
-    UIChangeFlag = 1;
 }
 void onHeatMap(int state, void* userdata) {
     heatMapState = state;
-    UIChangeFlag = 1;
+  
 }
 void onFPSCount(int state, void* userdata) {
     FPSCountState = state;
-    UIChangeFlag = 1;
+}
+void onResetUI(int state, void* userdata) {
+    //Set initial trackbar positions
+    setTrackbarPos("Threshold", "Heat Map Overlay", DEFAULT_THRESHOLD);
+    setTrackbarPos("Alpha", "Heat Map Overlay", DEFAULT_ALPHA);   
+
 }
 //==============================================================================================
 
 void initializeWindow() {
- // Create trackbar and buttons
+    // Create trackbar and buttons
     createTrackbar("Threshold", "Heat Map Overlay", nullptr, MAP_THRESHOLD_MAX);    
     createTrackbar("Alpha", "Heat Map Overlay", nullptr, 100);
     createButton("List Maximum Magnitude",onListMaxMag, NULL, QT_CHECKBOX,1);
@@ -48,76 +48,9 @@ void initializeWindow() {
     createButton("Show Color Scale",onColorScaleState, NULL, QT_CHECKBOX,1);
     createButton("Show Heat Map",onHeatMap, NULL, QT_CHECKBOX,1);
     createButton("Show FPS", onFPSCount, NULL, QT_CHECKBOX, 1);
-    //Set initial trackbar positions
-    setTrackbarPos("Threshold", "Heat Map Overlay", DEFAULT_THRESHOLD);
-    setTrackbarPos("Alpha", "Heat Map Overlay", DEFAULT_ALPHA);   
+    createButton("ResetUI", onResetUI, NULL, QT_CHECKBOX, 0);
+    
 }
-
-Mat UILayer(int listMaxMagState, int markMaxMagState, int colorScaleState, int FPSCountState) {
-    Mat UIBackdrop(RESOLUTION_HEIGHT, RESOLUTION_WIDTH, CV_8UC3);
-    if (listMaxMagState == 1) {
-        cout << "listMaxMagState" << endl;
-
-    }
-
-    if (markMaxMagState == 1) {
-        cout << "markMaxMagState" << endl;
-    }
-    
-    if (colorScaleState == 1) {
-        cout << "colorScaleState" << endl;
-        float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
-        Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
-        Mat scaleColor(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC1);
-
-        rectangle(UIBackdrop, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(1, 1, 1), FILLED); //Draw rectangle behind scale to make a border
-        
-        for(int y = 0; y < SCALE_HEIGHT; y++) {
-
-            int scaleIntensity = 255 * (static_cast<double>((SCALE_HEIGHT - y)) / static_cast<double>(SCALE_HEIGHT));
-           
-        
-            for(int x = 0; x < SCALE_WIDTH; x++) {
-            scaleColor.at<uchar>(y, x) = scaleIntensity;
-
-            }
-        }
-    
-        applyColorMap(scaleColor, colorBar, COLORMAP_INFERNO);
-        //cvtColor(colorBar, colorBar, COLOR_RGB2RGBA);
-
-        for(int x = 0; x < SCALE_WIDTH; x++) {
-            for(int y = 0; y < SCALE_HEIGHT; y++){
-                 
-                if (colorBar.at<uchar>(y, x) == (0,0,0)) {
-                    colorBar.at<uchar>(y, x) = (1,1,1);
-                }
-
-
-            }
-
-        }
-
-        colorBar.copyTo(UIBackdrop(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT)));
-
-
-        for (int i = 0; i < (SCALE_POINTS + 1); i++) {
-                
-            Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
-            line(UIBackdrop, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
-        }
-
-
-    }
-
-    if (FPSCountState == 1) {
-        cout << "FPSCountState" << endl;
-    }
-    
-    UIChangeFlag = 0;
-    return UIBackdrop;
-}
-
 Mat makeColorBar() {
  Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
     Mat scaleColor(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC1);
@@ -133,7 +66,6 @@ Mat makeColorBar() {
     }
     
     applyColorMap(scaleColor, colorBar, COLORMAP_INFERNO);
-    cvtColor(colorBar, colorBar, COLOR_RGB2RGBA);
     return colorBar;
 }
 
@@ -226,6 +158,7 @@ int main()
     cap >> frame;
     imshow("Heat Map Overlay", frame);
     initializeWindow();
+    onResetUI(1,0);
     
     colorBar = makeColorBar();
     
@@ -262,7 +195,6 @@ int main()
         // Magnitude Data Proccessing
         resize(magnitudeFrame, heatMapData, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 0, 0, INTER_CUBIC);       // Scaling and interpolating into camera resolution
         normalize(heatMapData, heatMapDataNormal, 0, 255, NORM_MINMAX); // Normalize the data into a (0-255) range
-        
         heatMapDataNormal.convertTo(heatMapDataNormal, CV_8UC1);        // Convert normalized heat map data data type
 
         //==============================================================================================
@@ -283,10 +215,6 @@ int main()
         applyColorMap(heatMapDataNormal, heatMapRGB, COLORMAP_INFERNO); // Convert the normalized heat map data into a colormap
         cvtColor(heatMapRGB, heatMapRGBA, COLOR_RGB2RGBA);              // Convert heat map from RGB to RGBA
         cvtColor(frame, frameRGBA, COLOR_RGB2RGBA);                     // Convert video frame from RGB to RGBA
-        
-        //==============================================================================================
-
-        
         
         //==============================================================================================
 
@@ -317,20 +245,7 @@ int main()
 
         // Graphics and Text
         
-        //if (UIChangeFlag == 1) {
-            Mat UIlayeroutUMAT = UILayer(listMaxMagState, markMaxMagState, colorScaleState, FPSCountState);
-            UIlayeroutUMAT.copyTo(UIlayerout);
-            
-        //}
-
-         //Merge UI Backdrop onto frame ***IN PROGRESS***
-
-        
-        inRange(UIlayerout, Scalar(1, 1, 1), Scalar(255, 255, 255), UIMask);
         cvtColor(frameRGBA, frameRGB, COLOR_RGBA2RGB);
-        UIlayerout.copyTo(frameRGB, UIMask);
-        
-        
         
         if(listMaxMagState == 1){
             Point maxTextLocation(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
@@ -349,8 +264,8 @@ int main()
 
         if(colorScaleState == 1) {
             
-            //rectangle(frameRGBA, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-            //colorBar.copyTo(frameRGBA(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
+            rectangle(frameRGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+            colorBar.copyTo(frameRGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
 
             //Draw text indicating various points on the scale
 
@@ -366,7 +281,7 @@ int main()
                 String scaleTextString = scaleTextStream.str() + " ";
 
                 putText(frameRGB, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
-                //line(frameRGBA, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
+                line(frameRGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
             }
 
         }
@@ -378,6 +293,7 @@ int main()
             int FPSBaseline = 0;
             Point FPSTextLocation(20, 460);
             Size FPStextSize = getTextSize(FPSString, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &FPSBaseline);
+            
             rectangle(frameRGB, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
             putText(frameRGB, FPSString, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
             
@@ -392,7 +308,7 @@ int main()
 
         // Record if set to record
         if (recording == 1) { 
-            video1.write(frameRGBA);
+            video1.write(frameRGB);
         }
         
         if (getWindowProperty("Heat Map Overlay", WND_PROP_VISIBLE) < 1) {
