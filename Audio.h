@@ -4,7 +4,6 @@
 // Internal Libraries
 #include <iostream>
 #include <complex>
-#include <vector>
 #include <cmath>
 #include <omp.h> // For OpenMP parallelization if available
 
@@ -215,14 +214,15 @@ int setupAudio(snd_pcm_t **pcm_handle, snd_pcm_uframes_t *frames, const char* au
 //==============================================================================================
 
 // Function to capture audio into a 3D vector (M_AMOUNT x N_AMOUNT x FFT_SIZE)
-int captureAudio(vector<vector<vector<float>>> &output, snd_pcm_t *pcm_handle) {
-    vector<float> buffer(FFT_SIZE * NUM_CHANNELS);  // Flat buffer for data
+int captureAudio(float output[], snd_pcm_t *pcm_handle) 
+{
+    float buffer[FFT_SIZE * NUM_CHANNELS];  // Flat buffer for data (1 sample deep)
     int pcm;
 
     // Capture PCM audio
     while (1) 
     {
-        pcm = snd_pcm_readi(pcm_handle, buffer.data(), FFT_SIZE);
+        pcm = snd_pcm_readi(pcm_handle, buffer, FFT_SIZE);
         if (pcm == -EPIPE) 
         {
             // Buffer overrun
@@ -248,13 +248,13 @@ int captureAudio(vector<vector<vector<float>>> &output, snd_pcm_t *pcm_handle) {
     // cout << "Data read from device.\n"; // Debugging
 
     // Populate the 3D vector with captured data (Unflatten the buffer)
-    for (int k = 0; k < FFT_SIZE; ++k) 
+    for (int k = 0; k < FFT_SIZE; k++) 
     {
-        for (int m = 0; m < M_AMOUNT; ++m) 
+        for (int m = 0; m < M_AMOUNT; m++) 
         {
-            for (int n = 0; n < N_AMOUNT; ++n) 
+            for (int n = 0; n < N_AMOUNT; n++) 
             {
-                output[m][n][k] = buffer[k * NUM_CHANNELS + (m * N_AMOUNT + n)];
+                output[m * N_AMOUNT * FFT_SIZE + n * FFT_SIZE + k] = buffer[m * N_AMOUNT + n];
             }
         }
     }

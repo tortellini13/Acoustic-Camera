@@ -84,10 +84,10 @@ int main()
     //==============================================================================================
     
     // Initializes array to receive data from Audio
-    vector<vector<float>> magnitudeInput(NUM_ANGLES, vector<float>(NUM_ANGLES));   
+    float magnitudeInput[TOTAL_ANGLES];   
 
     // Initializes array to send user config to Audio. Filled with default settings
-    vector<int> userConfigs(NUM_CONFIGS, 0);     // ***Might need to manually set default settings     
+    int userConfigs[NUM_CONFIGS];     // ***Might need to manually set default settings     
     
     // Initialize shared memory class
     sharedMemory shm(AUDIO_SHM, CONFIG_SHM, SEM_1, SEM_2, NUM_ANGLES, NUM_ANGLES, NUM_CONFIGS);   
@@ -194,7 +194,7 @@ int main()
         { 
             for (int columns = 0; columns < NUM_ANGLES; columns++)
             {
-                magnitudeFrame.at<int>(rows, columns) = magnitudeInput[rows][columns];
+                magnitudeFrame.at<int>(rows, columns) = magnitudeInput[rows * NUM_ANGLES + columns];
             }
         } 
 

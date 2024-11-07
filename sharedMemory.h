@@ -3,7 +3,6 @@
 
 // Other libraries
 #include <iostream>
-#include <vector>
 #include "PARAMS.h"
 
 // Required for shared memory and semaphore
@@ -39,10 +38,10 @@ public:
     bool closeAll();
 
     // Writes audio data then reads user configs
-    bool handleshm1(vector<vector<float>> data_input_1, vector<int>& data_output_2);
+    bool handleshm1(float data_input_1[], int data_output_2[]);
 
     // Reads audio data then writes user configs
-    bool handleshm2(vector<vector<float>>& data_output_1, vector<int> data_input_2);
+    bool handleshm2(float data_output_1[], int data_input_2[]);
 
 private:
     // General for all shared memory
@@ -351,7 +350,7 @@ bool sharedMemory::shmStart2()
 //=====================================================================================
 
 // Handles writing audio data, reading user configs, and syncing
-bool sharedMemory::handleshm1(vector<vector<float>> data_input_1, vector<int>& data_output_2)
+bool sharedMemory::handleshm1(float data_input_1[], int data_output_2[])
 {
     /*
     - Write shm_1
@@ -360,25 +359,19 @@ bool sharedMemory::handleshm1(vector<vector<float>> data_input_1, vector<int>& d
     - Read shm_2
     */
 
-    // Flatten the 2D vector into a 1D array
-    vector<float> flattened_data;
-    for (const auto& row : data_input_1)
-    {
-        flattened_data.insert(flattened_data.end(), row.begin(), row.end());
-    }
-
-    
+    /*
     // Debugging
-    cout << "1. Flattened data write:\n";
-    for (int i = 0; i < rows_1 * cols_1; i++)
+    cout << "1. Data to write:\n";
+    for (int i = 0; i < cols_1; i++)
     {
-        cout << flattened_data[i] << " ";
+        for (int j = 0; j < rows_1; j++)
+        cout << data_input_1[i * rows_1 + j] << " ";
     }
     cout << endl;
-    
+    */
 
     // Write audio data to shared memory
-    memcpy(shm_ptr_1, flattened_data.data(), shm_size_float);
+    memcpy(shm_ptr_1, data_input_1, shm_size_float);
     cout << "1. Audio data written to shared memory\n"; // Debugging
 
     //=====================================================================================
@@ -402,21 +395,21 @@ bool sharedMemory::handleshm1(vector<vector<float>> data_input_1, vector<int>& d
     //=====================================================================================
 
     // Ensure data_output is correctly allocated
-    if (data_output_2.data() == nullptr) 
+    if (data_output_2 == nullptr) 
     {
-        cerr << "1. data_output is null.\n";
+        cerr << "1. data_output_2 is null.\n";
         return false;
     }
 
     // Read data from the shared memory
     if (shm_ptr_2 == nullptr) 
     {
-        cerr << "1. Shared memory pointer is null.\n";
+        cerr << "1. shm_ptr_2 is null.\n";
         return false;
     }
 
     // Read from shared memory and write to output
-    memcpy(data_output_2.data(), shm_ptr_2, shm_size_int);
+    memcpy(data_output_2, shm_ptr_2, shm_size_int);
 
     return true;
 } // end write
@@ -424,7 +417,7 @@ bool sharedMemory::handleshm1(vector<vector<float>> data_input_1, vector<int>& d
 //=====================================================================================
 
 // Handles writing user configs, reading audio data, and syncing
-bool sharedMemory::handleshm2(vector<vector<float>>& data_output_1,vector<int> data_input_2)
+bool sharedMemory::handleshm2(float data_output_1[],int data_input_2[])
 {
     /*
     - Wait sem_1
@@ -443,47 +436,19 @@ bool sharedMemory::handleshm2(vector<vector<float>>& data_output_1,vector<int> d
 
     //=====================================================================================
 
-    // Ensure output size matches the number of rows and columns
-    data_output_1.resize(rows_1, vector<float>(cols_1));
-    cout << "2. resize done.\n";
-
-    // Read data from shared memory and reshape it into the 2D array
-    vector<float> flattened_data(rows_1 * cols_1);
-    cout << "2. flattened_data size done.\n";
-
     // Copy the data from shared memory into the flattened vector
-    memcpy(flattened_data.data(), shm_ptr_1, shm_size_float);
+    memcpy(data_output_1, shm_ptr_1, shm_size_float);
     cout << "2. memcpy done.\n";
 
     /*
     // Debugging
-    cout << "Flattened data read:\n";
-    for (int i = 0; i < rows * cols; i++)
+    cout << "Data read:\n";
+    for (int i = 0; i < cols_1; i++)
     {
-        cout << flattened_data[i] << " ";
-    }
-    cout << endl;
-    */
-
-    // Rebuild the 2D array from the flattened data
-    for (int i = 0; i < rows_1; i++)
-    {
-        for (int j = 0; j < cols_1; j++)
+        for (int j = 0; j < rows_1; j++)
         {
-            data_output_1[i][j] = flattened_data[i * cols_1 + j];
+            cout << flattened_data[i * rows_1 + j] << " ";
         }
-    }
-
-    /*
-    // Debugging
-    cout << "Reconstructed data:\n";
-    for (int i = 0; i < rows; i++)
-    {
-        for (int j = 0; j < cols; j++)
-        {
-            cout << data_output[i][j] << " ";
-        }
-        cout << endl;
     }
     cout << endl;
     */
@@ -491,8 +456,8 @@ bool sharedMemory::handleshm2(vector<vector<float>>& data_output_1,vector<int> d
     //=====================================================================================
 
     // Write data to shared memory
-    memcpy(shm_ptr_2, data_input_2.data(), shm_size_int);
-    //cout << "Data written to shared memory\n"; // Debugging
+    memcpy(shm_ptr_2, data_input_2, shm_size_int);
+    //cout << "2. Data written to shared memory\n"; // Debugging
 
     //=====================================================================================
 

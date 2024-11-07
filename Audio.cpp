@@ -2,7 +2,6 @@
 #include <iostream>
 #include <cmath>
 #include <complex>
-#include <vector>
 #include <math.h>
 #include <iomanip>
 #include <sys/mman.h>
@@ -37,13 +36,6 @@ cfloat ANGLES[NUM_ANGLES * NUM_ANGLES];
 // Needs to be 3D for input***
 // 3rd dimension is buffered data***
 // Will be made 3D after data acquisition is made***
-vector<vector<float>> DATA = // For testing***
-{
-	{1, 1, 1, 1},
-	{1, 1, 1, 1},
-	{1, 1, 1, 1},
-	{1, 1, 1, 1}
-};
 
 //==============================================================================================
 
@@ -66,9 +58,6 @@ int main()
     snd_pcm_uframes_t frames;
     int pcm;
 
-    // 3D vector to hold float data for M_AMOUNT x N_AMOUNT microphones and FFT_SIZE samples
-    vector<vector<vector<float>>> audioDataIn(M_AMOUNT, vector<vector<float>>(N_AMOUNT, vector<float>(FFT_SIZE)));
-
 	//==============================================================================================
 
     // Setup audio
@@ -89,11 +78,7 @@ int main()
 	int fullOctaveBandSelection = 0;
 	bool isRecording = 0;
 
-	vector<int> userConfigs(NUM_CONFIGS, 0); // Main user config array
-
-	// Initialize variables for audio data 
-	vector<vector<float>> audioDataFFT; // Data after FFT
-	vector<vector<float>> audioDataOut; // Fully processed data
+	int userConfigs[NUM_CONFIGS]; // Main user config array
 
 	//==============================================================================================
 
@@ -170,7 +155,7 @@ int main()
 
 		cout << "1. captureAudio start.\n";
 		// Read data from microphones
-        pcm = captureAudio(audioDataIn, pcm_handle);
+        pcm = captureAudio(AUDIO_DATA, pcm_handle);
         if (pcm < 0) 
         {
             cerr << "Error capturing audio" << endl;
@@ -334,7 +319,7 @@ int main()
 		//==============================================================================================
 		
 		// Write audio data to Video and read user configs
-		if(!shm.handleshm1(audioDataOut, userConfigs))
+		if(!shm.handleshm1(AUDIO_DATA_dBfs, userConfigs))
 		{
 			cerr << "1. writeRead1 failed.\n";
 		}
