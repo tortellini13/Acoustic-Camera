@@ -69,4 +69,10 @@ const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
 #define SEM_2 "/SEM_2"                  // Semaphore
 #define NUM_CONFIGS 5                   // Number of user configs
 
+// Post processing types
+#define post_dBFS 0
+#define post_dBZ 1
+#define post_dBA 2
+#define post_dBC 3
+
 #endif
