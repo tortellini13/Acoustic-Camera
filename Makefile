@@ -4,7 +4,7 @@ FLAGS = -lrt -lpthread -lasound
 
 FFT_FLAGS = -O3 -lfftw3 -lm
 
-HEADERS = PARAMS.h sharedMemory.h
+HEADERS = PARAMS.h sharedMemory.h ALSA.h beamform.h
 
 NAME_1 = Audio
 

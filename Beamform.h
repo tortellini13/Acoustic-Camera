@@ -21,33 +21,31 @@ using namespace std;
 class beamform
 {
 public:
-    // Initialize beamform
+    // Initialize beamform class
     beamform(int m_channels, int n_channels, int fft_size,
              int min_angle, int max_angle, int angle_step);
 
+    // Clear memory for all arrays
     ~beamform();
 
-    void setupConstants();
-
-    void handleData(float data_input, float data_output, int lower_frequency, int upper_frequency, uint8_t post_process_type);
+    // Beamforming > FFT > FFTCollapse > Post-Process
+    void processData(float data_input, float data_output,
+                    int lower_frequency, int upper_frequency,
+                    uint8_t post_process_type);
 
 private:
-    // Type
     typedef complex<float> cfloat;
 
-    // Functions
-    float degtorad(float angle_deg);
-
-    void FFTConstants();
-    
-    void FFTAngles();
-
+    // Beamforms input data from microphones
     void handleBeamforming(float* data_raw);
 
-    void FFTCalc();
+    // Performs FFT on beamformed data
+    void FFT();
 
+    // Sums all specifies frequency bins
     void FFTCollapse(int lower_frequency, int upper_frequency);
 
+    // Performs the specified post-processing to the data (dBfs, dbA, etc.)
     void postProcessData(uint8_t post_process_type);
 
     // Variables
@@ -102,6 +100,16 @@ beamform::beamform(int m_channels, int n_channels, int fft_size,
         data_fft = new double[total_num_angles * half_fft_size];
         data_fft_collapse = new float[total_num_angles];
         data_post_process = new float[total_num_angles];
+
+        // Precomputes all angles
+        for (int theta = min_angle, thetaIndex = 0; theta < num_angles; theta += angle_step, thetaIndex++) 
+        {
+            for (int phi = min_angle, phiIndex = 0; phi < num_angles; phi += angle_step, phiIndex++) 
+            {
+                float angle = (theta * m_channels + phi * m_channels) * (M_PI / 180);
+                angles[thetaIndex * NUM_ANGLES + phiIndex] = cfloat(cos(angle), sin(angle));
+            }
+        }
     };
 
 //=====================================================================================
@@ -120,47 +128,6 @@ beamform::~beamform()
     delete[] data_fft_collapse;
     delete[] data_post_process;
 }
-
-//=====================================================================================
-
-// Converts degrees to radians
-float beamform::degtorad(float angle_deg)
-{
-	return angle_deg * (M_PI / 180);
-} // end degtorad
-
-//=====================================================================================
-
-void beamform::FFTConstants()
-{
-    // Iterates through frequency mins
-    for (int k = 0; k < half_fft_size; k++)
-    {
-        float exponent1 = (-2 * M_PI * k) / half_fft_size;
-        constant_1[k] = cfloat(cos(exponent1), sin(exponent1)); // e^(i * 2 * pi * k / (N / 2))
-
-        // Produces constants for HALF_FFT_SIZE x HALF_BUFFER
-        for (int b = 0; b < half_fft_size; b++)
-        {
-            float exponent2 = exponent1 * b;
-            constant_2[k * HALF_FFT_SIZE + b] = cfloat(cos(exponent2), sin(exponent2)); // e^(i * 2 * pi * k * b / (N / 2))
-        }
-    }
-} // end FFTConstants
-
-//=====================================================================================
-
-void beamform::FFTAngles()
-{
-    for (int theta = min_angle, thetaIndex = 0; theta < num_angles; theta += angle_step, thetaIndex++) 
-    {
-        for (int phi = min_angle, phiIndex = 0; phi < num_angles; phi += angle_step, phiIndex++) 
-        {
-            float angle = degtorad(theta * m_channels + phi * m_channels);
-            angles[thetaIndex * NUM_ANGLES + phiIndex] = cfloat(cos(angle), sin(angle));
-        }
-    }
-} // end FFTAngles
 
 //=====================================================================================
 
@@ -192,7 +159,7 @@ void beamform::handleBeamforming(float* data_raw)
 
 //=====================================================================================
 
-void beamform::FFTCalc()
+void beamform::FFT()
 {
     // Create a plan for the complex-to-real 3D FFT
     fftw_plan plan = fftw_plan_dft_c2r_3d(num_angles, num_angles, fft_size, 
@@ -205,7 +172,7 @@ void beamform::FFTCalc()
     
     // Cleanup
     fftw_destroy_plan(plan);
-} // end FFTCalc
+} // end FFT
 
 //=====================================================================================
 
@@ -246,19 +213,12 @@ void beamform::postProcessData(uint8_t post_process_type)
 
 //=====================================================================================
 
-void beamform::setupConstants()
-{
-    FFTConstants();
-    FFTAngles();
-
-} // end setupConstants
-
-//=====================================================================================
-
-void beamform::handleData(float data_input, float data_output, int lower_frequency, int upper_frequency, uint8_t post_process_type)
+void beamform::processData(float data_input, float data_output,
+                          int lower_frequency, int upper_frequency, 
+                          uint8_t post_process_type)
 {
     handleBeamforming(&data_input);
-    FFTCalc();
+    FFT();
     FFTCollapse(lower_frequency, upper_frequency);
     postProcessData(post_process_type);
 } // end handleData
