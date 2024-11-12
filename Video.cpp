@@ -1,15 +1,19 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
-#include "PARAMS.h"
-#include "sharedMemory.h"
 #include <vector>
 #include <ctime>
 
-using namespace cv;
+#include "PARAMS.h"
+#include "sharedMemory.h"
+#include "ALSA.h"
+#include "Beamform.h"
+
 using namespace std;
+using namespace cv;
 
 //==============================================================================================
-//Configuration of callbacks for buttons
+
+// Configuration of callbacks for buttons
 int listMaxMagState = 1;
 int markMaxMagState = 1;
 int colorScaleState = 1;
