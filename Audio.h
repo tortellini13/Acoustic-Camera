@@ -5,7 +5,7 @@
 #include <iostream>
 #include <complex>
 #include <cmath>
-#include <omp.h> // For OpenMP parallelization if available
+#include <omp.h> // For multi-threading
 
 // External Libraries
 #include <fftw3.h> // FFT library
