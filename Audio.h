@@ -254,7 +254,7 @@ int captureAudio(float output[], snd_pcm_t *pcm_handle)
         {
             for (int n = 0; n < N_AMOUNT; n++) 
             {
-                output[m * N_AMOUNT * FFT_SIZE + n * FFT_SIZE + k] = buffer[m * N_AMOUNT + n];
+                output[m * N_AMOUNT * FFT_SIZE + n * FFT_SIZE + k] = buffer[k * NUM_CHANNELS + m * N_AMOUNT + n];
             }
         }
     }

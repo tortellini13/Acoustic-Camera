@@ -153,7 +153,7 @@ int main()
 
 		//==============================================================================================
 
-		cout << "1. captureAudio start.\n";
+		//cout << "1. captureAudio start.\n";
 		// Read data from microphones
         pcm = captureAudio(AUDIO_DATA, pcm_handle);
         if (pcm < 0) 
@@ -162,20 +162,33 @@ int main()
             // Decide whether to break or continue
             break;
         }
-		cout << "1. captureAudio done.\n";
+		//cout << "1. captureAudio done.\n";
+
+		/*
+		// Print out first frame of audio from buffer on each channel
+		for (int m = 0; m < M_AMOUNT; m++)
+		{
+			for (int n = 0; n < N_AMOUNT; n++)
+			{
+				cout << AUDIO_DATA[m * N_AMOUNT * FFT_SIZE + n * FFT_SIZE] << " ";
+			}
+			cout << endl;
+		}
+		cout << endl;
+		*/
 
 		//==============================================================================================
 
 		// Change input to audioDataIn*******
 		// User Configs
-		cout << "1. Selecting band type - ";
+		//cout << "1. Selecting band type - ";
 		switch (bandTypeSelection)
 		{
 			case 0:
 				//arrayFactor(DATA, audioDataOut); // *** for testing only with 2-D array
 
 				lowerFrequency = 1; upperFrequency = 511;
-				cout << "BroadBand" << endl;
+				//cout << "BroadBand" << endl;
 			break;
 			
 			//==============================================================================================
@@ -323,7 +336,7 @@ int main()
 		{
 			cerr << "1. writeRead1 failed.\n";
 		}
-		cout << "1. handleshm1 done.\n";
+		//cout << "1. handleshm1 done.\n";
 		
 	} // end loop
 	

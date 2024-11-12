@@ -182,12 +182,23 @@ int main()
         
         //==============================================================================================       
         
-        /*
+        
         // Reads audio data from shared memory and writes user configs to shared memory
         if (!shm.handleshm2(magnitudeInput, userConfigs))
         {
             cerr << "2. handleshm2 failed.\n";
         }
+        
+        /*		// Print out first frame of audio from buffer on each channel
+		for (int m = 0; m < NUM_ANGLES; m++)
+		{
+			for (int n = 0; n < NUM_ANGLES; n++)
+			{
+				cout << magnitudeInput[m * N_AMOUNT * FFT_SIZE + n * FFT_SIZE] << " ";
+			}
+			cout << endl;
+		}
+		cout << endl;
         */
 
         for (int rows = 0; rows < NUM_ANGLES; rows++) // Converts vector<vector<float>> into an OpenCV matrix
@@ -199,7 +210,7 @@ int main()
         } 
 
         // Generates random data for testing
-        randu(magnitudeFrame, Scalar(0), Scalar(300));
+        //randu(magnitudeFrame, Scalar(0), Scalar(300));
 
         //==============================================================================================
 

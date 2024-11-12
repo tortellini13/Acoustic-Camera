@@ -308,7 +308,7 @@ bool sharedMemory::shmStart2()
         close(shm_fd_1);  // Ensure file descriptor is closed on failure
         return false;
     }
-    cout << "Shared memory opened.\n"; // Debugging
+    cout << "2. Shared memory opened.\n"; // Debugging
 
     //=====================================================================================
 
@@ -372,7 +372,7 @@ bool sharedMemory::handleshm1(float data_input_1[], int data_output_2[])
 
     // Write audio data to shared memory
     memcpy(shm_ptr_1, data_input_1, shm_size_float);
-    cout << "1. Audio data written to shared memory\n"; // Debugging
+    //cout << "1. Audio data written to shared memory\n"; // Debugging
 
     //=====================================================================================
 
@@ -382,7 +382,7 @@ bool sharedMemory::handleshm1(float data_input_1[], int data_output_2[])
         perror("1. sem_post_1 failed.");
         return false;
     }
-    cout << "1. sem_post_1 done.\n";
+    //cout << "1. sem_post_1 done.\n";
 
     // Wait for shm 2 to be written
     if (sem_wait(sem_ptr_2) < 0) 
@@ -390,7 +390,7 @@ bool sharedMemory::handleshm1(float data_input_1[], int data_output_2[])
         perror("1. sem_wait_2 failed.");
         return false;
     }
-    cout << "1. sem_wait_2 done.\n";
+    //cout << "1. sem_wait_2 done.\n";
 
     //=====================================================================================
 
@@ -432,13 +432,13 @@ bool sharedMemory::handleshm2(float data_output_1[],int data_input_2[])
         perror("2. sem_wait_1 failed.");
         return false;
     }
-    cout << "2. sem_wait_1 done.\n";
+    //cout << "2. sem_wait_1 done.\n";
 
     //=====================================================================================
 
     // Copy the data from shared memory into the flattened vector
     memcpy(data_output_1, shm_ptr_1, shm_size_float);
-    cout << "2. memcpy done.\n";
+    //cout << "2. memcpy done.\n";
 
     /*
     // Debugging
@@ -467,7 +467,7 @@ bool sharedMemory::handleshm2(float data_output_1[],int data_input_2[])
         perror("2. sem_post_2 failed.");
         return false;
     }
-    cout << "2. sem_post_2 done.\n";
+    //cout << "2. sem_post_2 done.\n";
 
     return true;
 } // end read
