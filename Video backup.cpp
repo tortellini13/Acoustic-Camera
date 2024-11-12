@@ -77,54 +77,7 @@ Mat makeColorBar() {
     applyColorMap(scaleColor, colorBar, COLORMAP_INFERNO);
     return colorBar;
 }
-Mat DrawUI(Mat frameRGBA, string maximumText, Point maxPointScaled, Mat colorBar, double magnitudeMax, double magnitudeMin) {
 
-        // Graphics and Text
-        Mat frameRGB;
-
-        cvtColor(frameRGBA, frameRGB, COLOR_RGBA2RGB);
-        
-        if(listMaxMagState == 1){
-            Point maxTextLocation(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
-    
-            int textBaseline=0;
-            Size textSize = getTextSize(maximumText, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &textBaseline);
-            
-            rectangle(frameRGB, maxTextLocation + Point(0, textBaseline), maxTextLocation + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
-            putText(frameRGB, maximumText, maxTextLocation + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
-        }
-
-        if(markMaxMagState == 1) {
-            
-            drawMarker(frameRGB, maxPointScaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
-        }
-
-        if(colorScaleState == 1) {
-            
-            rectangle(frameRGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-            colorBar.copyTo(frameRGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
-
-            //Draw text indicating various points on the scale
-
-            float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
-            for (int i = 0; i < (SCALE_POINTS + 1); i++) {
-                
-                
-                Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
-                double scaleTextValue = ((static_cast<double>(magnitudeMax - magnitudeMin) * scaleTextRatio * static_cast<double>(i)) + magnitudeMin); //Value of text for each point
-
-                ostringstream scaleTextStream;
-                scaleTextStream << fixed << setprecision(LABEL_PRECISION) << scaleTextValue;
-                String scaleTextString = scaleTextStream.str() + " ";
-
-                putText(frameRGB, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
-                line(frameRGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
-            }
-
-        }
-
-    return frameRGB;
-}
 //Heat Map Functions
 Mat HeatMapAlphaMerge(Mat heatMapData, Mat heatMapRGBA, Mat frameRGBA, int thresholdValue, double alpha) {
     for(int y = 0; y < heatMapData.rows; ++y)
@@ -207,6 +160,7 @@ int main()
     
     int frameCount = 0;
     int thresholdValue;
+    int threshTrackMax = MAP_THRESHOLD_MAX;
 
     Point maxPoint;
     
@@ -254,7 +208,25 @@ int main()
         //==============================================================================================       
         
         
+        // Reads audio data from shared memory and writes user configs to shared memory
+        /*
+        if (!shm.handleshm2(magnitudeInput, userConfigs))
+        {
+            cerr << "2. handleshm2 failed.\n";
+        }
+        */
         
+        /*		// Print out first frame of audio from buffer on each channel
+		for (int m = 0; m < NUM_ANGLES; m++)
+		{
+			for (int n = 0; n < NUM_ANGLES; n++)
+			{
+				cout << magnitudeInput[m * N_AMOUNT * FFT_SIZE + n * FFT_SIZE] << " ";
+			}
+			cout << endl;
+		}
+		cout << endl;
+        */
 
         for (int rows = 0; rows < NUM_ANGLES; rows++) // Converts vector<vector<float>> into an OpenCV matrix
         { 
@@ -300,10 +272,71 @@ int main()
         alpha = static_cast<double>(getTrackbarPos("Alpha", "Heat Map Overlay"))/100;
         
         if (heatMapState == 1) {
-            frameRGBA =  HeatMapAlphaMerge(heatMapData, heatMapRGBA, frameRGBA, thresholdValue, alpha);
+        /*
+        for(int y = 0; y < heatMapData.rows; ++y)
+        {
+            for (int x = 0; x < heatMapData.cols; ++x) 
+            {
+                if (heatMapData.at<uchar>(y, x) > thresholdValue) 
+                {
+                    Vec4b& pixel = frameRGBA.at<Vec4b>(y, x);         // Current pixel in camera
+                    Vec4b heatMapPixel = heatMapRGBA.at<Vec4b>(y, x); // Current pixel in heatmap
+
+                    // Loops through R G & B channels
+                    for (int c = 0; c < 3; c++) 
+                    {
+                        // Merges heatmap with video and applies alpha value
+                        pixel[c] = static_cast<uchar>(alpha * heatMapPixel[c] + (1 - alpha) * pixel[c]);
+                    } 
+                }
+            }
+        } // end alphaMerge 
+        */
+      frameRGBA =  HeatMapAlphaMerge(heatMapData, heatMapRGBA, frameRGBA, thresholdValue, alpha);
+    }
+
+        // Graphics and Text
+        
+        cvtColor(frameRGBA, frameRGB, COLOR_RGBA2RGB);
+        
+        if(listMaxMagState == 1){
+            Point maxTextLocation(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
+    
+            int textBaseline=0;
+            Size textSize = getTextSize(maximumText, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &textBaseline);
+            
+            rectangle(frameRGB, maxTextLocation + Point(0, textBaseline), maxTextLocation + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+            putText(frameRGB, maximumText, maxTextLocation + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
         }
 
-        frameRGB = DrawUI(frameRGBA, maximumText, maxPointScaled, colorBar, magnitudeMax, magnitudeMin);
+        if(markMaxMagState == 1) {
+            
+            drawMarker(frameRGB, maxPointScaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
+        }
+
+        if(colorScaleState == 1) {
+            
+            rectangle(frameRGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+            colorBar.copyTo(frameRGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
+
+            //Draw text indicating various points on the scale
+
+            float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
+            for (int i = 0; i < (SCALE_POINTS + 1); i++) {
+                
+                
+                Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
+                double scaleTextValue = ((static_cast<double>(magnitudeMax - magnitudeMin) * scaleTextRatio * static_cast<double>(i)) + magnitudeMin); //Value of text for each point
+
+                ostringstream scaleTextStream;
+                scaleTextStream << fixed << setprecision(LABEL_PRECISION) << scaleTextValue;
+                String scaleTextString = scaleTextStream.str() + " ";
+
+                putText(frameRGB, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
+                line(frameRGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
+            }
+
+        }
         
         if (FPSCountState == 1) {
             ostringstream FPSStream;
