@@ -39,15 +39,15 @@ private:
     void onResetUI(int state, void* userdata);
 
     // Variables
-    double FPSTimeStart;
+    double FPS_time_start;
     double FPS = 0;
-    int frameCount = 0;
+    int frame_count = 0;
     
     // Configuration of callbacks for buttons
-    int listMaxMagState = 1;
-    int markMaxMagState = 1;
-    int colorScaleState = 1;
-    int heatMapState = 1;
+    int list_max_mag_state = 1;
+    int mark_max_mag_state = 1;
+    int color_scale_state = 1;
+    int heat_map_state = 1;
     int FPSCountState = 1;
     int resetUIState = 0;
     int recordingState = 0;
@@ -81,16 +81,16 @@ video::~video()
 
 
 void video::onListMaxMag(int state, void* userdata) {
-    listMaxMagState = state; // Update button state
+    list_max_mag_state = state; // Update button state
 }
 void video::onMarkMaxMag(int state, void* userdata) {
-    markMaxMagState = state; // Update button state
+    mark_max_mag_state = state; // Update button state
 }
 void video::onColorScaleState(int state, void* userdata) {
-    colorScaleState = state;
+    color_scale_state = state;
 }
 void video::onHeatMap(int state, void* userdata) {
-    heatMapState = state;
+    heat_map_state = state;
   
 }
 void video::onFPSCount(int state, void* userdata) {
@@ -104,7 +104,7 @@ void video::onResetUI(int state, void* userdata) {
     //Set initial trackbar positions
     setTrackbarPos("Threshold", "Heat Map Overlay", DEFAULT_THRESHOLD);
     setTrackbarPos("Alpha", "Heat Map Overlay", DEFAULT_ALPHA);   
-    FPSTimeStart = getTickCount();
+    FPS_time_start = getTickCount();
 }
 
 void video::initializeWindow() {
