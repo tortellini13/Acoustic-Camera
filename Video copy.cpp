@@ -7,18 +7,15 @@
 #include "sharedMemory.h"
 //#include "ALSA.h"
 //#include "Beamform.h"
-#include "Video.h"
 
 using namespace std;
 using namespace cv;
-
-video balls(1);
 
 //==============================================================================================
 
 // Initialize video capture and writer
     
-    
+    VideoWriter video1;
 
 // Initialize Variables
 
@@ -52,7 +49,7 @@ Mat DrawUI(Mat frameRGBA, string maximumText, Point maxPointScaled, Mat colorBar
 
         cvtColor(frameRGBA, frameRGB, COLOR_RGBA2RGB);
         
-        //if(listMaxMagState == 1){
+        if(listMaxMagState == 1){
             Point maxTextLocation(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
     
             int textBaseline=0;
@@ -60,14 +57,14 @@ Mat DrawUI(Mat frameRGBA, string maximumText, Point maxPointScaled, Mat colorBar
             
             rectangle(frameRGB, maxTextLocation + Point(0, textBaseline), maxTextLocation + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
             putText(frameRGB, maximumText, maxTextLocation + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
-        //}
+        }
 
-        //if(markMaxMagState == 1) {
+        if(markMaxMagState == 1) {
             
             drawMarker(frameRGB, maxPointScaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
-        //}
+        }
 
-        //if(colorScaleState == 1) {
+        if(colorScaleState == 1) {
             
             rectangle(frameRGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
             colorBar.copyTo(frameRGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
@@ -89,7 +86,7 @@ Mat DrawUI(Mat frameRGBA, string maximumText, Point maxPointScaled, Mat colorBar
                 line(frameRGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
             }
 
-        //}
+        }
 
     return frameRGB;
 }
@@ -115,22 +112,22 @@ Mat HeatMapAlphaMerge(Mat heatMapData, Mat heatMapRGBA, Mat frameRGBA, int thres
         } // end alphaMerge
     return frameRGBA;
 }
-// double FPSCalculator() {
-//  if (FPSCountState == 1) {
-//             frameCount++;
-//             if (frameCount == FPS_COUNTER_AVERAGE) {
-//                 double FPSTimeEnd = getTickCount();
-//                 double FPSTimeDifference = (FPSTimeEnd - FPSTimeStart) / getTickFrequency();
-//                 FPSTimeStart = FPSTimeEnd;
-//                 FPS = frameCount / FPSTimeDifference;
-//                 frameCount = 0;
+double FPSCalculator() {
+ if (FPSCountState == 1) {
+            frameCount++;
+            if (frameCount == FPS_COUNTER_AVERAGE) {
+                double FPSTimeEnd = getTickCount();
+                double FPSTimeDifference = (FPSTimeEnd - FPSTimeStart) / getTickFrequency();
+                FPSTimeStart = FPSTimeEnd;
+                FPS = frameCount / FPSTimeDifference;
+                frameCount = 0;
                 
-//             }
+            }
         
-//         }
+        }
 
-//     return FPS;
-//}
+    return FPS;
+}
 Mat mainLoop(Mat frame, int codec, string videoFileName) {
     double magnitudeMin;
     double magnitudeMax;
@@ -142,18 +139,18 @@ Mat mainLoop(Mat frame, int codec, string videoFileName) {
     Mat magnitudeFrame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0)); // Single channel, magnitude matrix, initialized to 0
     Mat colorBar(SCALE_HEIGHT, SCALE_WIDTH, CV_8UC3);
     
-    // if (recordingStateChangeFlag == 1) {
-    //         if (recordingState == 1) {
-    //             ostringstream videoFileStream;
-    //             videoFileStream << "./" << videoFileName << " " << time(nullptr) << ".avi" ;
-    //             string videoFileFullOutput = videoFileStream.str();
-    //             video1.open(videoFileFullOutput, codec, FRAME_RATE, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 1);
-    //         }
-    //         if (recordingState == 0) {
-    //             video1.release();
-    //         }
-    //         recordingStateChangeFlag = 0;
-    //     }
+    if (recordingStateChangeFlag == 1) {
+            if (recordingState == 1) {
+                ostringstream videoFileStream;
+                videoFileStream << "./" << videoFileName << " " << time(nullptr) << ".avi" ;
+                string videoFileFullOutput = videoFileStream.str();
+                video1.open(videoFileFullOutput, codec, FRAME_RATE, Size(RESOLUTION_WIDTH, RESOLUTION_HEIGHT), 1);
+            }
+            if (recordingState == 0) {
+                video1.release();
+            }
+            recordingStateChangeFlag = 0;
+        }
 
          randu(magnitudeFrame, Scalar(0), Scalar(300));
 
@@ -189,25 +186,25 @@ Mat mainLoop(Mat frame, int codec, string videoFileName) {
         thresholdValue = getTrackbarPos("Threshold", "Heat Map Overlay");
         alpha = static_cast<double>(getTrackbarPos("Alpha", "Heat Map Overlay"))/100;
         
-        //if (heatMapState == 1) {
+        if (heatMapState == 1) {
             frameRGBA =  HeatMapAlphaMerge(heatMapData, heatMapRGBA, frameRGBA, thresholdValue, alpha);
-        //}
+        }
         
         colorBar = makeColorBar();
         frameRGB = DrawUI(frameRGBA, maximumText, maxPointScaled, colorBar, magnitudeMax, magnitudeMin);
         
-       // if (FPSCountState == 1) {
-    //         ostringstream FPSStream;
-    //         FPSStream << fixed << setprecision(LABEL_PRECISION) << FPS;
-    //         String FPSString = "FPS: " + FPSStream.str();
-    //         int FPSBaseline = 0;
-    //         Point FPSTextLocation(20, 460);
-    //         Size FPStextSize = getTextSize(FPSString, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &FPSBaseline);
+        if (FPSCountState == 1) {
+            ostringstream FPSStream;
+            FPSStream << fixed << setprecision(LABEL_PRECISION) << FPS;
+            String FPSString = "FPS: " + FPSStream.str();
+            int FPSBaseline = 0;
+            Point FPSTextLocation(20, 460);
+            Size FPStextSize = getTextSize(FPSString, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &FPSBaseline);
             
-    //         rectangle(frameRGB, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
-    //         putText(frameRGB, FPSString, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
+            rectangle(frameRGB, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+            putText(frameRGB, FPSString, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
             
-    //    // }
+        }
 
     return frameRGB;
 
@@ -228,8 +225,8 @@ int main()
     //==============================================================================================
     
     // Initially open window
-    balls.initializeWindow();
-    
+    initializeWindow();
+    onResetUI(1,0);
 
     cout << "2. Starting main loop.\n";
 
@@ -247,15 +244,15 @@ int main()
 
         // Record if set to record
         
-        //if (recordingState == 1) { 
-           // video1.write(frameRGB);
-        //}
+        if (recordingState == 1) { 
+            video1.write(frameRGB);
+        }
         
         //==============================================================================================
 
         // Break loop if key is pressed
         if (waitKey(1) >= 0) break;
-        //FPS = FPSCalculator();
+        FPS = FPSCalculator();
     
     }   // end loop
 

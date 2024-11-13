@@ -1,10 +1,10 @@
-OPENCV_FLAGS = "-I/usr/local/include/" `pkg-config --cflags --libs opencv4`
+OPENCV_FLAGS = `pkg-config --cflags --libs opencv4`
 
 FLAGS = -lrt -lpthread -lasound
 
 FFT_FLAGS = -O3 -lfftw3 -lm
 
-HEADERS = PARAMS.h sharedMemory.h ALSA.h beamform.h
+HEADERS = PARAMS.h sharedMemory.h Video.h
 
 NAME_1 = Audio
 
