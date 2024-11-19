@@ -23,7 +23,7 @@ const int DATA_SIZE_BUFFER = TOTAL_ANGLES * FFT_SIZE;              // For beamfo
 const int DATA_SIZE_BUFFER_HALF = TOTAL_ANGLES * HALF_FFT_SIZE;    // For FFT data
 
 // Audio
-const char* AUDIO_INPUT_NAME = "hw:1,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:1,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                // Audio sample rate
 
 // Camera

@@ -1,5 +1,5 @@
-#ifndef ALSA_SOUND
-#define ALSA_SOUND
+#ifndef ALSA_H
+#define ALSA_H
 
 // Internal Libraries
 #include <iostream>

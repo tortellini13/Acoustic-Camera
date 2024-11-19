@@ -29,7 +29,7 @@ public:
     void initializeWindow();
 
     // Captures a frame of video and renders all elements
-    Mat processFrame(int codec, string video_file_name);
+    Mat processFrame(float* data_input, int codec, string video_file_name);
 
 
 private:
@@ -52,7 +52,7 @@ private:
     void makeColorBar(int scale_height, int scale_width);
 
     // Draws UI elements
-    Mat drawUI(Mat frame_RGBA, string maximum_text, Point max_point_scaled, Mat color_bar, double magnitude_max, double magnitude_min);
+    Mat drawUI(string maximum_text, double magnitude_max, double magnitude_min);
 
     // Input Parameters
     int frame_width;
@@ -279,7 +279,7 @@ void video::makeColorBar(int scale_height, int scale_width)
 
 //=====================================================================================
 
-Mat video::drawUI(Mat frame_RGBA, string maximum_text, Point max_point_scaled, Mat color_bar, double magnitude_max, double magnitude_min) 
+Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_min) 
 {
     // Graphics and Text
     cvtColor(frame_RGBA, frame_RGB, COLOR_RGBA2RGB);
@@ -348,7 +348,7 @@ Mat heatMapAlphaMerge(Mat heat_map_data, Mat heat_map_RGBA, Mat frame_RGBA, int 
     return frame_RGBA;
 } // end heatMapAlphaMerge
 
-Mat video::processFrame(int codec, string video_file_name) 
+Mat video::processFrame(float* data_input, int codec, string video_file_name) 
 {
     // Capture a frame from the camera
     cap >> frame;
@@ -372,6 +372,8 @@ Mat video::processFrame(int codec, string video_file_name)
     randu(magnitude_frame, Scalar(0), Scalar(300));
 
     //==============================================================================================
+
+    // ***SWAP MAGNITUDE_FRAME FOR DATA_INPUT WHEN READY TO SWITCH TO MICROPHONES***
 
     // Magnitude data processing
     resize(magnitude_frame, heat_map_data, 
@@ -405,15 +407,16 @@ Mat video::processFrame(int codec, string video_file_name)
     threshold_value = getTrackbarPos("Threshold", "Heat Map Overlay");
     alpha = static_cast<double>(getTrackbarPos("Alpha", "Heat Map Overlay")) / 100;
     
-    //if (heatMapState == 1) {
+    if (heat_map_state == 1) 
+    {
         frame_RGBA = heatMapAlphaMerge(heat_map_data, heat_map_RGBA, frame_RGBA, threshold_value, heatmap_alpha);
-    //}
+    }
     
     // Creates color bar
     makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
 
     // Draws UI
-    frame_RGB = drawUI(frame_RGBA, mag_max_string, max_point_scaled, color_bar, magnitude_max, magnitude_min);
+    frame_RGB = drawUI(mag_max_string, magnitude_max, magnitude_min);
     
     /*
     if (fps_count_state == 1) 

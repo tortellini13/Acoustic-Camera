@@ -4,15 +4,12 @@
 #include <ctime>
 
 #include "PARAMS.h"
-#include "sharedMemory.h"
-//#include "ALSA.h"
-//#include "Beamform.h"
+#include "ALSA.h"
+#include "Beamform.h"
 #include "Video.h"
 
 using namespace std;
 using namespace cv;
-
-video balls(1);
 
 //==============================================================================================
 
@@ -35,8 +32,6 @@ video balls(1);
 //     return FPS;
 //}
 
-
-
 int main() 
 {
     /*
@@ -50,36 +45,43 @@ int main()
     - ~video() after while loop
     */
 
-
-
-
-
     //==============================================================================================
     
     // Video frame and capture settings
-                     // Set framerate of capture from PARAMS.h
+    // Set framerate of capture from PARAMS.h
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
-    string videoFileName = "testoutput";           // Set video file output file name
+    string video_file_name = "testoutput";           // Set video file output file name
+    
+    // Audio data storage
+    float audio_data[NUM_ANGLES] = {0.0f};
 
+    // Output from all video processing to show
     Mat frame;
     
+    // Initialize classes
+    ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
+    video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE, MAP_THRESHOLD, ALPHA);
+
     //==============================================================================================
     
-    // Initially open window
-    balls.initializeWindow();
+    // Setup audio
+    ALSA.setupAudio();
+
+    // Open window
+    video.initializeWindow();
     
-
-    cout << "2. Starting main loop.\n";
-
-    while                                                                                                                                                                                                                                                                                                                                                                                                                           (true) 
+    cout << "Starting loop.\n";
+    // Loop to calculate audio and display video
+    while (1) // if this reads while(true) you will die. Source: saw it in a dream after drinking a monster and taking melatonin
     {
-       
-        cap >> frame; // Capture the frame
-        
-        Mat frameRGB = mainLoop(frame, codec, videoFileName);
+        // Recieve audio and process data
+        ALSA.recordAudio(audio_data);
+
+        // Does all processing to frame including drawing UI and doing heat map
+        frame = video.processFrame(audio_data, codec, video_file_name);
        
         // Shows frame
-        imshow("Heat Map Overlay", frameRGB);
+        imshow("Heat Map Overlay", frame);
  
         //==============================================================================================                               
 
@@ -93,7 +95,9 @@ int main()
 
         // Break loop if key is pressed
         if (waitKey(1) >= 0) break;
-        //FPS = FPSCalculator();
+
+        // Calculates fpr
+        // fps = FPSCalculator();
     
     }   // end loop
 
