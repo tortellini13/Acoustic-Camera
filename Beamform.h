@@ -133,7 +133,7 @@ beamform::~beamform()
 
 void beamform::handleBeamforming(float* data_raw)
 {
-    #pragma omp parallel for collapse(2) // Parallelize theta and phi loops
+    //#pragma omp parallel for collapse(2) // Parallelize theta and phi loops
     for (int thetaIndex = 0; thetaIndex < num_angles; thetaIndex++) 
     {
         for (int phiIndex = 0; phiIndex < num_angles; phiIndex++) 

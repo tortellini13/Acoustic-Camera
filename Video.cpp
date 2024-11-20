@@ -83,14 +83,6 @@ int main()
         // Shows frame
         imshow("Heat Map Overlay", frame);
  
-        //==============================================================================================                               
-
-        // Record if set to record
-        
-        //if (recordingState == 1) { 
-           // video1.write(frameRGB);
-        //}
-        
         //==============================================================================================
 
         // Break loop if key is pressed

@@ -90,8 +90,7 @@ private:
     Point max_point_scaled; // Coords scaled to frame
 
     // For printing values to screen
-    ostringstream mag_max_stream;
-    String mag_max_string;
+    
     ostringstream fps_stream;
     String fps_string;
 
@@ -391,8 +390,12 @@ Mat video::processFrame(float* data_input, int codec, string video_file_name)
     max_point_scaled.y = (static_cast<double>(max_coord.y) / static_cast<double>(magnitude_frame.rows)) * RESOLUTION_HEIGHT;
 
     // Prepare maximum value to be printed
+    ostringstream mag_max_stream;
+    String mag_max_string;
+    
     mag_max_stream << fixed << setprecision(LABEL_PRECISION) << magnitude_max;
     mag_max_string = "Maximum = " + mag_max_stream.str();
+   
     
     //==============================================================================================
     
@@ -409,7 +412,7 @@ Mat video::processFrame(float* data_input, int codec, string video_file_name)
     
     if (heat_map_state == 1) 
     {
-        frame_RGBA = heatMapAlphaMerge(heat_map_data, heat_map_RGBA, frame_RGBA, threshold_value, heatmap_alpha);
+        frame_RGBA = heatMapAlphaMerge(heat_map_data, heat_map_RGBA, frame_RGBA, threshold_value, alpha);
     }
     
     // Creates color bar
