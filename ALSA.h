@@ -25,7 +25,7 @@ public:
     ~ALSA();
 
     // Send settings to audio device
-    bool setupAudio();
+    bool setup();
 
     // Call this in a loop to record audio
     bool recordAudio(float data_output[]);
@@ -63,11 +63,12 @@ ALSA::ALSA(const char* device_name, int total_channels, int sample_rate, int num
     num_channels(total_channels),
     rate(sample_rate),
     frames(num_frames),
-    frame_size(total_channels),
-    buffer_size(frames * num_channels * num_bytes)
+    frame_size(total_channels * num_frames),
+    buffer_size(frames * num_channels)
     {
         // Allocate memory for dataBuffer
-        data_buffer = new int[buffer_size];
+        data_buffer = new int32_t[buffer_size];  
+        cout << "data_buffer: " << sizeof(data_buffer) << endl;
     }
 
 //=====================================================================================
@@ -79,7 +80,7 @@ ALSA::~ALSA()
 
 //=====================================================================================
 
-bool ALSA::setupAudio()
+bool ALSA::setup()
 {
     // Allocate hw_params on the stack
     snd_pcm_hw_params_alloca(&hw_params);
@@ -160,6 +161,7 @@ bool ALSA::setupAudio()
 
 //=====================================================================================
 
+// Data outputs to M * N * FFT_SIZE array
 bool ALSA::recordAudio(float data_output[])
 {
     // Read data from microphones into interlaced buffer
@@ -191,7 +193,7 @@ bool ALSA::recordAudio(float data_output[])
         {
             for (int m = 0; m < COLS; m++)
             {
-                data_output[m * ROWS * frames + n * frames + b] = static_cast<float>(data_buffer[b * COLS * ROWS + n * COLS + m]);
+                data_output[m * ROWS * frames + n * frames + b] = static_cast<float>(data_buffer[b * num_channels + (n * COLS + m)]);
             }
         }
     }

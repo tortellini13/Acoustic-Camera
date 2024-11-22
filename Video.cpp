@@ -52,23 +52,34 @@ int main()
     int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
     string video_file_name = "testoutput";           // Set video file output file name
     
-    // Audio data storage
-    float audio_data[NUM_ANGLES] = {0.0f};
+    // Audio data [M * N * FFT_SIZE]
+    float audio_data[NUM_CHANNELS * FFT_SIZE] = {0.0f};
+    cout << "audio_data\n";
+
+    // Beamformed and post-processed data [NUM_ANGLES * NUMANGLES]
+    float processed_data[TOTAL_ANGLES] = {0.0f};
+    cout << "processed_data\n";
 
     // Output from all video processing to show
     Mat frame;
     
     // Initialize classes
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
-    video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE, MAP_THRESHOLD, ALPHA);
+    cout << "ALSA\n";
+    beamform beamform(M_AMOUNT, N_AMOUNT, FFT_SIZE, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP);
+    cout << "beamform\n";
+    //video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE, MAP_THRESHOLD, ALPHA);
 
     //==============================================================================================
     
-    // Setup audio
-    ALSA.setupAudio();
+    // Setup audio and data processing
+    ALSA.setup();
+    cout << "ALSA.setup\n";
+    beamform.setup();
+    cout << "beamform.setup\n";
 
     // Open window
-    video.initializeWindow();
+    //video.initializeWindow();
     
     cout << "Starting loop.\n";
     // Loop to calculate audio and display video
@@ -76,17 +87,22 @@ int main()
     {
         // Recieve audio and process data
         ALSA.recordAudio(audio_data);
+        cout << "recordAudio.\n";
+
+        beamform.processData(audio_data, processed_data, 0, 511, POST_dBFS);
+        cout << "processData.\n";
+
 
         // Does all processing to frame including drawing UI and doing heat map
-        frame = video.processFrame(audio_data, codec, video_file_name);
+        //frame = video.processFrame(audio_data, codec, video_file_name);
        
         // Shows frame
-        imshow("Heat Map Overlay", frame);
+        //imshow("Heat Map Overlay", frame);
  
         //==============================================================================================
 
         // Break loop if key is pressed
-        if (waitKey(1) >= 0) break;
+        //if (waitKey(1) >= 0) break;
 
         // Calculates fpr
         // fps = FPSCalculator();
