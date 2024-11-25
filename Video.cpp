@@ -100,29 +100,27 @@ int main()
         ALSA_time.end();
 
         beamform_time.start();
-        //beamform.processData(audio_data, processed_data, 0, 511, POST_dBFS);
+        beamform.processData(audio_data, processed_data, 0, 511, POST_dBFS);
         //cout << "processData.\n"; // (debugging)
         beamform_time.end();
 
         video_time.start();
         // Does all processing to frame including drawing UI and doing heat map
-        //frame = video.processFrame(processed_data, codec, video_file_name);
+        frame = video.processFrame(processed_data, codec, video_file_name);
        
         // Shows frame
-        //imshow("Heat Map Overlay", frame);
+        imshow("Heat Map Overlay", frame);
         video_time.end();
 
         //==============================================================================================
 
         double total_time = ALSA_time.time() + beamform_time.time() + video_time.time();
 
-        if (total_time > max_frame_time)
-        {
-            ALSA_time.print();
-            beamform_time.print();
-            video_time.print();
-            cout << "Total time: " << total_time << " seconds.\n\n";
-        }
+        ALSA_time.print();
+        beamform_time.print();
+        video_time.print();
+        cout << "Total time: " << total_time << " seconds.\n\n";
+
         
 
         // Break loop if key is pressed

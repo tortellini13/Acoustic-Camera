@@ -11,7 +11,6 @@
 // Header Files
 #include "PARAMS.h"
 #include "Structs.h"
-#include "Timer.h"
 
 using namespace std;
 
