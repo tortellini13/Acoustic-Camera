@@ -10,6 +10,7 @@
 
 // Header Files
 #include "PARAMS.h"
+#include "Structs.h"
 
 using namespace std;
 
@@ -28,7 +29,7 @@ public:
     bool setup();
 
     // Call this in a loop to record audio
-    bool recordAudio(float data_output[]);
+    bool recordAudio(float3D& data_output);
 
 private:
     // Configs
@@ -54,6 +55,7 @@ private:
     snd_pcm_uframes_t buffer_size;  // Size of buffer (BUFFER_SIZE * NUM_BYTES * NUM_CHANNELS)
     int32_t* data_buffer;           // Buffer for interlaced data to be written to
     int pcm_return;                 // Return value for pcm reading (for error handling)
+
 }; // end class def
 
 //=====================================================================================
@@ -68,7 +70,6 @@ ALSA::ALSA(const char* device_name, int total_channels, int sample_rate, int num
     {
         // Allocate memory for dataBuffer
         data_buffer = new int32_t[buffer_size];  
-        cout << "data_buffer: " << sizeof(data_buffer) << endl;
     }
 
 //=====================================================================================
@@ -154,7 +155,7 @@ bool ALSA::setup()
         return false;
     }
 
-    cout << "Finished setting up Audio.\n";
+    cout << "Finished setting up Audio.\n"; // (debugging)
 
     return true;
 } // end setupAudio
@@ -162,7 +163,7 @@ bool ALSA::setup()
 //=====================================================================================
 
 // Data outputs to M * N * FFT_SIZE array
-bool ALSA::recordAudio(float data_output[])
+bool ALSA::recordAudio(float3D& data_output)
 {
     // Read data from microphones into interlaced buffer
     pcm_return = snd_pcm_readi(pcm_handle, data_buffer, frames);
@@ -193,7 +194,7 @@ bool ALSA::recordAudio(float data_output[])
         {
             for (int m = 0; m < COLS; m++)
             {
-                data_output[m * ROWS * frames + n * frames + b] = static_cast<float>(data_buffer[b * num_channels + (n * COLS + m)]);
+                data_output.at(m, n, b) = static_cast<float>(data_buffer[b * num_channels + (n * COLS + m)]);
             }
         }
     }

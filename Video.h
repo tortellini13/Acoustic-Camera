@@ -30,7 +30,7 @@ public:
     void initializeWindow();
 
     // Captures a frame of video and renders all elements
-    Mat processFrame(float* data_input, int codec, string video_file_name);
+    Mat processFrame(Mat& data_input, int codec, string video_file_name);
 
 
 private:
@@ -54,6 +54,9 @@ private:
 
     // Draws UI elements
     Mat drawUI(string maximum_text, double magnitude_max, double magnitude_min);
+
+    // Converts a float2D to a Mat
+    Mat float2DtoMat(float2D& data_input);
 
     // Input Parameters
     int frame_width;
@@ -344,13 +347,13 @@ Mat heatMapAlphaMerge(Mat heat_map_data, Mat heat_map_RGBA, Mat frame_RGBA, int 
     return frame_RGBA;
 } // end heatMapAlphaMerge
 
-Mat video::processFrame(float* data_input, int codec, string video_file_name) 
+Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name) 
 {
     // Capture a frame from the camera
     cap >> frame;
     
     Mat heat_map_data(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1); // Make heat map data matrix
-    Mat magnitude_frame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0));       // Single channel, magnitude matrix, initialized to 0
+    //Mat magnitude_frame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0));       // Single channel, magnitude matrix, initialized to 0
     
 /*      if (recordingStateChangeFlag == 1) {
              if (recordingState == 1) {
@@ -365,7 +368,7 @@ Mat video::processFrame(float* data_input, int codec, string video_file_name)
              recordingStateChangeFlag = 0;
          } */
 
-    randu(magnitude_frame, Scalar(0), Scalar(300));
+    //randu(magnitude_frame, Scalar(0), Scalar(300));
 
     //==============================================================================================
 
