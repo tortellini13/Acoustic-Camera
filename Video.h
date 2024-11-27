@@ -3,6 +3,7 @@
 
 // Internal Libraries
 #include <iostream>
+#include <ctime>
 
 // External Libraries
 #include <opencv2/opencv.hpp>
@@ -89,13 +90,9 @@ private:
     Point max_coord;        // Coords from data
     Point max_point_scaled; // Coords scaled to frame
 
-    // For printing values to screen
-    
-    ostringstream fps_stream;
-    String fps_string;
-
     // Variables
     double fps_time_start;
+    double fps_time_end;
     double fps = 0;
     int frame_count = 0;
     int text_baseline = 0;
@@ -421,9 +418,21 @@ Mat video::processFrame(float* data_input, int codec, string video_file_name)
     // Draws UI
     frame_RGB = drawUI(mag_max_string, magnitude_max, magnitude_min);
     
-    /*
-    if (fps_count_state == 1) 
+    
+    if (FPS_count_state == 1) 
     {
+        frame_count++;
+        if (frame_count == 10) {
+            fps_time_end = getTickCount();
+            double FPSTimeDifference = (fps_time_end - fps_time_start) / getTickFrequency();
+            fps_time_start = fps_time_end;
+            fps = frame_count / FPSTimeDifference;
+            frame_count = 0;
+        }
+
+
+        ostringstream fps_stream;
+        String fps_string;
         fps_stream << fixed << setprecision(LABEL_PRECISION) << fps;
         fps_string = "FPS: " + fps_stream.str();
         int FPSBaseline = 0;
@@ -433,7 +442,7 @@ Mat video::processFrame(float* data_input, int codec, string video_file_name)
         rectangle(frame_RGB, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
         putText(frame_RGB, fps_string, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
     }
-    */
+    
     return frame_RGB;
 }
 
