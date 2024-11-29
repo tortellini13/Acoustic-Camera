@@ -71,7 +71,7 @@ int main()
     
     // Initialize classes
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
-    beamform beamform(FFT_SIZE, M_AMOUNT, N_AMOUNT, NUM_ANGLES, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP);
+    beamform beamform(FFT_SIZE, M_AMOUNT, N_AMOUNT, MIC_SPACING, NUM_ANGLES, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP);
     video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE, MAP_THRESHOLD, ALPHA);
 
     //==============================================================================================
@@ -88,39 +88,47 @@ int main()
 
     // Open window
     video.initializeWindow();
-    
+
     cout << "Starting loop.\n";
     // Loop to calculate audio and display video
     while (1) // if this reads while(true) you will die. Source: saw it in a dream after drinking a monster and taking melatonin
     {
+        #ifdef PROFILE_MAIN
         ALSA_time.start();
+        #endif
+
         // Recieve audio and process data
         ALSA.recordAudio(audio_data);
         //cout << "recordAudio.\n"; // (debugging)
+        #ifdef PROFILE_MAIN
         ALSA_time.end();
 
         beamform_time.start();
+        #endif
         beamform.processData(audio_data, processed_data, 0, 511, POST_dBFS);
         //cout << "processData.\n"; // (debugging)
+        #ifdef PROFILE_MAIN
         beamform_time.end();
 
         video_time.start();
+        #endif
         // Does all processing to frame including drawing UI and doing heat map
         frame = video.processFrame(processed_data, codec, video_file_name);
        
         // Shows frame
         imshow("Heat Map Overlay", frame);
+        #ifdef PROFILE_MAIN
         video_time.end();
 
         //==============================================================================================
 
         double total_time = ALSA_time.time() + beamform_time.time() + video_time.time();
-
+        
         ALSA_time.print();
         beamform_time.print();
         video_time.print();
         cout << "Total time: " << total_time << " seconds.\n\n";
-
+        #endif
         
 
         // Break loop if key is pressed

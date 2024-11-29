@@ -1,12 +1,12 @@
 OPENCV_FLAGS = `pkg-config --cflags --libs opencv4`
 
-FLAGS = -lrt -lpthread -lasound
+FLAGS = -lrt -lpthread -lasound -fopenmp
 
-FFT_FLAGS = -O3 -lfftw3f -lm
+FFT_FLAGS = -O3 -lfftw3f -lm -lfftw3f_threads
 
 HEADERS = PARAMS.h Video.h ALSA.h Beamform.h 
 
-NAME = Video
+NAME = main
 
 all: $(NAME)
 

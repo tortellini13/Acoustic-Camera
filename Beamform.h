@@ -9,6 +9,7 @@
 
 #include "PARAMS.h"
 #include "Structs.h"
+#include "Timer.h"
 
 using namespace std;
 
@@ -17,7 +18,7 @@ using namespace std;
 class beamform
 {
 public:
-    beamform(int fft_size, int m_channels, int n_channels,
+    beamform(int fft_size, int m_channels, int n_channels, int mic_spacing,
              int num_angles, int min_angle, int max_angle, int angle_step);
 
     ~beamform();
@@ -44,28 +45,39 @@ private:
     int fft_size;
     int m_channels;
     int n_channels;
+    int mic_spacing;
     int num_angles;
     int total_angles;
     int min_angle;
     int max_angle;
     int angle_step;
 
+    fftwf_plan fft_plan;
+
     // Initialize arrays
     cfloat2D angles;
+    cfloat4D directivity_factor;
     cfloat3D data_beamform;
     cfloat3D data_fft;
     cfloat2D data_fft_collapse;
     float2D data_post_process;
+
+    // Initialize timers
+    timer handleBeamforming_time;
+    timer FFT_time;
+    timer FFTCollapse_time;
+    timer postProcess_time;
 };
 
 //=====================================================================================
 
-beamform::beamform(int fft_size, int m_channels, int n_channels,
+beamform::beamform(int fft_size, int m_channels, int n_channels, int mic_spacing,
                    int num_angles, int min_angle, int max_angle, int angle_step) :
     // Assign values to variables
     fft_size(fft_size),
     m_channels(m_channels),
     n_channels(n_channels),
+    mic_spacing(mic_spacing),
     num_angles(num_angles),
     total_angles(num_angles * num_angles),
     min_angle(min_angle),
@@ -74,12 +86,62 @@ beamform::beamform(int fft_size, int m_channels, int n_channels,
 
     // Allocate memory to arrays
     angles(num_angles, num_angles),
+    directivity_factor(m_channels, n_channels, num_angles, num_angles),
     data_beamform(num_angles, num_angles, fft_size),
     data_fft(num_angles, num_angles, fft_size),
     data_fft_collapse(num_angles, num_angles),
-    data_post_process(num_angles, num_angles)
+    data_post_process(num_angles, num_angles),
+
+    // Initialize timers
+    handleBeamforming_time("handleBeamforming"),
+    FFT_time("FFT"),
+    FFTCollapse_time("FFTCollapse"),
+    postProcess_time("postProcess")
 {
-    // Precomputes all angles
+    // Precompute directivity factor for all angles
+    for (int theta = min_angle, theta_index = 0; theta_index < num_angles; theta += angle_step, theta_index++)
+    {
+        for (int phi = min_angle, phi_index = 0; phi_index < num_angles; phi += angle_step, phi_index++)
+        {
+            for (int m = 1; m <= m_channels; m++)
+            {
+                for (int n = 1; n <= n_channels; n++)
+                {
+                    // m * d * sin(theta) * cos(phi) + n * d * sin(theta) * sin(phi) // Original exponent
+                    // d * sin(theta) * (m * cos(phi) + n * sin(phi))                // Simplified exponent
+                    float exponent = mic_spacing * sin(theta) * (m * cos(phi) + n * sin(phi));
+                    directivity_factor.at(m - 1, n - 1, theta_index, phi_index) = (cos(exponent), sin(exponent));
+                }
+            }
+        }
+    }
+
+    // Enable FFTW multithreading
+    if (fftwf_init_threads() == 0)
+    {
+        cerr << "Error: FFTW threading initialization failed.\n";
+        throw runtime_error("FFTW threading initialization failed");
+    }
+
+    // Set the number of threads for FFTW
+    fftwf_plan_with_nthreads(omp_get_max_threads()); // Use all available threads
+    // Create FFT plan
+    fftwf_complex* input = reinterpret_cast<fftwf_complex*>(data_beamform.data);
+    fftwf_complex* output = reinterpret_cast<fftwf_complex*>(data_fft.data);
+
+    fft_plan = fftwf_plan_dft_3d(num_angles, num_angles, fft_size,
+                                 input, output,
+                                 FFTW_FORWARD,
+                                 FFTW_ESTIMATE);
+
+    if (!fft_plan)
+    {
+        cerr << "Error: Failed to create FFT plan.\n";
+        throw runtime_error("FFTW plan creation failed");
+    }
+
+    /*
+     // Precomputes all angles
     for (int theta = num_angles, theta_index = 0; theta < num_angles; theta += angle_step, theta_index++) 
     {
         for (int phi = min_angle, phi_index = 0; phi < num_angles; phi += angle_step, phi_index++) 
@@ -87,7 +149,9 @@ beamform::beamform(int fft_size, int m_channels, int n_channels,
             float angle = (theta * m_channels + phi * n_channels) * (M_PI / 180);
             angles.at(theta_index, phi_index) = cfloat(cos(angle), sin(angle));
         }
-    }
+    } 
+    */
+
 } // end beamform
 
 //=====================================================================================
@@ -95,7 +159,10 @@ beamform::beamform(int fft_size, int m_channels, int n_channels,
 // Deconstructor for beamform class
 beamform::~beamform()
 {
-
+    // Destroy the FFT plan
+    fftwf_destroy_plan(fft_plan);
+    fftwf_cleanup_threads();
+    fftwf_cleanup();
 } // end ~beamform
 
 //=====================================================================================
@@ -103,28 +170,27 @@ beamform::~beamform()
 // Performs beamforming algorithm and outputs complex result
 void beamform::handleBeamforming(const float3D& data_input)
 {
-    #pragma omp parallel for collapse(2) // Parallelize theta and phi loops
+    #pragma omp parallel for collapse(2) schedule(dynamic)
     for (int theta_index = 0; theta_index < num_angles; theta_index++) 
     {
         for (int phi_index = 0; phi_index < num_angles; phi_index++) 
         {
             for (int b = 0; b < fft_size; b++) 
             {
-                cfloat sum = {0.0f, 0.0f}; // Accumulate results
+                cfloat sum = {0.0f, 0.0f}; // Initialize accumulator for complex values
 
-                // Use precomputed angles
-                cfloat angle_complex = angles.at(theta_index, phi_index);
                 for (int m = 0; m < m_channels; m++) 
                 {
                     for (int n = 0; n < n_channels; n++) 
                     {
-                        sum += data_input.at(m, n, b) * angle_complex;
+                        sum += data_input.at(m, n, b) * directivity_factor.at(m, n, theta_index, phi_index);
                     }
                 }
+                // Write to the output buffer
                 data_beamform.at(theta_index, phi_index, b) = sum;
             } // end b
-        } // end phi
-    } // end theta
+        } // end phi_index
+    } // end theta_index
 } // end handleBeamforming
 
 //=====================================================================================
@@ -132,33 +198,10 @@ void beamform::handleBeamforming(const float3D& data_input)
 // Performs FFT on beamformed data, complex-to-complex
 void beamform::FFT()
 {
-    // Create input and output arrays for FFT in fftwf format
-    fftwf_complex* input = reinterpret_cast<fftwf_complex*>(data_beamform.data);
-    fftwf_complex* output = reinterpret_cast<fftwf_complex*>(data_fft.data);
-
-    // Create a plan for the complex-to-complex 3D FFT
-    fftwf_plan plan = fftwf_plan_dft_3d(num_angles, num_angles, fft_size,
-                                        input, output,
-                                        FFTW_FORWARD,
-                                        FFTW_ESTIMATE);
-
-    if (!plan) 
-    {
-        cerr << "Error: Failed to create FFT plan.\n";
-        return;
-    }
-
-    // cout << "Plan created.\n"; // (debugging)
-
     // Execute the 3D FFT
-    fftwf_execute(plan);
+    fftwf_execute(fft_plan);
     // cout << "FFT executed.\n"; // (debugging)
 
-    // Outputs fft_size buffer. The second half of the data are negative frequencies and 0 is the DC component
-
-    // Cleanup
-    fftwf_destroy_plan(plan);
-    fftwf_cleanup();
 } // end FFT
 
 //=====================================================================================
@@ -216,10 +259,37 @@ cv::Mat beamform::float2DToMat(const float2D& data)
 
 void beamform::processData(const float3D& data_input, cv::Mat& data_output, int lower_frequency, int upper_frequency, uint8_t post_process_type)
 {
+    #ifdef PROFILE_BEAMFORM
+    handleBeamforming_time.start();
+    #endif
     handleBeamforming(data_input);
+    #ifdef PROFILE_BEAMFORM
+    handleBeamforming_time.end();
+
+    FFT_time.start();
+    #endif
     FFT();
+    #ifdef PROFILE_BEAMFORM
+    FFT_time.end();
+
+    FFTCollapse_time.start();
+    #endif
     FFTCollapse(lower_frequency, upper_frequency);
+    #ifdef PROFILE_BEAMFORM
+    FFTCollapse_time.end();
+
+    postProcess_time.start();
+    #endif
     postProcess(post_process_type);
+    #ifdef PROFILE_BEAMFORM
+    postProcess_time.end();
+
+    handleBeamforming_time.print();
+    FFT_time.print();
+    FFTCollapse_time.print();
+    postProcess_time.print();
+    cout << endl;
+    #endif
 
     data_output = float2DToMat(data_post_process);
 

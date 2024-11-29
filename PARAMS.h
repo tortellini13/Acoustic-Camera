@@ -4,6 +4,7 @@
 // Mic channels
 #define M_AMOUNT 4 // Amount of mics in the M direction
 #define N_AMOUNT 4 // Amount of mics in the N direction
+#define MIC_SPACING 40 // ***Change this number to be correct. Also units?
 const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
 
 // Angles
@@ -24,7 +25,7 @@ const int DATA_SIZE_BUFFER_HALF = TOTAL_ANGLES * HALF_FFT_SIZE;    // For FFT da
 
 // Audio
 const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
-#define SAMPLE_RATE 48000                // Audio sample rate
+#define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
 #define FRAME_RATE 30         // Frame rate of the camera
@@ -74,5 +75,10 @@ const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
 #define POST_dBZ  1
 #define POST_dBA  2
 #define POST_dBC  3
+
+// For debugging
+#define PROFILE_MAIN
+//#define PROFILE_BEAMFORM
+//#define PROFILE_VIDEO
 
 #endif
