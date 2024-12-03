@@ -3,6 +3,7 @@
 #include <vector>
 #include <ctime>
 #include <chrono>
+#include <iomanip>
 
 #include "PARAMS.h"
 #include "ALSA.h"
@@ -82,15 +83,18 @@ int main()
         ALSA.recordAudio(audio_data);
         //cout << "recordAudio.\n"; // (debugging)
 
+        #ifdef PRINT_AUDIO
         // Print out first frame of audio data
         for (int n = 0; n < N_AMOUNT; n++)
         {
             for (int m = 0; m < M_AMOUNT; m++)
             {
-                cout << audio_data.at(m, n, 0) << " ";
+                cout << setw(8) << fixed << setprecision(6) << showpos << audio_data.at(m, n, 0) << " ";
             }
-            cout << endl << endl;
+            cout << endl;
         }
+        cout << endl;
+        #endif
         #ifdef PROFILE_MAIN
         ALSA_time.end();
 
