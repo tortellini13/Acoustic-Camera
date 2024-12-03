@@ -119,11 +119,8 @@ int main()
         beamform_time.print();
         video_time.print();
         cout << "Total time: " << total_time << " seconds.\n\n";
-<<<<<<< HEAD:Video.cpp
-=======
         #endif
         
->>>>>>> 9b4054383ea8107407f9e9e851b5727c54bc4013:main.cpp
 
         // Break loop if key is pressed
         if (waitKey(1) >= 0) break;

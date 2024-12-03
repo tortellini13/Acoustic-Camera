@@ -10,7 +10,8 @@
                 "/usr/include",
                 "/usr/include/libcamera",
                 "/usr/include/rpicam-apps",
-                "/usr/include/libcamera-apps/**"
+                "/usr/include/libcamera-apps/**",
+                "/usr/lib/gcc/x86_64-linux-gnu/14/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++-12",

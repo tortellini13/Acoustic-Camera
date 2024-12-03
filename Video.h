@@ -11,6 +11,7 @@
 
 // Header Files
 #include "PARAMS.h"
+#include "Timer.h"
 
 using namespace std;
 using namespace cv;
@@ -39,6 +40,7 @@ private:
        - magnitude = refers to the actual input audio data
        - heat map = refers to objects related to the rendered heat map
     */
+   timer proccessFrame_time;
 
     // Required for OpenCV
     void onListMaxMag(int state, void* user_data);
@@ -96,6 +98,7 @@ private:
     // Coords for max magnitude
     Point max_coord;        // Coords from data
     Point max_point_scaled; // Coords scaled to frame
+   // Point textSize(1,1);
 
     // Variables
     double fps_time_start;
@@ -124,7 +127,8 @@ video::video(int frame_width, int frame_height, int frame_rate, int initial_heat
     frame_rate(frame_rate),
     heatmap_threshold(initial_heatmap_threshold),
     heatmap_alpha(initial_heatmap_alpha),
-    cap(0, CAP_V4L2)
+    cap(0, CAP_V4L2),
+    proccessFrame_time("proccessFrame")
 
     // Allocate memory for all arrays
     {
@@ -271,7 +275,8 @@ void video::generateUI() {
 
         if (list_max_mag_state == 1) {
         Point max_text_location(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
-        rectangle(static_UI, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text 
+
+        //rectangle(static_UI, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text 
     }
 
 
@@ -327,7 +332,7 @@ Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_mi
 
         Size textSize = getTextSize(maximum_text, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &text_baseline);
         
-        //rectangle(frame_RGB, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+        rectangle(frame_RGB, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
         putText(frame_RGB, maximum_text, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
     }
 
@@ -338,10 +343,10 @@ Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_mi
 
     if (color_scale_state == 1) 
     {
-        //rectangle(frame_RGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-        //color_bar.copyTo(frame_RGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
+        rectangle(frame_RGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+        color_bar.copyTo(frame_RGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
 
-        // Draw text indicating various points on the scale
+         //Draw text indicating various points on the scale
         float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
         for (int i = 0; i < (SCALE_POINTS + 1); i++) 
         {
@@ -353,7 +358,7 @@ Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_mi
             String scaleTextString = scaleTextStream.str() + " ";
 
             putText(frame_RGB, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
-            //line(frame_RGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
+            line(frame_RGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
         }
     }
     return frame_RGB;
@@ -387,6 +392,7 @@ Mat heatMapAlphaMerge(Mat heat_map_data, Mat heat_map_RGBA, Mat frame_RGBA, int 
 
 Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name) 
 {
+    proccessFrame_time.start();
     // Capture a frame from the camera
     cap >> frame;
     
@@ -455,7 +461,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     
     // Creates color bar
     //makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
-    generateUI();
+    //generateUI();
     // Draws UI
     frame_RGB = drawUI(mag_max_string, magnitude_max, magnitude_min);
     
@@ -484,7 +490,12 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
         putText(frame_RGB, fps_string, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
     }
     
+    proccessFrame_time.end();
+    proccessFrame_time.print();
+    
     return frame_RGB;
+
 }
+
 
 #endif
