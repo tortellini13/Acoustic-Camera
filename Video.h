@@ -41,6 +41,7 @@ private:
        - heat map = refers to objects related to the rendered heat map
     */
    timer proccessFrame_time;
+   timer frameCapture_time;
 
     // Required for OpenCV
     void onListMaxMag(int state, void* user_data);
@@ -128,7 +129,8 @@ video::video(int frame_width, int frame_height, int frame_rate, int initial_heat
     heatmap_threshold(initial_heatmap_threshold),
     heatmap_alpha(initial_heatmap_alpha),
     cap(0, CAP_V4L2),
-    proccessFrame_time("proccessFrame")
+    proccessFrame_time("proccessFrame"),
+    frameCapture_time("frame capture")
 
     // Allocate memory for all arrays
     {
@@ -392,10 +394,14 @@ Mat heatMapAlphaMerge(Mat heat_map_data, Mat heat_map_RGBA, Mat frame_RGBA, int 
 
 Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name) 
 {
-    proccessFrame_time.start();
-    // Capture a frame from the camera
-    cap >> frame;
     
+    // Capture a frame from the camera
+    frameCapture_time.start();
+    cap >> frame;
+    frameCapture_time.end();
+
+    
+    proccessFrame_time.start();
     Mat heat_map_data(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1); // Make heat map data matrix
     //Mat magnitude_frame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0));       // Single channel, magnitude matrix, initialized to 0
     
@@ -491,6 +497,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     }
     
     proccessFrame_time.end();
+    frameCapture_time.print();
     proccessFrame_time.print();
     
     return frame_RGB;

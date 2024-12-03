@@ -56,7 +56,7 @@ private:
     fftwf_plan fft_plan;
 
     // Initialize data arrays
-    const cfloat4D directivity_factor;
+    cfloat4D directivity_factor;
     cfloat3D data_beamform;
     cfloat3D data_fft;
     cfloat2D data_fft_collapse;
@@ -85,7 +85,7 @@ beamform::beamform(int fft_size, int m_channels, int n_channels, int mic_spacing
     angle_step(angle_step),
 
     // Allocate memory to arrays
-    angles(num_angles, num_angles),
+
     directivity_factor(m_channels, n_channels, num_angles, num_angles),
     data_beamform(num_angles, num_angles, fft_size),
     data_fft(num_angles, num_angles, fft_size),
