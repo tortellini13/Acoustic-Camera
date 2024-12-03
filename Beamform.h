@@ -52,15 +52,15 @@ private:
     int max_angle;
     int angle_step;
 
+    // Plan for fft to reuse
     fftwf_plan fft_plan;
 
-    // Initialize arrays
-    cfloat2D angles;
-    cfloat4D directivity_factor;
+    // Initialize data arrays
+    const cfloat4D directivity_factor;
     cfloat3D data_beamform;
     cfloat3D data_fft;
     cfloat2D data_fft_collapse;
-    float2D data_post_process;
+    float2D  data_post_process;
 
     // Initialize timers
     timer handleBeamforming_time;
@@ -257,30 +257,83 @@ cv::Mat beamform::float2DToMat(const float2D& data)
     return mat;
 }
 
+//=====================================================================================
+
 void beamform::processData(const float3D& data_input, cv::Mat& data_output, int lower_frequency, int upper_frequency, uint8_t post_process_type)
 {
     #ifdef PROFILE_BEAMFORM
     handleBeamforming_time.start();
     #endif
     handleBeamforming(data_input);
+    
+    #ifdef PRINT_BEAMFORM
+    // Print first frame of data
+    for (int phi = 0; phi < NUM_ANGLES; phi++)
+    {
+        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        {
+            cout << data_beamform.at(theta, phi, 0) << " ";
+        }
+        cout << endl << endl;
+    }
+    #endif
+
     #ifdef PROFILE_BEAMFORM
     handleBeamforming_time.end();
 
     FFT_time.start();
     #endif
     FFT();
+
+    #ifdef PRINT_FFT
+    // Print first frame of data
+    for (int phi = 0; phi < NUM_ANGLES; phi++)
+    {
+        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        {
+            cout << data_fft.at(theta, phi, 0) << " ";
+        }
+        cout << endl << endl;
+    }
+    #endif
+
     #ifdef PROFILE_BEAMFORM
     FFT_time.end();
 
     FFTCollapse_time.start();
     #endif
     FFTCollapse(lower_frequency, upper_frequency);
+
+    #ifdef PRINT_FFT_COLLAPSE
+    // Print first frame of data
+    for (int phi = 0; phi < NUM_ANGLES; phi++)
+    {
+        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        {
+            cout << data_fft_collapse.at(theta, phi, 0) << " ";
+        }
+        cout << endl << endl;
+    }
+    #endif
     #ifdef PROFILE_BEAMFORM
     FFTCollapse_time.end();
 
     postProcess_time.start();
     #endif
     postProcess(post_process_type);
+
+    #ifdef PRINT_POST_PROCESS
+    // Print first frame of data
+    for (int phi = 0; phi < NUM_ANGLES; phi++)
+    {
+        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        {
+            cout << data_post_process.at(theta, phi, 0) << " ";
+        }
+        cout << endl << endl;
+    }
+    #endif
+
     #ifdef PROFILE_BEAMFORM
     postProcess_time.end();
 
@@ -292,6 +345,18 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
     #endif
 
     data_output = float2DToMat(data_post_process);
+
+    #ifdef PRINT_OUTPUT
+    // Print first frame of data
+    for (int phi = 0; phi < NUM_ANGLES; phi++)
+    {
+        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        {
+            cout << data_output.at(theta, phi, 0) << " ";
+        }
+        cout << endl << endl;
+    }
+    #endif
 
 } // end processData
 

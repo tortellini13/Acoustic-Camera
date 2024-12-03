@@ -100,6 +100,16 @@ int main()
         // Recieve audio and process data
         ALSA.recordAudio(audio_data);
         //cout << "recordAudio.\n"; // (debugging)
+
+        // Print out first frame of audio data
+        for (int n = 0; n < N_AMOUNT; n++)
+        {
+            for (int m = 0; m < M_AMOUNT; m++)
+            {
+                cout << audio_data.at(m, n, 0) << " ";
+            }
+            cout << endl << endl;
+        }
         #ifdef PROFILE_MAIN
         ALSA_time.end();
 
