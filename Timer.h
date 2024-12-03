@@ -1,5 +1,4 @@
-#ifndef TIME_H
-#define TIMER_H
+#pragma once
 
 #include <iostream>
 #include <chrono>
@@ -56,5 +55,3 @@ double timer::time() const
 {
     return elapsed_time.count();
 } // end time
-
-#endif

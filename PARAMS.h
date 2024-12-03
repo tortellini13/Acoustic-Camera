@@ -4,6 +4,7 @@
 // Mic channels
 #define M_AMOUNT 4 // Amount of mics in the M direction
 #define N_AMOUNT 4 // Amount of mics in the N direction
+#define MIC_SPACING 40 // ***Change this number to be correct. Also units?
 const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
 
 // Angles
@@ -14,17 +15,19 @@ const int NUM_ANGLES = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP) + 1; // Number of 
 
 // FFT
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
-const int HALF_FFT_SIZE = FFT_SIZE / 2; // Half of FFT_SIZE
+// const int HALF_FFT_SIZE = FFT_SIZE / 2; // Half of FFT_SIZE
 
+/* 
 // Data sizes
 const int BUFFER_SIZE = (FFT_SIZE * NUM_CHANNELS * sizeof(float)); // Size of buffer for all channels
 const int TOTAL_ANGLES = NUM_ANGLES * NUM_ANGLES;                  // For final data
 const int DATA_SIZE_BUFFER = TOTAL_ANGLES * FFT_SIZE;              // For beamformed data
-const int DATA_SIZE_BUFFER_HALF = TOTAL_ANGLES * HALF_FFT_SIZE;    // For FFT data
+const int DATA_SIZE_BUFFER_HALF = TOTAL_ANGLES * HALF_FFT_SIZE;    // For FFT data 
+*/
 
 // Audio
 const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
-#define SAMPLE_RATE 48000                // Audio sample rate
+#define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
 #define FRAME_RATE 30         // Frame rate of the camera
@@ -62,17 +65,20 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 // FPS counter
 #define FPS_COUNTER_AVERAGE 5 // Number of frames to be averaged for calculating FPS
 
-// SHM and SEM
-const char* AUDIO_SHM = "/AUDIO_SHM";   // Shared memory name for audio data
-const char* CONFIG_SHM = "/CONFIG_SHM"; // Shared memory name for user config
-#define SEM_1 "/SEM_1"                  // Semaphore
-#define SEM_2 "/SEM_2"                  // Semaphore
-#define NUM_CONFIGS 5                   // Number of user configs
-
 // Post processing types
 #define POST_dBFS 0
 #define POST_dBZ  1
 #define POST_dBA  2
 #define POST_dBC  3
+
+// For debugging. Uncomment to enable
+// #define PROFILE_MAIN
+// #define PROFILE_BEAMFORM
+// #define PROFILE_VIDEO
+// #define PRINT_BEAMFORM
+// #define PRINT_FFT
+// #define PRINT_FFT_COLLAPSE
+// #define PRINT_POST_PROCESS
+// #define PRINT_OUTPUT
 
 #endif
