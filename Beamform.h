@@ -6,6 +6,7 @@
 #include <fftw3.h>
 #include <omp.h>
 #include <opencv2/opencv.hpp>
+#include <iomanip>
 
 #include "PARAMS.h"
 #include "Structs.h"
@@ -40,6 +41,9 @@ private:
 
     // Converts float2D to Mat
     cv::Mat float2DToMat(const float2D& data);
+    
+    // Converts degrees to radians
+    float degtorad(const float input_degrees);
 
     // Variables
     int fft_size;
@@ -56,7 +60,7 @@ private:
     fftwf_plan fft_plan;
 
     // Initialize data arrays
-    const cfloat4D directivity_factor;
+    cfloat4D directivity_factor;
     cfloat3D data_beamform;
     cfloat3D data_fft;
     cfloat2D data_fft_collapse;
@@ -85,7 +89,6 @@ beamform::beamform(int fft_size, int m_channels, int n_channels, int mic_spacing
     angle_step(angle_step),
 
     // Allocate memory to arrays
-    angles(num_angles, num_angles),
     directivity_factor(m_channels, n_channels, num_angles, num_angles),
     data_beamform(num_angles, num_angles, fft_size),
     data_fft(num_angles, num_angles, fft_size),
@@ -109,8 +112,8 @@ beamform::beamform(int fft_size, int m_channels, int n_channels, int mic_spacing
                 {
                     // m * d * sin(theta) * cos(phi) + n * d * sin(theta) * sin(phi) // Original exponent
                     // d * sin(theta) * (m * cos(phi) + n * sin(phi))                // Simplified exponent
-                    float exponent = mic_spacing * sin(theta) * (m * cos(phi) + n * sin(phi));
-                    directivity_factor.at(m - 1, n - 1, theta_index, phi_index) = (cos(exponent), sin(exponent));
+                    float exponent = mic_spacing * sin(degtorad(theta)) * (m * cos(degtorad(phi)) + n * sin(degtorad(phi)));
+                    directivity_factor.at(m - 1, n - 1, theta_index, phi_index) = polar(1.0f, exponent);
                 }
             }
         }
@@ -235,13 +238,16 @@ void beamform::postProcess(uint8_t post_process_type)
     {
         for (int phi = 0; phi < num_angles; phi++)
         {
-            switch (post_process_type)
+            switch (post_process_type) 
+            {
             case POST_dBFS:
                 // cout << "dBFS\n"; // (debugging)
                 // ***Not sure if need to abs() before adding signals***
                 // 20 * log10(abs(signal) / num_signals)
-                data_post_process.at(theta, phi) = 20 * log10(abs(data_fft_collapse.at(theta, phi)) / total_angles);
+                float inside = abs(data_fft_collapse.at(theta, phi)) / total_angles;
+                data_post_process.at(theta, phi) = 20 * log10(inside);
             break;
+            }
         }
     }
     // cout << "postProcess end\n"; // (debugging)
@@ -259,6 +265,13 @@ cv::Mat beamform::float2DToMat(const float2D& data)
 
 //=====================================================================================
 
+float beamform::degtorad(const float input_degrees)
+{
+    return input_degrees * M_PI / 180.0f;
+} // end degtorad
+
+//=====================================================================================
+
 void beamform::processData(const float3D& data_input, cv::Mat& data_output, int lower_frequency, int upper_frequency, uint8_t post_process_type)
 {
     #ifdef PROFILE_BEAMFORM
@@ -268,14 +281,15 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
     
     #ifdef PRINT_BEAMFORM
     // Print first frame of data
-    for (int phi = 0; phi < NUM_ANGLES; phi++)
+    for (int phi = 0; phi < NUM_ANGLES - 10; phi++)
     {
-        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        for (int theta = 0; theta < NUM_ANGLES - 10; theta++)
         {
-            cout << data_beamform.at(theta, phi, 0) << " ";
+            cout << setw(8) << fixed << setprecision(6) << showpos << data_beamform.at(theta, phi, 0) << " ";
         }
-        cout << endl << endl;
+        cout << endl;
     }
+    cout << endl;
     #endif
 
     #ifdef PROFILE_BEAMFORM
@@ -289,12 +303,13 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
     // Print first frame of data
     for (int phi = 0; phi < NUM_ANGLES; phi++)
     {
-        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        for (int theta = 0; theta < NUM_ANGLES; theta++)
         {
-            cout << data_fft.at(theta, phi, 0) << " ";
+            cout << setw(8) << fixed << setprecision(6) << showpos << data_fft.at(theta, phi, 0) << " ";
         }
-        cout << endl << endl;
+        cout << endl;
     }
+    cout << endl;
     #endif
 
     #ifdef PROFILE_BEAMFORM
@@ -308,12 +323,13 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
     // Print first frame of data
     for (int phi = 0; phi < NUM_ANGLES; phi++)
     {
-        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        for (int theta = 0; theta < NUM_ANGLES; theta++)
         {
-            cout << data_fft_collapse.at(theta, phi, 0) << " ";
+            cout << setw(8) << fixed << setprecision(6) << showpos << data_fft_collapse.at(theta, phi) << " ";
         }
-        cout << endl << endl;
+        cout << endl;
     }
+    cout << endl;
     #endif
     #ifdef PROFILE_BEAMFORM
     FFTCollapse_time.end();
@@ -326,12 +342,13 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
     // Print first frame of data
     for (int phi = 0; phi < NUM_ANGLES; phi++)
     {
-        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        for (int theta = 0; theta < NUM_ANGLES; theta++)
         {
-            cout << data_post_process.at(theta, phi, 0) << " ";
+            cout << setw(8) << fixed << setprecision(6) << showpos << data_post_process.at(theta, phi) << " ";
         }
-        cout << endl << endl;
+        cout << endl;
     }
+    cout << endl;
     #endif
 
     #ifdef PROFILE_BEAMFORM
@@ -350,12 +367,13 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
     // Print first frame of data
     for (int phi = 0; phi < NUM_ANGLES; phi++)
     {
-        for (int theta = 0; theata < NUM_ANGLES;theta++)
+        for (int theta = 0; theta < NUM_ANGLES; theta++)
         {
-            cout << data_output.at(theta, phi, 0) << " ";
+            cout << setw(8) << fixed << setprecision(6) << showpos << data_output.at(theta, phi) << " ";
         }
-        cout << endl << endl;
+        cout << endl;
     }
+    cout << endl;
     #endif
 
 } // end processData

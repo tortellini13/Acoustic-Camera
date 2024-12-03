@@ -75,6 +75,7 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 // #define PROFILE_MAIN
 // #define PROFILE_BEAMFORM
 // #define PROFILE_VIDEO
+// #define PRINT_AUDIO // Maybe don't clamp for -1 to 1. Getting larger numbers
 // #define PRINT_BEAMFORM
 // #define PRINT_FFT
 // #define PRINT_FFT_COLLAPSE

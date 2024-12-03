@@ -35,7 +35,7 @@ private:
     // Configs
     snd_pcm_stream_t stream = SND_PCM_STREAM_CAPTURE;        // Set the pcm stream to capture
     snd_pcm_access_t access = SND_PCM_ACCESS_RW_INTERLEAVED; // Stores data where ch1[0], ch2[0], ...ch16[0], ch1[1],...
-    snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;         // Format for input data (24-bit little endian)
+    snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;         // Format for input data (32-bit little endian)
     int mode = 0;        // Mode for pcm (0 is default)
     int periods = 2;     // Number of periods. For scheduling inturrupts
     int num_bytes = 4;   // Number of bytes read per sample
@@ -121,7 +121,7 @@ bool ALSA::setup()
         cerr << "Error setting rate.\n";
         return false;
     }
-    int ROWS = N_AMOUNT; 
+
     // If specified rate is not availiable, set to nearest rate
     if (rate != exact_rate)
     {
@@ -154,6 +154,9 @@ bool ALSA::setup()
         cerr << "Error setting HW parameters." << endl;
         return false;
     }
+
+    // snd_pcm_hw_params_get_format(hw_params, &format);
+    // cout << "PCM Format: " << snd_pcm_format_name(format) << endl;
 
     cout << "Finished setting up Audio.\n"; // (debugging)
 
@@ -194,7 +197,7 @@ bool ALSA::recordAudio(float3D& data_output)
         {
             for (int m = 0; m < COLS; m++)
             {
-                data_output.at(m, n, b) = static_cast<float>(data_buffer[b * num_channels + (n * COLS + m)]);
+                data_output.at(m, n, b) = static_cast<float>(data_buffer[b * num_channels + (n * COLS + m)]) / static_cast<float>(1 << 31);
             }
         }
     }
