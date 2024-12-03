@@ -55,6 +55,9 @@ private:
     // Draws UI elements
     Mat drawUI(string maximum_text, double magnitude_max, double magnitude_min);
 
+    // Generates Static Elements of UI
+    void generateUI();
+
     // Converts a float2D to a Mat
     Mat float2DtoMat(float2D& data_input);
 
@@ -84,6 +87,7 @@ private:
     Mat heat_map_RGB;
     Mat heat_map_RGBA;
     Mat blended;
+    Mat static_UI;
 
     // Min and max magnitude
     double magnitude_min;
@@ -107,6 +111,7 @@ private:
     int heat_map_state = 1;
     int FPS_count_state = 1;
     int reset_ui_state = 0;
+    int ui_change_flag = 1;
     int recording_state = 0;
     int recording_state_change_flag = 0;
 };
@@ -174,6 +179,7 @@ void video::onResetUI(int state, void* user_data)
     setTrackbarPos("Threshold", "Heat Map Overlay", heatmap_threshold);
     setTrackbarPos("Alpha", "Heat Map Overlay", heatmap_alpha);
     fps_time_start = getTickCount();
+    ui_change_flag = 1;
 }
 
 //=====================================================================================
@@ -260,6 +266,38 @@ void video::initializeWindow()
 
 //=====================================================================================
 
+void video::generateUI() {
+    if (ui_change_flag == 1) {
+
+        if (list_max_mag_state == 1) {
+        Point max_text_location(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
+        rectangle(static_UI, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text 
+    }
+
+
+    if (color_scale_state == 1) 
+    {
+        makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
+        rectangle(static_UI, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+        color_bar.copyTo(static_UI(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
+
+        // Draw text indicating various points on the scale
+        float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
+        
+        for (int i = 0; i < (SCALE_POINTS + 1); i++) 
+        {
+            Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
+            line(static_UI, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
+        }
+
+
+
+    }
+        ui_change_flag = 0;
+    }
+}
+
+
 void video::makeColorBar(int scale_height, int scale_width) 
 {
     color_bar = Mat(scale_height, scale_width, CV_8UC3);
@@ -289,7 +327,7 @@ Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_mi
 
         Size textSize = getTextSize(maximum_text, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &text_baseline);
         
-        rectangle(frame_RGB, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+        //rectangle(frame_RGB, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
         putText(frame_RGB, maximum_text, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
     }
 
@@ -300,8 +338,8 @@ Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_mi
 
     if (color_scale_state == 1) 
     {
-        rectangle(frame_RGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-        color_bar.copyTo(frame_RGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
+        //rectangle(frame_RGB, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+        //color_bar.copyTo(frame_RGB(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
 
         // Draw text indicating various points on the scale
         float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
@@ -315,7 +353,7 @@ Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_mi
             String scaleTextString = scaleTextStream.str() + " ";
 
             putText(frame_RGB, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
-            line(frame_RGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
+            //line(frame_RGB, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
         }
     }
     return frame_RGB;
@@ -416,8 +454,8 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     }
     
     // Creates color bar
-    makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
-
+    //makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
+    generateUI();
     // Draws UI
     frame_RGB = drawUI(mag_max_string, magnitude_max, magnitude_min);
     

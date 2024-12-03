@@ -15,25 +15,6 @@ using namespace cv;
 
 //==============================================================================================
 
-
-
-// double FPSCalculator() {
-//  if (FPSCountState == 1) {
-//             frameCount++;
-//             if (frameCount == FPS_COUNTER_AVERAGE) {
-//                 double FPSTimeEnd = getTickCount();
-//                 double FPSTimeDifference = (FPSTimeEnd - FPSTimeStart) / getTickFrequency();
-//                 FPSTimeStart = FPSTimeEnd;
-//                 FPS = frameCount / FPSTimeDifference;
-//                 frameCount = 0;
-                
-//             }
-        
-//         }
-
-//     return FPS;
-//}
-
 int main() 
 {
     /*
@@ -121,13 +102,8 @@ int main()
         video_time.print();
         cout << "Total time: " << total_time << " seconds.\n\n";
 
-        
-
         // Break loop if key is pressed
         if (waitKey(1) >= 0) break;
-
-        // Calculates fpr
-        // fps = FPSCalculator();
     
     }   // end loop
 
