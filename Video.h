@@ -429,7 +429,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     
     //if(frame_skip_flag == 0) {
     struct pollfd fds = {fd, POLLIN, 0};
-        poll(&fds, 1, 100); // Check if frame is ready (100ms timeout)
+        poll(&fds, 1, 10); // Check if frame is ready (100ms timeout)
 
         if (fds.revents & POLLIN) { 
             // Frame is ready, capture it using OpenCV
