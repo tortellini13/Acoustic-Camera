@@ -55,6 +55,7 @@ private:
     snd_pcm_uframes_t buffer_size;  // Size of buffer (BUFFER_SIZE * NUM_BYTES * NUM_CHANNELS)
     int32_t* data_buffer;           // Buffer for interlaced data to be written to
     int pcm_return;                 // Return value for pcm reading (for error handling)
+    int2D channel_order;
 
 }; // end class def
 
@@ -66,10 +67,20 @@ ALSA::ALSA(const char* device_name, int total_channels, int sample_rate, int num
     rate(sample_rate),
     frames(num_frames),
     frame_size(total_channels * num_frames),
-    buffer_size(frames * num_channels)
+    buffer_size(frames * num_channels),
+    channel_order(M_AMOUNT, N_AMOUNT)
     {
         // Allocate memory for dataBuffer
-        data_buffer = new int32_t[buffer_size];  
+        data_buffer = new int32_t[buffer_size]; 
+
+        // Map channel order
+        for (int m = 0; m < M_AMOUNT; m++)
+        {
+            for (int n = 0; n < N_AMOUNT; n++)
+            {
+                channel_order.at(m, n) = CHANNEL_ORDER[m][n];
+            }
+        }
     }
 
 //=====================================================================================
@@ -190,14 +201,14 @@ bool ALSA::recordAudio(float3D& data_output)
         return false;
     }
 
-    // Remap the data to not-interlaced floats
+    // Remap the data to not-interlaced floats and normalize (-1, 1)
     for (int b = 0; b < frames; b++)
     {
         for (int n = 0; n < ROWS; n++)
         {
             for (int m = 0; m < COLS; m++)
             {
-                data_output.at(m, n, b) = static_cast<float>(data_buffer[b * num_channels + (n * COLS + m)]) / static_cast<float>(1 << 31);
+                data_output.at(m, n, b) = static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
             }
         }
     }

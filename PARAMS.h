@@ -6,6 +6,13 @@
 #define N_AMOUNT 4 // Amount of mics in the N direction
 #define MIC_SPACING 40 // ***Change this number to be correct. Also units?
 const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
+const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
+{
+    {1, 3, 9, 11},
+    {2, 4, 10, 12},
+    {5, 7, 13, 15},
+    {6, 8, 14, 16}
+};
 
 // Angles
 #define ANGLE_STEP 4  // Amount of degrees that the beamforming algorithm sweeps in each step
@@ -17,16 +24,8 @@ const int NUM_ANGLES = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP) + 1; // Number of 
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
 // const int HALF_FFT_SIZE = FFT_SIZE / 2; // Half of FFT_SIZE
 
-/* 
-// Data sizes
-const int BUFFER_SIZE = (FFT_SIZE * NUM_CHANNELS * sizeof(float)); // Size of buffer for all channels
-const int TOTAL_ANGLES = NUM_ANGLES * NUM_ANGLES;                  // For final data
-const int DATA_SIZE_BUFFER = TOTAL_ANGLES * FFT_SIZE;              // For beamformed data
-const int DATA_SIZE_BUFFER_HALF = TOTAL_ANGLES * HALF_FFT_SIZE;    // For FFT data 
-*/
-
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:1,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
