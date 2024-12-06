@@ -4,7 +4,7 @@
 // Mic channels
 #define M_AMOUNT 4 // Amount of mics in the M direction
 #define N_AMOUNT 4 // Amount of mics in the N direction
-#define MIC_SPACING 40 // ***Change this number to be correct. Also units?
+#define MIC_SPACING 30 // ***Change this number to be correct. Also units?
 const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
 const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 {
