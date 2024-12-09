@@ -36,8 +36,8 @@ const char* AUDIO_DEVICE_NAME = "hw:1,0"; // arecord -l (type in console to find
 
 // Heatmap
 #define MAP_THRESHOLD 100      // Initial threshold for heat map ***SOME OF THESE ARE REDUNDANT/NOT NEEDED< WILL FIX WHEN THRESHOLD IS OVERHAULED***
-#define MAP_THRESHOLD_MIN -100 // Minimum threshold for heat map
-#define MAP_THRESHOLD_MAX 300  // Minimum threshold for heat map
+#define MAP_THRESHOLD_OFFSET -1000 // Minimum threshold for heat map
+#define MAP_THRESHOLD_MAX 1300  // Minimum threshold for heat map
 #define ALPHA 0.6              // Transparency of heatmap
 #define DEFAULT_ALPHA 60       // Default alpha value (ALPHA * 100)
 #define DEFAULT_THRESHOLD 150  // Default threshold value

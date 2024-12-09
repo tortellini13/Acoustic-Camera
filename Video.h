@@ -10,7 +10,9 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <unistd.h>
-
+//#include <sys/ioctl.h>
+#include <linux/videodev2.h>
+#include <omp.h>
 
 
 // Header Files
@@ -79,8 +81,14 @@ private:
     int heatmap_threshold;
     int heatmap_alpha;
 
-    // V4L2 Polling
+    // V4L2 Polling and timing webcam
     int fd;
+    int tpf_numerator;
+    int tpf_denominator;
+    double tpf;
+    struct v4l2_streamparm streamparm;
+    double tpf_start;
+    double tpf_end;
 
     // From slider ***maybe change***
     double alpha;
@@ -210,13 +218,21 @@ void video::initializeCapture()
     cap.set(CAP_PROP_FPS, frame_rate);            // Set frame rate
     cap.set(CAP_PROP_BUFFERSIZE, 1);              // Set buffer size
 
-    fd = open("/dev/video0", O_RDWR | O_NONBLOCK);
+    /*
+    fd = open("/dev/video1", O_RDWR); // | O_NONBLOCK
     if (fd == -1) {
         cout << "ERROR OPENING CAMERA" << endl;
     }
     
+    streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    tpf_numerator = streamparm.parm.capture.timeperframe.numerator;
+    tpf_denominator = streamparm.parm.capture.timeperframe.denominator;
+    tpf = static_cast<double>(tpf_numerator / tpf_denominator);
+    
 
-
+    */
+   tpf = 0;
+   tpf_start = getTickCount();
 }
 void video::initializeWindow() 
 {   
@@ -400,6 +416,7 @@ Mat video::drawUI(string maximum_text, double magnitude_max, double magnitude_mi
 // Merges heat map into the frame and applies alpha
 Mat heatMapAlphaMerge(Mat heat_map_data, Mat heat_map_RGBA, Mat frame_RGBA, int heatmap_threshold_value, double alpha) 
 {
+    
     for (int y = 0; y < heat_map_data.rows; y++)
         {
             for (int x = 0; x < heat_map_data.cols; x++) 
@@ -424,32 +441,50 @@ Mat heatMapAlphaMerge(Mat heat_map_data, Mat heat_map_RGBA, Mat frame_RGBA, int 
 Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name) 
 {
     everythinge_else.end();
-    frameCapture_time.start();
+    
     // Capture a frame from the camera
     
     //if(frame_skip_flag == 0) {
-    struct pollfd fds = {fd, POLLIN, 0};
-        poll(&fds, 1, 10); // Check if frame is ready (100ms timeout)
+    //struct pollfd fds = {fd, POLLIN, 0};
+    //    poll(&fds, 1, 10); // Check if frame is ready (100ms timeout)
 
-        if (fds.revents & POLLIN) { 
+    //    if (fds.revents & POLLIN) { 
             // Frame is ready, capture it using OpenCV
-            cap >> frame;
-        }
+    //        cap >> frame;
+    //    }
 
-        //cout << fds.revents << endl;
-        cout << POLLIN << endl;
-    //}
-
-    //if (frame_count == 0) {
+   
     
-    //if (cap.grab()) {
-    //    cap.retrieve(frame);
-    //}
-    frameCapture_time.end();
-    //}
+    /*
+    ioctl(fd, VIDIOC_G_PARM, &streamparm);
+    tpf_numerator = streamparm.parm.capture.timeperframe.numerator;
+    tpf_denominator = streamparm.parm.capture.timeperframe.denominator;
+    tpf = static_cast<double>(tpf_numerator / tpf_denominator); 
+
+    cout << tpf_numerator << " " << tpf_denominator << endl;
+
+    */
+
+    double tpf_time_elapsed = (getTickCount() - tpf_start) / getTickFrequency();
+    
+    if (tpf_time_elapsed > tpf ) {
+        
+        frameCapture_time.start();
+        cap >> frame;
+        frameCapture_time.end();
+        
+        tpf = frameCapture_time.time();
+        tpf_start =  getTickCount();
+        cout << "fps: " << 1/tpf << endl;
+ 
+    } else {
+        cout << "skipped frame" << endl;
+    }
+
+    
     
    
-  
+    
 
     proccessFrame_time.start();
     Mat heat_map_data(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1); // Make heat map data matrix
@@ -507,7 +542,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     //==============================================================================================
 
     // Compare value of input array to threshold. Don't render heatmap if below threshold
-    threshold_value = getTrackbarPos("Threshold", "Heat Map Overlay");
+    threshold_value = getTrackbarPos("Threshold", "Heat Map Overlay") + MAP_THRESHOLD_OFFSET;
     alpha = static_cast<double>(getTrackbarPos("Alpha", "Heat Map Overlay")) / 100;
     
     if (heat_map_state == 1) 
