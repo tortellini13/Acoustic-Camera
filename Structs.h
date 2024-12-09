@@ -71,6 +71,37 @@ struct cfloat2D
 
 //=====================================================================================
 
+struct int2D
+{
+    int*  data; // pointer to data array
+    size_t dim_1; // x dimension
+    size_t dim_2; // y dimension
+
+    int2D(size_t d1, size_t d2) : dim_1(d1), dim_2(d2)
+    {
+        data = new int[d1 * d2](); // Initialize array
+    }
+
+    ~int2D() 
+    {
+        delete[] data;
+    }
+
+    // Compute flat index and access element
+    int& at(size_t i, size_t j) 
+    {
+        return data[i * dim_2 + j];
+    }
+
+    // For read-only access
+    const int& at(size_t i, size_t j) const 
+    {
+        return data[i * dim_2 + j];
+    }
+}; // end int2D
+
+//=====================================================================================
+
 struct float3D
 {
     float*  data; // pointer to data array

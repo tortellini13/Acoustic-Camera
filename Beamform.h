@@ -135,7 +135,7 @@ beamform::beamform(int fft_size, int m_channels, int n_channels, int mic_spacing
     fft_plan = fftwf_plan_dft_3d(num_angles, num_angles, fft_size,
                                  input, output,
                                  FFTW_FORWARD,
-                                 FFTW_ESTIMATE);
+                                 FFTW_PATIENT);
 
     if (!fft_plan)
     {
