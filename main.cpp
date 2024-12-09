@@ -41,12 +41,10 @@ int main()
     // Audio data [M * N * FFT_SIZE]
     //float audio_data[NUM_CHANNELS * FFT_SIZE] = {0.0f};
     float3D audio_data(M_AMOUNT, N_AMOUNT, FFT_SIZE);
-    cout << "audio_data\n";
 
     // Beamformed and post-processed data [NUM_ANGLES * NUMANGLES]
     //float processed_data[TOTAL_ANGLES] = {0.0f};
     Mat processed_data(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0));
-    cout << "processed_data\n";
 
     // Output from all video processing to show
     Mat frame;
