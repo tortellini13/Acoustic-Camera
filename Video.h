@@ -47,6 +47,7 @@ private:
        - heat map = refers to objects related to the rendered heat map
     */
    timer proccessFrame_time;
+   timer frameCapture_time;
 
     // Required for OpenCV
     void onListMaxMag(int state, void* user_data);
@@ -139,7 +140,8 @@ video::video(int frame_width, int frame_height, int frame_rate, int initial_heat
     heatmap_threshold(initial_heatmap_threshold),
     heatmap_alpha(initial_heatmap_alpha),
     cap(0, CAP_V4L2),
-    proccessFrame_time("proccessFrame")
+    proccessFrame_time("proccessFrame"),
+    frameCapture_time("frameCapture")
 
     // Allocate memory for all arrays
     {
@@ -198,8 +200,10 @@ void video::onResetUI(int state, void* user_data)
 
 //=====================================================================================
 
+
 void video::initializeWindow() 
 {   
+    
     cap >> frame;
     cap.set(CAP_PROP_FRAME_WIDTH, frame_width);   // Set frame width for capture
     cap.set(CAP_PROP_FRAME_HEIGHT, frame_height); // Set frame height for capture
@@ -208,10 +212,6 @@ void video::initializeWindow()
 
    tpf = 0;
    tpf_start = getTickCount();
-}
-void video::initializeWindow() 
-{   
-    initializeCapture();
 
     cap >> frame;
     
@@ -290,39 +290,6 @@ void video::initializeWindow()
 }
 
 //=====================================================================================
-
-void video::generateUI() {
-    if (ui_change_flag == 1) {
-
-        if (list_max_mag_state == 1) {
-        Point max_text_location(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
-
-        //rectangle(static_UI, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text 
-    }
-
-
-    if (color_scale_state == 1) 
-    {
-        makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
-        rectangle(static_UI, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-        color_bar.copyTo(static_UI(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
-
-        // Draw text indicating various points on the scale
-        float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
-        
-        for (int i = 0; i < (SCALE_POINTS + 1); i++) 
-        {
-            Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
-            line(static_UI, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
-        }
-
-
-
-    }
-        ui_change_flag = 0;
-    }
-}
-
 
 void video::makeColorBar(int scale_height, int scale_width) 
 {
@@ -436,7 +403,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
    
     
 
-    proccessFrame_time.start();
+    //proccessFrame_time.start();
     Mat heat_map_data(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1); // Make heat map data matrix
     //Mat magnitude_frame(NUM_ANGLES, NUM_ANGLES, CV_32FC1, Scalar(0));       // Single channel, magnitude matrix, initialized to 0
     
@@ -531,8 +498,8 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
         putText(frame_RGB, fps_string, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
     }
     
-    proccessFrame_time.end();
-    proccessFrame_time.print();
+    //proccessFrame_time.end();
+    //proccessFrame_time.print();
     
     return frame_RGB;
 
