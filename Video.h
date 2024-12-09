@@ -48,7 +48,6 @@ private:
     */
    timer proccessFrame_time;
    timer frameCapture_time;
-   timer everythinge_else;
 
 
     // Required for OpenCV
@@ -68,9 +67,6 @@ private:
     // Draws UI elements
     Mat drawUI(string maximum_text, double magnitude_max, double magnitude_min);
 
-    // Generates Static Elements of UI
-    void generateUI();
-
     // Converts a float2D to a Mat
     Mat float2DtoMat(float2D& data_input);
 
@@ -86,7 +82,6 @@ private:
     int tpf_numerator;
     int tpf_denominator;
     double tpf;
-    struct v4l2_streamparm streamparm;
     double tpf_start;
     double tpf_end;
 
@@ -151,8 +146,7 @@ video::video(int frame_width, int frame_height, int frame_rate, int initial_heat
     heatmap_alpha(initial_heatmap_alpha),
     cap(0, CAP_V4L2),
     proccessFrame_time("proccessFrame"),
-    frameCapture_time("frame capture"),
-    everythinge_else("everything else")
+    frameCapture_time("frame capture")
 
     // Allocate memory for all arrays
     {
@@ -207,7 +201,6 @@ void video::onResetUI(int state, void* user_data)
     setTrackbarPos("Threshold", "Heat Map Overlay", heatmap_threshold);
     setTrackbarPos("Alpha", "Heat Map Overlay", heatmap_alpha);
     fps_time_start = getTickCount();
-    ui_change_flag = 1;
 }
 
 //=====================================================================================
@@ -218,26 +211,13 @@ void video::initializeCapture()
     cap.set(CAP_PROP_FPS, frame_rate);            // Set frame rate
     cap.set(CAP_PROP_BUFFERSIZE, 1);              // Set buffer size
 
-    /*
-    fd = open("/dev/video1", O_RDWR); // | O_NONBLOCK
-    if (fd == -1) {
-        cout << "ERROR OPENING CAMERA" << endl;
-    }
-    
-    streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    tpf_numerator = streamparm.parm.capture.timeperframe.numerator;
-    tpf_denominator = streamparm.parm.capture.timeperframe.denominator;
-    tpf = static_cast<double>(tpf_numerator / tpf_denominator);
-    
-
-    */
    tpf = 0;
    tpf_start = getTickCount();
 }
 void video::initializeWindow() 
 {   
     initializeCapture();
-    everythinge_else.start();
+
     cap >> frame;
     
     imshow("Heat Map Overlay", frame);            // Show frame
@@ -316,39 +296,6 @@ void video::initializeWindow()
 
 //=====================================================================================
 
-/*
-void video::generateUI() {
-    if (ui_change_flag == 1) {
-
-        if (list_max_mag_state == 1) {
-        Point max_text_location(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
-
-        //rectangle(static_UI, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text 
-    }
-
-
-    if (color_scale_state == 1) 
-    {
-        makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
-        rectangle(static_UI, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-        color_bar.copyTo(static_UI(Rect(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT))); //Copy the scale onto the image
-
-        // Draw text indicating various points on the scale
-        float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
-        
-        for (int i = 0; i < (SCALE_POINTS + 1); i++) 
-        {
-            Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
-            line(static_UI, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
-        }
-
-
-
-    }
-        ui_change_flag = 0;
-    }
-}
-*/
 
 void video::makeColorBar(int scale_height, int scale_width) 
 {
@@ -440,30 +387,6 @@ Mat heatMapAlphaMerge(Mat heat_map_data, Mat heat_map_RGBA, Mat frame_RGBA, int 
 
 Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name) 
 {
-    everythinge_else.end();
-    
-    // Capture a frame from the camera
-    
-    //if(frame_skip_flag == 0) {
-    //struct pollfd fds = {fd, POLLIN, 0};
-    //    poll(&fds, 1, 10); // Check if frame is ready (100ms timeout)
-
-    //    if (fds.revents & POLLIN) { 
-            // Frame is ready, capture it using OpenCV
-    //        cap >> frame;
-    //    }
-
-   
-    
-    /*
-    ioctl(fd, VIDIOC_G_PARM, &streamparm);
-    tpf_numerator = streamparm.parm.capture.timeperframe.numerator;
-    tpf_denominator = streamparm.parm.capture.timeperframe.denominator;
-    tpf = static_cast<double>(tpf_numerator / tpf_denominator); 
-
-    cout << tpf_numerator << " " << tpf_denominator << endl;
-
-    */
 
     double tpf_time_elapsed = (getTickCount() - tpf_start) / getTickFrequency();
     
@@ -475,10 +398,10 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
         
         tpf = frameCapture_time.time();
         tpf_start =  getTickCount();
-        cout << "fps: " << 1/tpf << endl;
+        //cout << "fps: " << 1/tpf << endl;
  
     } else {
-        cout << "skipped frame" << endl;
+        //cout << "skipped frame" << endl;
     }
 
     
@@ -552,7 +475,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     
     // Creates color bar
     makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
-    //generateUI();
+    
     // Draws UI
     frame_RGB = drawUI(mag_max_string, magnitude_max, magnitude_min);
     
@@ -583,10 +506,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     }
     
     proccessFrame_time.end();
-    //frameCapture_time.print();
-    //proccessFrame_time.print();
-    //everythinge_else.print();
-    everythinge_else.start();
+
     return frame_RGB;
 
 }
