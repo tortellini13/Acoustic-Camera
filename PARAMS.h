@@ -22,10 +22,9 @@ const int NUM_ANGLES = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP) + 1; // Number of 
 
 // FFT
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
-// const int HALF_FFT_SIZE = FFT_SIZE / 2; // Half of FFT_SIZE
 
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera

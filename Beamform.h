@@ -128,6 +128,7 @@ beamform::beamform(int fft_size, int m_channels, int n_channels, int mic_spacing
 
     // Set the number of threads for FFTW
     fftwf_plan_with_nthreads(omp_get_max_threads()); // Use all available threads
+
     // Create FFT plan
     fftwf_complex* input = reinterpret_cast<fftwf_complex*>(data_beamform.data);
     fftwf_complex* output = reinterpret_cast<fftwf_complex*>(data_fft.data);
@@ -135,7 +136,7 @@ beamform::beamform(int fft_size, int m_channels, int n_channels, int mic_spacing
     fft_plan = fftwf_plan_dft_3d(num_angles, num_angles, fft_size,
                                  input, output,
                                  FFTW_FORWARD,
-                                 FFTW_PATIENT);
+                                 FFTW_ESTIMATE);
 
     if (!fft_plan)
     {

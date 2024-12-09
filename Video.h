@@ -47,9 +47,6 @@ private:
        - heat map = refers to objects related to the rendered heat map
     */
    timer proccessFrame_time;
-   timer frameCapture_time;
-   timer everythinge_else;
-
 
     // Required for OpenCV
     void onListMaxMag(int state, void* user_data);
@@ -59,8 +56,6 @@ private:
     void onFPSCount(int state, void* user_data);
     void onRecording(int state, void* user_data);
     void onResetUI(int state, void* user_data);
-
-    void initializeCapture();
 
     // Creates color bar
     void makeColorBar(int scale_height, int scale_width);
@@ -126,8 +121,6 @@ private:
     double fps = 0;
     int frame_count = 0;
     int text_baseline = 0;
-    int skipped_frames = 0;
-    int frame_skip_flag = 0;
     
     // Configuration of callbacks for buttons
     int list_max_mag_state = 1;
@@ -150,9 +143,7 @@ video::video(int frame_width, int frame_height, int frame_rate, int initial_heat
     heatmap_threshold(initial_heatmap_threshold),
     heatmap_alpha(initial_heatmap_alpha),
     cap(0, CAP_V4L2),
-    proccessFrame_time("proccessFrame"),
-    frameCapture_time("frame capture"),
-    everythinge_else("everything else")
+    proccessFrame_time("proccessFrame")
 
     // Allocate memory for all arrays
     {
@@ -211,8 +202,10 @@ void video::onResetUI(int state, void* user_data)
 }
 
 //=====================================================================================
-void video::initializeCapture()
-{
+
+void video::initializeWindow() 
+{   
+    cap >> frame;
     cap.set(CAP_PROP_FRAME_WIDTH, frame_width);   // Set frame width for capture
     cap.set(CAP_PROP_FRAME_HEIGHT, frame_height); // Set frame height for capture
     cap.set(CAP_PROP_FPS, frame_rate);            // Set frame rate
@@ -316,7 +309,6 @@ void video::initializeWindow()
 
 //=====================================================================================
 
-/*
 void video::generateUI() {
     if (ui_change_flag == 1) {
 
@@ -348,7 +340,7 @@ void video::generateUI() {
         ui_change_flag = 0;
     }
 }
-*/
+
 
 void video::makeColorBar(int scale_height, int scale_width) 
 {
@@ -551,7 +543,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     }
     
     // Creates color bar
-    makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
+    //makeColorBar(SCALE_HEIGHT, SCALE_WIDTH);
     //generateUI();
     // Draws UI
     frame_RGB = drawUI(mag_max_string, magnitude_max, magnitude_min);
@@ -560,7 +552,7 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     if (FPS_count_state == 1) 
     {
         frame_count++;
-        if (frame_count == 20) {
+        if (frame_count == 10) {
             fps_time_end = getTickCount();
             double FPSTimeDifference = (fps_time_end - fps_time_start) / getTickFrequency();
             fps_time_start = fps_time_end;
@@ -568,7 +560,6 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
             frame_count = 0;
         }
 
-       
 
         ostringstream fps_stream;
         String fps_string;
@@ -583,10 +574,8 @@ Mat video::processFrame(Mat& magnitude_frame, int codec, string video_file_name)
     }
     
     proccessFrame_time.end();
-    //frameCapture_time.print();
-    //proccessFrame_time.print();
-    //everythinge_else.print();
-    everythinge_else.start();
+    proccessFrame_time.print();
+    
     return frame_RGB;
 
 }
