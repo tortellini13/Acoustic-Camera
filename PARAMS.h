@@ -15,7 +15,7 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 };
 
 // Angles
-#define ANGLE_STEP 8  // Amount of degrees that the beamforming algorithm sweeps in each step
+#define ANGLE_STEP 4  // Amount of degrees that the beamforming algorithm sweeps in each step
 #define MIN_ANGLE -38 // Minimum angle for beamforming algorithm to sweep from
 #define MAX_ANGLE  38 // Minimum angle for beamforming algorithm to sweep to
 const int NUM_ANGLES = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP) + 1; // Number of angles
