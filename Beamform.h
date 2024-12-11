@@ -74,7 +74,8 @@ private:
     cfloat5D directivity_factor;
     cfloat3D data_fft;
     cfloat3D data_beamform;
-    cfloat2D data_fft_collapse;
+    //cfloat2D data_fft_collapse;
+    float2D data_fft_collapse;
     float2D  data_post_process;
 
     // Initialize timers
@@ -243,10 +244,11 @@ void beamform::FFTCollapse(int lower_frequency, int upper_frequency)
     {
         for (int phi_index = 0; phi_index < num_angles; phi_index++)
         {
-            cfloat sum = 0;
+            float sum = 0;
             for (int k = lower_frequency; k <= upper_frequency; k++)
             {
-                sum += data_beamform.at(theta_index, phi_index, k);
+                //sum += data_beamform.at(theta_index, phi_index, k);
+                sum += sqrt(norm(data_beamform.at(theta_index, phi_index, k)));
             }
             // Write data to array and normalize
             data_fft_collapse.at(theta_index, phi_index) = sum / static_cast<float>(num_bins);
@@ -271,7 +273,7 @@ void beamform::postProcess(uint8_t post_process_type)
                 // cout << "dBFS\n"; // (debugging)
                 // ***Not sure if need to abs() before adding signals***
                 // 20 * log10(abs(signal) / num_signals)
-                float inside = abs(data_fft_collapse.at(theta, phi)) / total_angles;
+                float inside = data_fft_collapse.at(theta, phi) / total_angles;
                 data_post_process.at(theta, phi) = 20 * log10(inside);
             break;
             }

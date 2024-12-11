@@ -78,7 +78,7 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 // #define PRINT_FFT
 // #define PRINT_BEAMFORM
 // #define PRINT_FFT_COLLAPSE
-#define PRINT_POST_PROCESS
+// #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
 
 #endif

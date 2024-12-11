@@ -107,7 +107,7 @@ int main()
 
         beamform_time.start();
         #endif
-        beamform.processData(audio_data, processed_data, 1, 512, POST_dBFS); // 1kHz Full Octave Band
+        beamform.processData(audio_data, processed_data, 16, 24, POST_dBFS); // 1kHz Full Octave Band
         //cout << "processData.\n"; // (debugging)
         
         #ifdef PROFILE_MAIN
