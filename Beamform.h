@@ -19,7 +19,7 @@ using namespace std;
 class beamform
 {
 public:
-    beamform(int fft_size, int sample_rate, int m_channels, int n_channels, int mic_spacing,
+    beamform(int fft_size, int sample_rate, int m_channels, int n_channels, float mic_spacing,
              int num_angles, int min_angle, int max_angle, int angle_step);
 
     ~beamform();
@@ -59,7 +59,7 @@ private:
     int sample_rate;
     int m_channels;
     int n_channels;
-    int mic_spacing;
+    float mic_spacing;
     int num_angles;
     int total_angles;
     int min_angle;
@@ -86,7 +86,7 @@ private:
 
 //=====================================================================================
 
-beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels, int mic_spacing,
+beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels, float mic_spacing,
                    int num_angles, int min_angle, int max_angle, int angle_step) :
     // Assign values to variables
     fft_size(fft_size),
@@ -147,11 +147,11 @@ void beamform::directivity()
                         float wave_number = (2 * M_PI * frequency) / speed_of_sound;
                         float exponent = mic_spacing * wave_number * sin(degtorad(theta)) * (m * cos(degtorad(phi)) + n * sin(degtorad(phi)));
                         directivity_factor.at(m, n, theta_index, phi_index, b) = polar(1.0f, exponent);
-                    }
-                }
-            }
-        }
-    }
+                    } // end b
+                } // end n
+            } // end m
+        } // end phi
+    } // end theta
 } // end directivity
 
 //=====================================================================================
@@ -332,7 +332,7 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
     {
         for (int theta = 0; theta < NUM_ANGLES - 10; theta++)
         {
-            cout << setw(8) << fixed << setprecision(6) << showpos << data_beamform.at(theta, phi, 1) << " ";
+            cout << setw(8) << fixed << setprecision(6) << showpos << data_beamform.at(theta, phi, 22) << " ";
         }
         cout << endl;
     }

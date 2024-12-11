@@ -208,7 +208,7 @@ bool ALSA::recordAudio(float3D& data_output)
         {
             for (int m = 0; m < COLS; m++)
             {
-                data_output.at(m, n, b) = static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
+                data_output.at(m, n, b) = GAIN * static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
             }
         }
     }

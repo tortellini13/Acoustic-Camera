@@ -4,15 +4,16 @@
 // Mic channels
 #define M_AMOUNT 4 // Amount of mics in the M direction
 #define N_AMOUNT 4 // Amount of mics in the N direction
-#define MIC_SPACING 30 // ***Change this number to be correct. Also units?
+#define MIC_SPACING 0.030f // ***Change this number to be correct. Also units?
 const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
 const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 {
-    {1, 3, 9, 11},
-    {2, 4, 10, 12},
-    {5, 7, 13, 15},
-    {6, 8, 14, 16}
+    {11, 9,  3, 1},
+    {12, 10, 4, 2},
+    {15, 13, 7, 5},
+    {16, 14, 8, 6}
 };
+#define GAIN 1.0f
 
 // Angles
 #define ANGLE_STEP 4  // Amount of degrees that the beamforming algorithm sweeps in each step
@@ -75,9 +76,9 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 // #define PROFILE_VIDEO
 // #define PRINT_AUDIO
 // #define PRINT_FFT
-#define PRINT_BEAMFORM
+// #define PRINT_BEAMFORM
 // #define PRINT_FFT_COLLAPSE
-// #define PRINT_POST_PROCESS
+#define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
 
 #endif
