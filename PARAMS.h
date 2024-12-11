@@ -24,7 +24,7 @@ const int NUM_ANGLES = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP) + 1; // Number of 
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
 
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
@@ -73,9 +73,9 @@ const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find
 // #define PROFILE_MAIN
 // #define PROFILE_BEAMFORM
 // #define PROFILE_VIDEO
-// #define PRINT_AUDIO // Maybe don't clamp for -1 to 1. Getting larger numbers
-// #define PRINT_BEAMFORM
+// #define PRINT_AUDIO
 // #define PRINT_FFT
+#define PRINT_BEAMFORM
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT

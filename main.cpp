@@ -51,8 +51,8 @@ int main()
     
     // Initialize classes
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
-    beamform beamform(FFT_SIZE, M_AMOUNT, N_AMOUNT, MIC_SPACING, NUM_ANGLES, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP);
-    video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE, MAP_THRESHOLD, ALPHA);
+    beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT, MIC_SPACING, NUM_ANGLES, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP);
+    video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE);
 
     //==============================================================================================
 
@@ -66,12 +66,16 @@ int main()
     // Setup audio and data processing
     ALSA.setup();
 
+    beamform.setup(audio_data);
+
+    //video.initializeWindow();
+
     // Open window
-    video.initializeWindow();
+    video.startCapture();
 
     cout << "Starting loop.\n";
     // Loop to calculate audio and display video
-    while (1) // if this reads while(true) you will die. Source: saw it in a dream after drinking a monster and taking melatonin
+    while (1)
     {
         #ifdef PROFILE_MAIN
         ALSA_time.start();
@@ -87,7 +91,12 @@ int main()
         {
             for (int m = 0; m < M_AMOUNT; m++)
             {
-                cout << setw(8) << fixed << setprecision(6) << showpos << audio_data.at(m, n, 0) << " ";
+                float sum = 0;
+                for (int b = 0; b < FFT_SIZE; b++)
+                {
+                    sum = audio_data.at(m, n, b);
+                }
+                cout << setw(8) << fixed << setprecision(6) << showpos << sum * 100.0f << " ";
             }
             cout << endl;
         }
@@ -98,18 +107,17 @@ int main()
 
         beamform_time.start();
         #endif
-        beamform.processData(audio_data, processed_data, 0, 511, POST_dBFS);
+        beamform.processData(audio_data, processed_data, 1, 512, POST_dBFS); // 1kHz Full Octave Band
         //cout << "processData.\n"; // (debugging)
+        
         #ifdef PROFILE_MAIN
         beamform_time.end();
 
         video_time.start();
         #endif
         // Does all processing to frame including drawing UI and doing heat map
-        frame = video.processFrame(processed_data, codec, video_file_name);
+        video.processFrame(processed_data);
        
-        // Shows frame
-        imshow("Heat Map Overlay", frame);
         #ifdef PROFILE_MAIN
         video_time.end();
 
@@ -122,13 +130,12 @@ int main()
         video_time.print();
         cout << "Total time: " << total_time << " seconds.\n\n";
         #endif
-        
 
-        // Break loop if key is pressed
+        // Break loop if any key is pressed
         if (waitKey(1) >= 0) break;
     
-    }   // end loop
-
+    } // end loop
+    video.stopCapture();
 
     return 0;
 } // end main

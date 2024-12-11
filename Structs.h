@@ -166,33 +166,34 @@ struct cfloat3D
 
 //=====================================================================================
 
-struct cfloat4D
+struct cfloat5D
 {
-    cfloat*  data; // pointer to data array
-    size_t dim_1; // x dimension
-    size_t dim_2; // y dimension
-    size_t dim_3; // z dimension
-    size_t dim_4; // w dimension
+    cfloat* data; // pointer to data array
+    size_t dim_1; // x1 dimension
+    size_t dim_2; // x2 dimension
+    size_t dim_3; // x3 dimension
+    size_t dim_4; // x4 dimension
+    size_t dim_5; // x5 dimension
 
-    cfloat4D(size_t d1, size_t d2, size_t d3, size_t d4) : dim_1(d1), dim_2(d2), dim_3(d3), dim_4(d4) 
+    cfloat5D(size_t d1, size_t d2, size_t d3, size_t d4, size_t d5) : dim_1(d1), dim_2(d2), dim_3(d3), dim_4(d4), dim_5(d5)
     {
-        data = new cfloat[d1 * d2 * d3 * d4](); // Initialize array
+        data = new cfloat[d1 * d2 * d3 * d4 * d5](); // Initialize array
     }
 
-    ~cfloat4D() 
+    ~cfloat5D() 
     {
         delete[] data;
     }
 
     // Compute flat index and access element
-    cfloat& at(size_t i, size_t j, size_t k, size_t l) 
+    cfloat& at(size_t i, size_t j, size_t k, size_t l, size_t m) 
     {
-        return data[i * dim_2 * dim_3 * dim_4 + j * dim_3 * dim_4 + k * dim_4 + l];
+        return data[i * dim_2 * dim_3 * dim_4 * dim_5 + j * dim_3 * dim_4 * dim_5 + k * dim_4 * dim_5 + l * dim_5 + m];
     }
 
     // For read-only access
-    const cfloat& at(size_t i, size_t j, size_t k, size_t l) const 
+    const cfloat& at(size_t i, size_t j, size_t k, size_t l, size_t m) const 
     {
-        return data[i * dim_2 * dim_3 * dim_4 + j * dim_3 * dim_4 + k * dim_4 + l];
+        return data[i * dim_2 * dim_3 * dim_4 * dim_5 + j * dim_3 * dim_4 * dim_5 + k * dim_4 * dim_5 + l * dim_5 + m];
     }
-}; // end float4D
+}; // end float5D
