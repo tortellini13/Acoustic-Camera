@@ -116,7 +116,7 @@ int main()
         video_time.start();
         #endif
         // Does all processing to frame including drawing UI and doing heat map
-        video.processFrame(processed_data);
+        video.processFrame(processed_data, -70.0f, -30.0f);
        
         #ifdef PROFILE_MAIN
         video_time.end();

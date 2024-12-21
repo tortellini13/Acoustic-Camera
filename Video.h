@@ -25,7 +25,7 @@ public:
 
     void stopCapture();
 
-    void processFrame(Mat& data_input);
+    void processFrame(Mat& data_input, const float lower_limit, const float upper_limit);
 
 private:
     bool getFrame(Mat& frame);  // Non-blocking frame retrieval
@@ -34,7 +34,7 @@ private:
 
     Mat drawUI();
 
-    Mat createHeatmap(Mat& data_input);
+    Mat createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit);
 
     Mat mergeHeatmap(Mat& frame, Mat& heatmap, double alpha);
 
@@ -268,11 +268,18 @@ bool video::getFrame(Mat& frame)
 
 //=====================================================================================
 
-Mat video::createHeatmap(Mat& data_input)
+Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit)
 {
     // Ensure data_input is of type CV_32F for proper normalization
-    Mat normalized_input;
-    data_input.convertTo(normalized_input, CV_32F);
+    // Mat data_clamped;
+    // data_input.convertTo(data_clamped, CV_32F);
+
+    // min(data_clamped, lower_limit);
+    // max(data_clamped, upper_limit);
+
+    // Normalizes data to be 0-255
+    Mat data_normalized;
+    data_input.convertTo(data_normalized, CV_32F);
 
      // Find coord of max and min magnitude
     minMaxLoc(data_input, &magnitude_min, &magnitude_max, NULL, &max_coord);
@@ -283,11 +290,11 @@ Mat video::createHeatmap(Mat& data_input)
 
 
     // Normalize the input to the range 0-255 (required for color mapping)
-    normalize(normalized_input, normalized_input, 0, 255, NORM_MINMAX);
+    normalize(data_normalized, data_normalized, 0, 255, NORM_MINMAX);
 
     // Convert to 8-bit format (required for applying color map)
     Mat heatmap_input;
-    normalized_input.convertTo(heatmap_input, CV_8U);
+    data_normalized.convertTo(heatmap_input, CV_8U);
 
     // Apply a colormap to create the heatmap
     Mat heatmap;
@@ -394,7 +401,87 @@ return data_input;
 
 //=====================================================================================
 
-void video::processFrame(Mat& data_input)
+Mat video::drawColorBar(int scale_width, int scale_height) 
+{
+    Mat color_bar(scale_width, scale_height, CV_8UC3);
+    Mat scaleColor(scale_width, scale_height, CV_8UC1, Scalar(0));
+
+    for (int y = 0; y < scale_height; y++) 
+    {
+        int scaleIntensity = 255 * (static_cast<double>((scale_height- y)) / static_cast<double>(scale_height));
+        for(int x = 0; x < scale_width; x++) 
+        {
+            //scaleColor.at<uchar>(y, x) = scaleIntensity;
+        }
+    }
+    
+    applyColorMap(scaleColor, color_bar, COLORMAP_INFERNO);
+    return color_bar;
+}
+
+
+Mat video::drawUI(Mat& data_input)
+{
+    //Color Bar Scale
+
+    if (color_scale_state == 1) 
+    {   
+        Rect color_bar_location(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT);
+        rectangle(data_input, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
+        
+        //static_color_bar.copyTo(data_input(color_bar_location)); //Copy the scale onto the image
+
+         //Draw text indicating various points on the scale
+        float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
+        for (int i = 0; i < (SCALE_POINTS + 1); i++) 
+        {
+            Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
+            double scaleTextValue = ((static_cast<double>(magnitude_max - magnitude_min) * scaleTextRatio * static_cast<double>(i)) + magnitude_min); //Value of text for each point
+
+            ostringstream scaleTextStream;
+            scaleTextStream << fixed << setprecision(LABEL_PRECISION) << scaleTextValue;
+            String scaleTextString = scaleTextStream.str() + " ";
+
+            putText(data_input, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
+            line(data_input, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
+        }
+    }
+    
+    
+    // Mark maximum location
+    if (mark_max_mag_state == 1) 
+    {
+        drawMarker(data_input, max_point_scaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
+    }
+    
+
+    
+    if (list_max_mag_state == 1)
+    {
+        Point max_text_location(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
+        ostringstream max_magnitude_stream;
+        String max_magnitude_string;
+        int text_baseline = 0;
+    
+        max_magnitude_stream << fixed << setprecision(LABEL_PRECISION) << magnitude_max;
+        max_magnitude_string = "Maximum = " + max_magnitude_stream.str();
+
+        Size textSize = getTextSize(max_magnitude_string, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &text_baseline);
+        
+        rectangle(data_input, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+        putText(data_input, max_magnitude_string, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
+    }
+    
+
+
+
+return data_input;
+
+}
+
+//=====================================================================================
+
+void video::processFrame(Mat& data_input, const float lower_limit, const float upper_limit)
 {
     /*
     - convert input_data to correct range
@@ -406,7 +493,7 @@ void video::processFrame(Mat& data_input)
     if (getFrame(frame)) 
     {
         // Creates heatmap from beamformed audio data
-        Mat heatmap = createHeatmap(data_input);
+        Mat heatmap = createHeatmap(data_input, lower_limit, upper_limit);
         
         // Merge frame with heatmap
         Mat frame_merged = mergeHeatmap(frame, heatmap, 0.8f);
