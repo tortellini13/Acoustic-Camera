@@ -394,15 +394,7 @@ void beamform::processData(const float3D& data_input, cv::Mat& data_output, int 
 
     #ifdef PRINT_OUTPUT
     // Print first frame of data
-    for (int phi = 0; phi < NUM_ANGLES; phi++)
-    {
-        for (int theta = 0; theta < NUM_ANGLES; theta++)
-        {
-            cout << setw(8) << fixed << setprecision(6) << showpos << data_output.at(theta, phi) << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
+    cout << data_output << endl;
     #endif
 
 } // end processData

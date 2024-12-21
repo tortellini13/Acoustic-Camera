@@ -25,7 +25,7 @@ public:
 
     void stopCapture();
 
-    void processFrame(Mat& data_input);
+    void processFrame(Mat& data_input, const float lower_limit, const float upper_limit);
 
 private:
     bool getFrame(Mat& frame);  // Non-blocking frame retrieval
@@ -34,7 +34,7 @@ private:
 
     Mat drawUI();
 
-    Mat createHeatmap(Mat& data_input);
+    Mat createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit);
 
     Mat mergeHeatmap(Mat& frame, Mat& heatmap, double alpha);
     
@@ -132,18 +132,25 @@ bool video::getFrame(Mat& frame)
 
 //=====================================================================================
 
-Mat video::createHeatmap(Mat& data_input)
+Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit)
 {
     // Ensure data_input is of type CV_32F for proper normalization
-    Mat normalized_input;
-    data_input.convertTo(normalized_input, CV_32F);
+    // Mat data_clamped;
+    // data_input.convertTo(data_clamped, CV_32F);
+
+    // min(data_clamped, lower_limit);
+    // max(data_clamped, upper_limit);
+
+    // Normalizes data to be 0-255
+    Mat data_normalized;
+    data_input.convertTo(data_normalized, CV_32F);
 
     // Normalize the input to the range 0-255 (required for color mapping)
-    normalize(normalized_input, normalized_input, 0, 255, NORM_MINMAX);
+    normalize(data_normalized, data_normalized, 0, 255, NORM_MINMAX);
 
     // Convert to 8-bit format (required for applying color map)
     Mat heatmap_input;
-    normalized_input.convertTo(heatmap_input, CV_8U);
+    data_normalized.convertTo(heatmap_input, CV_8U);
 
     // Apply a colormap to create the heatmap
     Mat heatmap;
@@ -169,7 +176,7 @@ Mat video::mergeHeatmap(Mat& frame, Mat& heatmap, double alpha)
 
 //=====================================================================================
 
-void video::processFrame(Mat& data_input)
+void video::processFrame(Mat& data_input, const float lower_limit, const float upper_limit)
 {
     /*
     - convert input_data to correct range
@@ -180,7 +187,7 @@ void video::processFrame(Mat& data_input)
     if (getFrame(frame)) 
     {
         // Creates heatmap from beamformed audio data
-        Mat heatmap = createHeatmap(data_input);
+        Mat heatmap = createHeatmap(data_input, lower_limit, upper_limit);
 
         // Merge frame with heatmap
         Mat frame_merged = mergeHeatmap(frame, heatmap, 0.8f);
