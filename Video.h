@@ -32,8 +32,6 @@ private:
     
     void captureVideo(VideoCapture& cap, atomic<bool>& is_running);
 
-    Mat drawUI();
-
     Mat createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit);
 
     Mat mergeHeatmap(Mat& frame, Mat& heatmap, double alpha);
@@ -160,7 +158,7 @@ void video::onFPSCount(int state, void* user_data)
 void video::UISetup() 
 {   
     // Make a window for the buttons to go on
-    static_color_bar = drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
+    //static_color_bar = drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
 
     Mat initialFrame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
 
@@ -285,8 +283,8 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     minMaxLoc(data_input, &magnitude_min, &magnitude_max, NULL, &max_coord);
     
     // Scale max point to video resolution
-    max_point_scaled.x = (static_cast<double>(max_coord.x) / static_cast<double>(normalized_input.cols)) * RESOLUTION_WIDTH; 
-    max_point_scaled.y = (static_cast<double>(max_coord.y) / static_cast<double>(normalized_input.rows)) * RESOLUTION_HEIGHT;
+    max_point_scaled.x = (static_cast<double>(max_coord.x) / static_cast<double>(data_normalized.cols)) * RESOLUTION_WIDTH; 
+    max_point_scaled.y = (static_cast<double>(max_coord.y) / static_cast<double>(data_normalized.rows)) * RESOLUTION_HEIGHT;
 
 
     // Normalize the input to the range 0-255 (required for color mapping)
@@ -339,86 +337,7 @@ Mat video::drawColorBar(int scale_width, int scale_height)
     return color_bar;
 }
 
-
-Mat video::drawUI(Mat& data_input)
-{
-    //Color Bar Scale
-
-    if (color_scale_state == 1) 
-    {   
-        Rect color_bar_location(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT);
-        rectangle(data_input, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
-        
-        //static_color_bar.copyTo(data_input(color_bar_location)); //Copy the scale onto the image
-
-         //Draw text indicating various points on the scale
-        float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
-        for (int i = 0; i < (SCALE_POINTS + 1); i++) 
-        {
-            Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
-            double scaleTextValue = ((static_cast<double>(magnitude_max - magnitude_min) * scaleTextRatio * static_cast<double>(i)) + magnitude_min); //Value of text for each point
-
-            ostringstream scaleTextStream;
-            scaleTextStream << fixed << setprecision(LABEL_PRECISION) << scaleTextValue;
-            String scaleTextString = scaleTextStream.str() + " ";
-
-            putText(data_input, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
-            line(data_input, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
-        }
-    }
-    
-    
-    // Mark maximum location
-    if (mark_max_mag_state == 1) 
-    {
-        drawMarker(data_input, max_point_scaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
-    }
-    
-
-    
-    if (list_max_mag_state == 1)
-    {
-        Point max_text_location(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
-        ostringstream max_magnitude_stream;
-        String max_magnitude_string;
-        int text_baseline = 0;
-    
-        max_magnitude_stream << fixed << setprecision(LABEL_PRECISION) << magnitude_max;
-        max_magnitude_string = "Maximum = " + max_magnitude_stream.str();
-
-        Size textSize = getTextSize(max_magnitude_string, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &text_baseline);
-        
-        rectangle(data_input, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
-        putText(data_input, max_magnitude_string, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
-    }
-    
-
-
-
-return data_input;
-
-}
-
 //=====================================================================================
-
-Mat video::drawColorBar(int scale_width, int scale_height) 
-{
-    Mat color_bar(scale_width, scale_height, CV_8UC3);
-    Mat scaleColor(scale_width, scale_height, CV_8UC1, Scalar(0));
-
-    for (int y = 0; y < scale_height; y++) 
-    {
-        int scaleIntensity = 255 * (static_cast<double>((scale_height- y)) / static_cast<double>(scale_height));
-        for(int x = 0; x < scale_width; x++) 
-        {
-            //scaleColor.at<uchar>(y, x) = scaleIntensity;
-        }
-    }
-    
-    applyColorMap(scaleColor, color_bar, COLORMAP_INFERNO);
-    return color_bar;
-}
-
 
 Mat video::drawUI(Mat& data_input)
 {
