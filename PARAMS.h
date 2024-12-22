@@ -62,7 +62,7 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 #define CROSS_SIZE 20     // Size of cross at maximum magnitude
 
 // FPS counter
-#define FPS_COUNTER_AVERAGE 5 // Number of frames to be averaged for calculating FPS
+#define FPS_COUNTER_AVERAGE 10 // Number of frames to be averaged for calculating FPS
 
 // Post processing types
 #define POST_dBFS 0

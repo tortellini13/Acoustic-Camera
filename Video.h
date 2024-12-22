@@ -41,7 +41,7 @@ private:
     Mat mergeHeatmap(Mat& frame, Mat& heatmap, double alpha);
 
     // Draws color bar onto frame
-    Mat drawColorBar(int scale_width, int scale_height);
+    void drawColorBar(int scale_width, int scale_height);
 
     // Draws UI onto frame
     Mat drawUI(Mat& data_input);
@@ -67,6 +67,7 @@ private:
     int color_scale_state = 1;
     int heat_map_state = 1;
     int FPS_count_state = 1;
+    int data_clamp_state = 1;
 
     // Button callbacks
     void onListMaxMag(int state, void* user_data);
@@ -74,6 +75,8 @@ private:
     void onColorScaleState(int state, void* user_data);
     void onHeatMap(int state, void* user_data);
     void onFPSCount(int state, void* user_data);
+    void onDataClamp(int state, void* user_data);
+
     void UISetup();
 
     // For magnitude proccessing
@@ -86,6 +89,15 @@ private:
 
     // Color bar
     Mat static_color_bar;
+    Mat color_bar;
+    Mat scaleColor;
+
+    // FPS counter
+    void FPSCalculator();
+    timer FPSTimer;
+    int FPS_frame_count;
+    double FPS;
+
 };
 
 //=====================================================================================
@@ -94,7 +106,8 @@ video::video(int frame_width, int frame_height, int frame_rate) :
     frame_width(frame_width),
     frame_height(frame_height),
     frame_rate(frame_rate),
-    cap(0, CAP_V4L2) {}
+    cap(0, CAP_V4L2),
+    FPSTimer("FPS Timer") {}
 
 video::~video() 
 {
@@ -143,7 +156,20 @@ void video::onHeatMap(int state, void* user_data)
 {heat_map_state = state;}
 
 void video::onFPSCount(int state, void* user_data) 
-{FPS_count_state = state;}
+{
+    FPS_count_state = state;
+    FPS_frame_count = 0;
+    if (state == 0) {
+        FPSTimer.start();
+    }
+    if (state == 1) {
+        FPSTimer.end();
+    }
+
+}
+
+void video::onDataClamp(int state, void* user_data) 
+{data_clamp_state = state;}
 
 //=====================================================================================
 
@@ -152,7 +178,7 @@ void video::onFPSCount(int state, void* user_data)
 void video::UISetup() 
 {   
     // Make a window for the buttons to go on
-    //static_color_bar = drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
+    drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
 
     Mat initial_frame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
 
@@ -167,9 +193,17 @@ void video::UISetup()
 
     createTrackbar("Alpha", "Window", nullptr, 100);
 
+    createTrackbar("Clamp minimum", "Window", nullptr, 100);
+
+    createTrackbar("Clamp maximum", "Window", nullptr, 100);
+
     setTrackbarPos("Threshold", "Window", DEFAULT_THRESHOLD);
     
     setTrackbarPos("Alpha", "Window", DEFAULT_ALPHA);
+
+    setTrackbarPos("Clamp minimum", "Window", 0);
+
+    setTrackbarPos("Clamp maximum", "Window", 100);
 
     // Maximum magnitude button
     createButton("List Maximum Magnitude", 
@@ -214,6 +248,14 @@ void video::UISetup()
         {
             auto* vid = static_cast<video*>(user_data);
             vid->onFPSCount(state, user_data);
+        }, 
+        this, QT_CHECKBOX, 1);
+
+    createButton("Data Clamp",
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onDataClamp(state, user_data);
         }, 
         this, QT_CHECKBOX, 1);
     
@@ -262,11 +304,22 @@ bool video::getFrame(Mat& frame)
 Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit)
 {
     // Ensure data_input is of type CV_32F for proper normalization
-    // Mat data_clamped;
-    // data_input.convertTo(data_clamped, CV_32F);
+    if (data_clamp_state == 1) 
+    {
+    Mat data_clamped;
+    int Lower_limit;
+    int Upper_limit;
 
-    // min(data_clamped, lower_limit);
-    // max(data_clamped, upper_limit);
+    data_input.convertTo(data_clamped, CV_32F);
+
+    Lower_limit = getTrackbarPos("Clamp minimum", "Window") - 100;
+    Upper_limit = getTrackbarPos("Clamp maximum", "Window") - 100;
+
+    max(data_clamped, Lower_limit);
+    min(data_clamped, Upper_limit);
+
+    data_clamped.copyTo(data_input);
+    }
 
     // Normalizes data to be 0-255
     Mat data_normalized;
@@ -297,39 +350,65 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 //=====================================================================================
 
 Mat video::mergeHeatmap(Mat& frame, Mat& heatmap, double alpha)
-{
+{   
+    Mat frame_merged;
+
+    if(heat_map_state == 0) 
+    {   
+        frame.copyTo(frame_merged);
+    }
+
+    if(heat_map_state == 1) 
+    {
     // Ensure the heatmap is the same size as the frame
     Mat resized_heatmap;
     resize(heatmap, resized_heatmap, frame.size());
     
 
     // Blend the heatmap and the frame with an alpha value
-    Mat frame_merged;
+    
     addWeighted(frame, 1.0, resized_heatmap, alpha, 0.0, frame_merged);
+
+    }
 
     return frame_merged; // Return the merged frame
 } // end mergeHeatmap
 
 //=====================================================================================
 
-Mat video::drawColorBar(int scale_width, int scale_height) 
+void video::drawColorBar(int scale_width, int scale_height) 
 {
-    Mat color_bar(scale_width, scale_height, CV_8UC3);
-    Mat scaleColor(scale_width, scale_height, CV_8UC1, Scalar(0));
+    color_bar = Mat(scale_height, scale_width, CV_8UC3);
+    scaleColor = Mat(scale_height, scale_width, CV_8UC1, Scalar(0));
+    cout << scaleColor.size() << endl;
 
     for (int y = 0; y < scale_height; y++) 
     {
         int scaleIntensity = 255 * (static_cast<double>((scale_height- y)) / static_cast<double>(scale_height));
+        
         for(int x = 0; x < scale_width; x++) 
         {
-            //scaleColor.at<uchar>(y, x) = scaleIntensity;
+            cout << x << " " << y << " " << scaleIntensity << endl;
+            scaleColor.at<uchar>(y, x) = scaleIntensity;
+            cout << scaleColor.at<uchar>(y, x) << endl;
+            
         }
     }
-    
+    cout << scale_width << " " << scale_height << endl;
     applyColorMap(scaleColor, color_bar, COLORMAP_INFERNO);
-    return color_bar;
+    
 } // end drawColorBar
 
+void video::FPSCalculator()
+{
+    FPS_frame_count++;
+    if (FPS_frame_count == FPS_COUNTER_AVERAGE) {
+        FPSTimer.end();
+        FPS = 1000 * FPS_frame_count/FPSTimer.time_ms();
+        FPSTimer.start();
+        FPS_frame_count = 0;
+    }
+}
 //=====================================================================================
 
 Mat video::drawUI(Mat& data_input)
@@ -341,7 +420,7 @@ Mat video::drawUI(Mat& data_input)
         Rect color_bar_location(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT);
         rectangle(data_input, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
         
-        //static_color_bar.copyTo(data_input(color_bar_location)); //Copy the scale onto the image
+        color_bar.copyTo(data_input(color_bar_location)); //Copy the scale onto the image
 
          //Draw text indicating various points on the scale
         float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
@@ -379,6 +458,22 @@ Mat video::drawUI(Mat& data_input)
         
         rectangle(data_input, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
         putText(data_input, max_magnitude_string, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
+    }
+    
+    // Draw FPS box and text
+    if (FPS_count_state == 1) {
+        int FPSBaseline = 0;
+        Point FPSTextLocation(20, 460);
+        string FPS_string;
+        ostringstream FPS_stream;
+        
+        FPSCalculator();
+        FPS_stream << fixed << setprecision(LABEL_PRECISION) << FPS;
+        FPS_string = "FPS: " + FPS_stream.str();
+        Size FPStextSize = getTextSize(FPS_string, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &FPSBaseline);
+        
+        rectangle(data_input, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+        putText(data_input, FPS_string, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
     }
     
     return data_input;
