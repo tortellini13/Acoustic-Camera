@@ -28,16 +28,22 @@ public:
     void processFrame(Mat& data_input, const float lower_limit, const float upper_limit);
 
 private:
-    bool getFrame(Mat& frame);  // Non-blocking frame retrieval
+    // Gets frame from other thread
+    bool getFrame(Mat& frame); 
     
+    // Actively captures video stream
     void captureVideo(VideoCapture& cap, atomic<bool>& is_running);
 
+    // Creates heatmap from input data
     Mat createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit);
 
+    // Merges heatmap onto frame
     Mat mergeHeatmap(Mat& frame, Mat& heatmap, double alpha);
 
+    // Draws color bar onto frame
     Mat drawColorBar(int scale_width, int scale_height);
 
+    // Draws UI onto frame
     Mat drawUI(Mat& data_input);
     
     // Camera params
@@ -61,6 +67,7 @@ private:
     int color_scale_state = 1;
     int heat_map_state = 1;
     int FPS_count_state = 1;
+
     // Button callbacks
     void onListMaxMag(int state, void* user_data);
     void onMarkMaxMag(int state, void* user_data);
@@ -70,17 +77,15 @@ private:
     void UISetup();
 
     // For magnitude proccessing
-    // Min and max magnitude
     double magnitude_min;
     double magnitude_max;
+
     // Coords for max magnitude
     Point max_coord;        // Coords from data
     Point max_point_scaled; // Coords scaled to frame
 
-    //Color bar
+    // Color bar
     Mat static_color_bar;
-    
-
 };
 
 //=====================================================================================
@@ -125,31 +130,20 @@ void video::stopCapture()
 //=====================================================================================
 
 // Callbacks for UI Buttons
-
 void video::onListMaxMag(int state, void* user_data) 
-{
-    list_max_mag_state = state;
-}
+{list_max_mag_state = state;}
 
 void video::onMarkMaxMag(int state, void* user_data) 
-{
-    mark_max_mag_state = state;
-}
+{mark_max_mag_state = state;}
 
 void video::onColorScaleState(int state, void* user_data) 
-{
-    color_scale_state = state;
-}
+{color_scale_state = state;}
 
 void video::onHeatMap(int state, void* user_data) 
-{
-    heat_map_state = state;
-}
+{heat_map_state = state;}
 
 void video::onFPSCount(int state, void* user_data) 
-{
-    FPS_count_state = state;
-}
+{FPS_count_state = state;}
 
 //=====================================================================================
 
@@ -160,14 +154,14 @@ void video::UISetup()
     // Make a window for the buttons to go on
     //static_color_bar = drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
 
-    Mat initialFrame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
+    Mat initial_frame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
 
-    while (!getFrame(initialFrame)) 
+    while (!getFrame(initial_frame)) 
     {
-        cerr << "Error: Could not retreive frame from capture thread!" << endl;
+        cerr << "Error: Could not retreive frame from capture thread!" << "\n";
     }
 
-    imshow("Window",initialFrame); 
+    imshow("Window",initial_frame); 
 
     createTrackbar("Threshold", "Window", nullptr, MAP_THRESHOLD_MAX);
 
@@ -223,7 +217,7 @@ void video::UISetup()
         }, 
         this, QT_CHECKBOX, 1);
     
-}
+} // end UISetup
 
 //=====================================================================================
 
@@ -234,18 +228,17 @@ void video::captureVideo(VideoCapture& cap, atomic<bool>& is_running)
         Mat temp_frame;
         if (cap.read(temp_frame)) 
         {
-            // Protect access to the frame queue with a mutex
-            {
-                lock_guard<mutex> lock(frame_mutex);
-                frame_queue.push(temp_frame.clone());  // Store a copy of the frame in the queue
-            }
+            lock_guard<mutex> lock(frame_mutex);  // Protect access to the frame queue with a mutex
+            frame_queue.push(temp_frame.clone()); // Store a copy of the frame in the queue
         }
+
         else 
         {
-            cerr << "Error: Could not capture frame from video source!" << endl;
+            cerr << "Error: Could not capture frame from video source!" << "\n";
             is_running = false;
         }
     }
+
     destroyAllWindows();
 } // end videoCapture
 
@@ -335,7 +328,7 @@ Mat video::drawColorBar(int scale_width, int scale_height)
     
     applyColorMap(scaleColor, color_bar, COLORMAP_INFERNO);
     return color_bar;
-}
+} // end drawColorBar
 
 //=====================================================================================
 
@@ -366,14 +359,11 @@ Mat video::drawUI(Mat& data_input)
         }
     }
     
-    
     // Mark maximum location
     if (mark_max_mag_state == 1) 
     {
         drawMarker(data_input, max_point_scaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
     }
-    
-
     
     if (list_max_mag_state == 1)
     {
@@ -391,12 +381,8 @@ Mat video::drawUI(Mat& data_input)
         putText(data_input, max_magnitude_string, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
     }
     
-
-
-
-return data_input;
-
-}
+    return data_input;
+} // end drawUI
 
 //=====================================================================================
 
@@ -415,8 +401,9 @@ void video::processFrame(Mat& data_input, const float lower_limit, const float u
         Mat heatmap = createHeatmap(data_input, lower_limit, upper_limit);
         
         // Merge frame with heatmap
-        Mat frame_merged = mergeHeatmap(frame, heatmap, 0.8f);
+        Mat frame_merged = mergeHeatmap(frame, heatmap, 0.8f); // alpha to be changed later***
         
+        // Draw UI onto frame
         Mat frame_merged_UI = drawUI(frame_merged);
         
         imshow("Window", frame_merged_UI);
