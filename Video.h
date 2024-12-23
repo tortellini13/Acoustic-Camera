@@ -83,6 +83,9 @@ private:
     double magnitude_min;
     double magnitude_max;
 
+    int Lower_limit;
+    int Upper_limit;
+
     // Coords for max magnitude
     Point max_coord;        // Coords from data
     Point max_point_scaled; // Coords scaled to frame
@@ -307,16 +310,63 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     if (data_clamp_state == 1) 
     {
     Mat data_clamped;
-    int Lower_limit;
-    int Upper_limit;
+    
 
     data_input.convertTo(data_clamped, CV_32F);
 
-    Lower_limit = getTrackbarPos("Clamp minimum", "Window") - 100;
-    Upper_limit = getTrackbarPos("Clamp maximum", "Window") - 100;
+    if (Lower_limit != (getTrackbarPos("Clamp minimum", "Window") - 100)) {
+        
+        Lower_limit = getTrackbarPos("Clamp minimum", "Window") - 100;
+        
+        if (Lower_limit >= Upper_limit) {
+            if (Upper_limit == -100) {
+                Upper_limit = -99;
+            }
+            if (Lower_limit == 0) {
+                Lower_limit = -1;    
+            }
+        Upper_limit = Lower_limit + 1;
 
-    max(data_clamped, Lower_limit);
-    min(data_clamped, Upper_limit);
+        setTrackbarPos("Clamp minimum", "Window", Lower_limit + 100);
+        setTrackbarPos("Clamp maximum", "Window", Upper_limit + 100);
+
+        }
+    }
+
+    if (Upper_limit != (getTrackbarPos("Clamp maximum", "Window") - 100)) {
+        
+        Upper_limit = getTrackbarPos("Clamp maximum", "Window") - 100;
+        
+        if (Lower_limit >= Upper_limit) {
+            
+            if (Upper_limit == -100) {
+                Upper_limit = -99;
+            }
+            
+            if (Lower_limit == 0) {
+                Lower_limit = -1;    
+            }
+        
+        Lower_limit = Upper_limit - 1;
+
+        setTrackbarPos("Clamp minimum", "Window", Lower_limit + 100);
+        setTrackbarPos("Clamp maximum", "Window", Upper_limit + 100);
+        }
+    }
+
+    for(int col = 0; col < data_clamped.cols; col++ ) {
+        for (int row = 0; row < data_clamped.rows; row++) {
+
+            if(data_clamped.at<float>(row, col) < Lower_limit) {
+                data_clamped.at<float>(row, col) = Lower_limit;
+            }
+
+            if(data_clamped.at<float>(row, col) > Upper_limit) {
+                data_clamped.at<float>(row, col) = Upper_limit;
+            }   
+
+        }
+    }
 
     data_clamped.copyTo(data_input);
     }
@@ -388,10 +438,7 @@ void video::drawColorBar(int scale_width, int scale_height)
         
         for(int x = 0; x < scale_width; x++) 
         {
-            cout << x << " " << y << " " << scaleIntensity << endl;
             scaleColor.at<uchar>(y, x) = scaleIntensity;
-            cout << scaleColor.at<uchar>(y, x) << endl;
-            
         }
     }
     cout << scale_width << " " << scale_height << endl;
@@ -404,7 +451,7 @@ void video::FPSCalculator()
     FPS_frame_count++;
     if (FPS_frame_count == FPS_COUNTER_AVERAGE) {
         FPSTimer.end();
-        FPS = 1000 * FPS_frame_count/FPSTimer.time_ms();
+        FPS = FPS_frame_count/FPSTimer.time();
         FPSTimer.start();
         FPS_frame_count = 0;
     }
@@ -441,6 +488,7 @@ Mat video::drawUI(Mat& data_input)
     // Mark maximum location
     if (mark_max_mag_state == 1) 
     {
+        drawMarker(data_input, max_point_scaled, Scalar(0, 0, 0), MARKER_CROSS, CROSS_SIZE + 1, CROSS_THICKNESS + 1, 8); //Mark the maximum magnitude point
         drawMarker(data_input, max_point_scaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
     }
     
