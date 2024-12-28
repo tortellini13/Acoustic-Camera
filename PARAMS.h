@@ -13,12 +13,12 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
     {15, 13, 7, 5},
     {16, 14, 8, 6}
 };
-#define GAIN 1.0f
+#define MIC_GAIN 1.0f
 
 // Angles
-#define ANGLE_STEP 4  // Amount of degrees that the beamforming algorithm sweeps in each step
-#define MIN_ANGLE -38 // Minimum angle for beamforming algorithm to sweep from
-#define MAX_ANGLE  38 // Minimum angle for beamforming algorithm to sweep to
+#define ANGLE_STEP 6  // Amount of degrees that the beamforming algorithm sweeps in each step
+#define MIN_ANGLE -90 // Minimum angle for beamforming algorithm to sweep from
+#define MAX_ANGLE  90 // Minimum angle for beamforming algorithm to sweep to
 const int NUM_ANGLES = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP) + 1; // Number of angles
 
 // FFT
@@ -75,10 +75,11 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 // #define PROFILE_BEAMFORM
 // #define PROFILE_VIDEO
 // #define PRINT_AUDIO
-// #define PRINT_FFT
 // #define PRINT_BEAMFORM
+// #define PRINT_FFT
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
+#define AVG_SAMPLES 20
 
 #endif

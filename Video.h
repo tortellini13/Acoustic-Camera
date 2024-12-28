@@ -449,9 +449,10 @@ void video::drawColorBar(int scale_width, int scale_height)
 void video::FPSCalculator()
 {
     FPS_frame_count++;
-    if (FPS_frame_count == FPS_COUNTER_AVERAGE) {
+    if (FPS_frame_count == FPS_COUNTER_AVERAGE) 
+    {
         FPSTimer.end();
-        FPS = FPS_frame_count/FPSTimer.time();
+        FPS = FPSTimer.time(false);
         FPSTimer.start();
         FPS_frame_count = 0;
     }
@@ -460,8 +461,7 @@ void video::FPSCalculator()
 
 Mat video::drawUI(Mat& data_input)
 {
-    //Color Bar Scale
-
+    // Color Bar Scale
     if (color_scale_state == 1) 
     {   
         Rect color_bar_location(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT);
@@ -483,7 +483,7 @@ Mat video::drawUI(Mat& data_input)
             putText(data_input, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
             line(data_input, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
         }
-    }
+    } // end colar bar scale
     
     // Mark maximum location
     if (mark_max_mag_state == 1) 
@@ -506,7 +506,7 @@ Mat video::drawUI(Mat& data_input)
         
         rectangle(data_input, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
         putText(data_input, max_magnitude_string, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
-    }
+    } // end max mag
     
     // Draw FPS box and text
     if (FPS_count_state == 1) {
@@ -522,7 +522,7 @@ Mat video::drawUI(Mat& data_input)
         
         rectangle(data_input, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
         putText(data_input, FPS_string, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
-    }
+    } // end fps
     
     return data_input;
 } // end drawUI
@@ -537,6 +537,7 @@ void video::processFrame(Mat& data_input, const float lower_limit, const float u
     - merge frame and input_data
     - draw UI
     */
+   
     Mat frame;
     if (getFrame(frame)) 
     {
