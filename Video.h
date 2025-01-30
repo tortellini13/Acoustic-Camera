@@ -473,15 +473,26 @@ Mat video::drawUI(Mat& data_input)
         float scaleTextRatio = (1 / static_cast<float>(SCALE_POINTS ));
         for (int i = 0; i < (SCALE_POINTS + 1); i++) 
         {
-            Point scaleTextStart(SCALE_POS_X, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
+            Point scaleTextStart(SCALE_POS_X - 6, (SCALE_POS_Y + ((1 - static_cast<double>(i) * scaleTextRatio) * SCALE_HEIGHT) - 3)); //Starting point for the text
             double scaleTextValue = ((static_cast<double>(magnitude_max - magnitude_min) * scaleTextRatio * static_cast<double>(i)) + magnitude_min); //Value of text for each point
 
             ostringstream scaleTextStream;
+            String scaleTextString;
+            String scaleTextSymbol = " ";
+
+            if (data_clamp_state == 1) {
+                if (i == 0) {
+                    scaleTextSymbol = "<";
+                }
+                if (i == SCALE_POINTS) {
+                    scaleTextSymbol = ">";
+                }
+            }
             scaleTextStream << fixed << setprecision(LABEL_PRECISION) << scaleTextValue;
-            String scaleTextString = scaleTextStream.str() + " ";
+            scaleTextString = scaleTextSymbol + scaleTextStream.str() + " ";
 
             putText(data_input, scaleTextString, scaleTextStart, FONT_TYPE, FONT_SCALE - 0.2, Scalar(255, 255, 255), FONT_THICKNESS);
-            line(data_input, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH, 3), Scalar(255, 255, 255), 1, 8, 0);
+            line(data_input, scaleTextStart + Point(0,3), scaleTextStart + Point(SCALE_WIDTH + 6, 3), Scalar(255, 255, 255), 1, 8, 0);
         }
     }
     
