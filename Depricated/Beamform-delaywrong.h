@@ -29,8 +29,17 @@ private:
     // Converts degrees to radians
     float degtorad(const float angle_deg);
 
+    // Writes data into a ring buffer
+    void ringBuffer(array3D<float>& data_input);
+
+    // Access buffers at specified indecies
+    float accessBuffer(int m, int n, int b);
+
+    // Linear interpolation
+    float lerp(const float first_value, const float second_value, const float alpha);
+
     // Performs beamforming on audio data
-    void handleBeamforming(array3D<float>& data_input);
+    void handleBeamforming();
 
     // Creates FFT plan
     void setupFFT();
@@ -66,8 +75,11 @@ private:
     fftwf_plan fft_plan;
 
     // Arrays
-    array4D<complex<float>> steering_array;    // (m, n, theta, phi)
-    array3D<complex<float>> data_beamform;     // (theta, phi, fft_size)
+    array4D<int>   time_delay;        // (m, n, theta, phi)
+    array4D<float> time_delay_frac;   // (m, n, theta, phi)
+    array3D<float> data_buffer_1;     // (m, n, fft_size)
+    array3D<float> data_buffer_2;     // (m, n, fft_size)
+    array3D<float> data_beamform;     // (theta, phi, fft_size)
     array3D<complex<float>> data_fft; // (theta, phi, fft_size / 2)
     array2D<float> data_fft_collapse; // (theta, phi)
     array2D<float> data_post_process; // (theta, phi)
@@ -96,7 +108,10 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     data_size(m_channels * n_channels * fft_size),
 
     // Allocate memory for arrays
-    steering_array(m_channels, n_channels, num_angles, num_angles),
+    time_delay(m_channels, n_channels, num_angles, num_angles),
+    time_delay_frac(m_channels, n_channels, num_angles, num_angles),
+    data_buffer_1(m_channels, n_channels, fft_size),
+    data_buffer_2(m_channels, n_channels, fft_size),
     data_beamform(num_angles, num_angles, fft_size),
     data_fft(num_angles, num_angles, half_fft_size),
     data_fft_collapse(num_angles, num_angles),
@@ -135,12 +150,12 @@ void beamform::setupFFT()
     // Set the number of threads for FFTW
     fftwf_plan_with_nthreads(omp_get_max_threads()); // Use all available threads
 
-    fftwf_complex* input  = reinterpret_cast<fftwf_complex*>(data_beamform.data); // Allocate input array
-    fftwf_complex* output = reinterpret_cast<fftwf_complex*>(data_fft.data);      // Allocate output array
+    float* input = reinterpret_cast<float*>(data_beamform.data); // Allocate real input array
+    fftwf_complex* output = reinterpret_cast<fftwf_complex*>(data_fft.data); // Allocate complex output array
 
-    fft_plan = fftwf_plan_dft_3d(data_beamform.dim_1, data_beamform.dim_2, data_beamform.dim_3, 
-                                 input, output, 
-                                 FFTW_FORWARD, FFTW_MEASURE);
+    fft_plan = fftwf_plan_dft_r2c_3d(data_beamform.dim_1, data_beamform.dim_2, data_beamform.dim_3, 
+                                     input, output, 
+                                     FFTW_ESTIMATE);
 
     if (!fft_plan)
     {
@@ -156,7 +171,15 @@ void beamform::setup()
     // Creates FFT plan
     setupFFT();
 
-    complex<float> i(0, 1);
+    // Calculates delay times
+    array4D<float> time_delay_float(m_channels, n_channels, num_angles, num_angles); // ***May need to implement interpolation
+
+    // Initialize time delay
+    float delay_time;
+
+    // Initialize the minimum value to an arbitrary large value
+    float min_val = MAXFLOAT;
+
     // Loop through all indicies to calculate time delays
     for (int phi = min_angle, phi_index = 0; phi_index < num_angles; phi += angle_step, phi_index++)
     {
@@ -169,11 +192,56 @@ void beamform::setup()
             {
                 for (int m = 0; m < m_channels; m++)
                 {
-                    float exponent = -2 * M_PI * mic_spacing * (m * sin_theta * sin_phi + n * cos_theta * sin_theta) / speed_of_sound;
-                    //cout << "m: " << m << " n: " << n << " theta: " << theta << " phi: " << phi << " exponent: " << exponent << "\n";
-                    steering_array.at(m, n, theta, phi) = exp(exponent * i);
-                    //cout << "m: " << m << " n: " << n << " theta: " << theta << " phi: " << phi << " steering array: " << exp(exponent * i) << "\n";
+                    delay_time = (mic_spacing * sin_phi * (n * sin_theta + m * cos_theta)) / speed_of_sound;
+
+                    // Keep track of minimum value
+                    if (delay_time < min_val)
+                    {
+                        min_val = delay_time;
+                    }
+                    time_delay_float.at(m, n, theta_index, phi_index) = delay_time;
                 }
+            }
+        }
+    }
+
+    // Track max value for testing
+    int max_val = -INT32_MAX;
+
+    // Shift all delays so there are no negative values and convert to samples
+    for (int phi_index = 0; phi_index < time_delay.dim_4; phi_index++)
+    {
+        for (int theta_index = 0; theta_index < time_delay.dim_3; theta_index++)
+        {
+            for (int n = 0; n < time_delay.dim_2; n++)
+            {
+                for (int m = 0; m < time_delay.dim_1; m++)
+                {
+                    // time_delay_samples = time_delay_float * sample_rate
+                    float time_delay_int;
+                    time_delay_frac.at(m, n, theta_index, phi_index) = modf(time_delay_float.at(m, n, theta_index, phi_index) * sample_rate, &time_delay_int);
+                    time_delay.at(m, n, theta_index, phi_index) = static_cast<int>(time_delay_int);
+                    //time_delay.at(m, n, theta_index, phi_index) = round((time_delay_float.at(m, n, theta_index, phi_index) - min_val) * sample_rate);
+
+                    // Track max value for testing
+                    if (time_delay.at(m, n, theta_index, phi_index) > max_val)
+                    {
+                        max_val = time_delay.at(m, n, theta_index, phi_index);
+                    }
+                }
+            }
+        }
+    }
+
+    // Initialize buffers with 0's
+    for (int n = 0; n < data_buffer_1.dim_2; n++)
+    {
+        for (int m = 0; m < data_buffer_1.dim_1; m++)
+        {
+            for (int b = 0; b < data_buffer_1.dim_3; b++)
+            {
+                data_buffer_1.at(m, n, b) = 0.0f;
+                data_buffer_2.at(m, n, b) = 0.0f;
             }
         }
     }
@@ -186,7 +254,44 @@ void beamform::setup()
 
 //=====================================================================================
 
-void beamform::handleBeamforming(array3D<float>& data_input)
+void beamform::ringBuffer(array3D<float>& data_input)
+{
+    // Move buffer_2 into buffer_1
+    swap(data_buffer_1.data, data_buffer_2.data);
+
+    // Read data into buffer_2
+    memcpy(data_buffer_2.data, data_input.data, data_size);
+} // end ringBuffer
+
+//=====================================================================================
+
+float beamform::accessBuffer(int m, int n, int b)
+{
+    if (b < fft_size)
+    {
+        return data_buffer_1.at(m, n, b);
+    }
+
+    else if (b >= fft_size)
+    {
+        return data_buffer_2.at(m, n, b - fft_size);
+    }
+
+    else
+    {
+        cerr << "Out of bounds buffer access.\n";
+        return 0;
+    }
+} // end accessBuffer
+
+float beamform::lerp(const float first_value, const float second_value, const float alpha)
+{
+    return (1 - alpha) * first_value + alpha * second_value;
+} // end lerp
+
+//=====================================================================================
+
+void beamform::handleBeamforming()
 {
     #pragma omp parallel for schedule(dynamic, 2)
     for (int phi_index = 0; phi_index < data_beamform.dim_2; phi_index++) 
@@ -195,15 +300,23 @@ void beamform::handleBeamforming(array3D<float>& data_input)
         {
             for (int b = 0; b < data_beamform.dim_3; b++) 
             {
-                complex<float> sum(0, 0);
+                float sum = 0;
                 for (int n = 0; n < n_channels; n++) 
                 {
                     for (int m = 0; m < m_channels; m++) 
                     {
-                        sum += data_input.at(m, n, b) * steering_array.at(m, n, theta_index, phi_index);
+                        int index = b + time_delay.at(m, n, theta_index, phi_index);
+                        sum += lerp(accessBuffer(m, n, index), accessBuffer(m, n, b + 1), time_delay_frac.at(m, n, theta_index, phi_index));
+                        
+                        
+                        /* int delay = time_delay.at(m, n, theta_index, phi_index);
+                        int index = b + delay;
+                        sum += (index < fft_size)
+                                ? data_buffer_1.at(m, n, index)
+                                : data_buffer_2.at(m, n, index - fft_size); */
                     }
                 }
-                data_beamform.at(theta_index, phi_index, b) = sum;
+                data_beamform.at(theta_index, phi_index, b) = sum / num_channels;
             }
         }
     }
@@ -279,9 +392,12 @@ cv::Mat beamform::arraytoMat(const array2D<float>& data)
 
 void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
 {
+    // Ring buffer
+    ringBuffer(data_input);
+
     // Beamforming
     beamform_time.start();
-    handleBeamforming(data_input);
+    handleBeamforming();
     beamform_time.end();
 
     #ifdef PRINT_BEAMFORM 

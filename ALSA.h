@@ -29,7 +29,7 @@ public:
     bool setup();
 
     // Call this in a loop to record audio
-    bool recordAudio(float3D& data_output);
+    bool recordAudio(array3D<float>& data_output);
 
 private:
     // Configs
@@ -55,7 +55,7 @@ private:
     snd_pcm_uframes_t buffer_size;  // Size of buffer (BUFFER_SIZE * NUM_BYTES * NUM_CHANNELS)
     int32_t* data_buffer;           // Buffer for interlaced data to be written to
     int pcm_return;                 // Return value for pcm reading (for error handling)
-    int2D channel_order;
+    array2D<int> channel_order;
 
 }; // end class def
 
@@ -177,7 +177,7 @@ bool ALSA::setup()
 //=====================================================================================
 
 // Data outputs to M * N * FFT_SIZE array
-bool ALSA::recordAudio(float3D& data_output)
+bool ALSA::recordAudio(array3D<float>& data_output)
 {
     // Read data from microphones into interlaced buffer
     pcm_return = snd_pcm_readi(pcm_handle, data_buffer, frames);
@@ -208,7 +208,7 @@ bool ALSA::recordAudio(float3D& data_output)
         {
             for (int m = 0; m < COLS; m++)
             {
-                data_output.at(m, n, b) = GAIN * static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
+                data_output.at(m, n, b) = MIC_GAIN * static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
             }
         }
     }

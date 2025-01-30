@@ -40,7 +40,7 @@ int main()
     
     // Audio data [M * N * FFT_SIZE]
     //float audio_data[NUM_CHANNELS * FFT_SIZE] = {0.0f};
-    array3D<float> audio_data(M_AMOUNT, N_AMOUNT, FFT_SIZE);
+    float3D audio_data(M_AMOUNT, N_AMOUNT, FFT_SIZE);
 
     // Beamformed and post-processed data [NUM_ANGLES * NUMANGLES]
     //float processed_data[TOTAL_ANGLES] = {0.0f};
@@ -51,8 +51,7 @@ int main()
     
     // Initialize classes
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
-    beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT,
-                      MIC_SPACING, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP, 343.0f);
+    beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT, MIC_SPACING, NUM_ANGLES, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP);
     video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE);
 
     //==============================================================================================
@@ -67,14 +66,12 @@ int main()
     // Setup audio and data processing
     ALSA.setup();
 
-    // Open window
-    video.startCapture();
-
-    //beamform.setup();
+    beamform.setup(audio_data);
 
     //video.initializeWindow();
 
-    
+    // Open window
+    video.startCapture();
 
     cout << "Starting loop.\n";
     // Loop to calculate audio and display video

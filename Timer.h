@@ -14,13 +14,15 @@ public:
 
     void end();
 
-    void print();
+    void print(bool is_ms = true);
 
-    void print_ms();
+    void print_avg(int avg_count, bool is_ms = true);
 
-    double time() const;
+    double time(bool is_ms = true);
 
-    double time_ms() const;
+    double time_avg(int num_samples, bool is_ms = true);
+
+    int getCurrentAvgCount();
 
 private:
     const char* timer_name;
@@ -28,7 +30,11 @@ private:
     std::chrono::high_resolution_clock::time_point end_time;
     std::chrono::duration<double> elapsed_time;
 
+    double avg_time = 0;
+    int avg_counter = 0;
 };
+
+//=====================================================================================
 
 timer::timer(const char*timer_name):
     timer_name(timer_name)
@@ -38,6 +44,8 @@ timer::~timer()
 {
 
 } // end ~timer
+
+//=====================================================================================
 
 void timer::start()
 {
@@ -50,22 +58,75 @@ void timer::end()
     elapsed_time = end_time - start_time;
 } // end end
 
-void timer::print()
+//=====================================================================================
+
+void timer::print(bool is_ms)
 {
-    std::cout << timer_name << ": " << elapsed_time.count() << " seconds.\n";
+    if (!is_ms) {std::cout << timer_name << ": " << elapsed_time.count() << " seconds.\n";}
+    else        {std::cout << timer_name << ": " << elapsed_time.count() * 1000 << " ms.\n";}
+    
 } // end print
 
-void timer::print_ms()
+void timer::print_avg(int num_samples, bool is_ms)
 {
-    std::cout << timer_name << ": " << elapsed_time.count() * 1000 << " ms.\n";
-} // end print_ms
+    // Sum a number of samples of time
+    if (avg_counter < num_samples)
+    {
+        avg_time += elapsed_time.count();
+        avg_counter++;
+    }
+    // Print the average time
+    else
+    {
+        avg_time /= num_samples;
 
-double timer::time() const
+        if (!is_ms) {std::cout << timer_name << ": " << avg_time << " seconds.\n";}
+        else {std::cout << timer_name << ": " << avg_time * 1000 << " ms.\n";}
+
+        // Reset avg
+        avg_time = 0;
+        avg_counter = 0;
+    }
+} // end print_avg
+
+//=====================================================================================
+
+double timer::time(bool is_ms)
 {
-    return elapsed_time.count();
+    if (!is_ms) {return elapsed_time.count();}
+    else        {return elapsed_time.count() * 1000;}
 } // end time
 
-double timer::time_ms() const
+// Returns -1 if still averaging
+double timer::time_avg(int num_samples, bool is_ms)
 {
-    return elapsed_time.count() * 1000;
-} // end time_ms
+    double time;
+    // Sum a number of samples of time
+    if (avg_counter < num_samples)
+    {
+        avg_time += elapsed_time.count();
+        avg_counter++;
+
+        return -1;
+    }
+
+    // Return average time
+    else
+    {
+        avg_time /= num_samples;
+
+        if (!is_ms) {return avg_time;}
+        else        {return avg_time * 1000;}
+
+        // Reset avg
+        avg_time = 0;
+        avg_counter = 0;
+    }
+} // end time_avg
+
+//=====================================================================================
+
+int timer::getCurrentAvgCount()
+{
+    return avg_counter;
+} // end getCurrentAvgCount
