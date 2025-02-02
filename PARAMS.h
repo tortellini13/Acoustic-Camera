@@ -15,7 +15,7 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 };
 #define MIC_GAIN 1.0f
 
-// Angles
+// Angles (ELEVATION = 36, AZIMUTH = 60)
 #define ANGLE_STEP 6  // Amount of degrees that the beamforming algorithm sweeps in each step
 #define MIN_ANGLE -90 // Minimum angle for beamforming algorithm to sweep from
 #define MAX_ANGLE  90 // Minimum angle for beamforming algorithm to sweep to
@@ -34,12 +34,11 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 #define RESOLUTION_HEIGHT 480 // Height of the camera
 
 // Heatmap
-#define MAP_THRESHOLD 100      // Initial threshold for heat map ***SOME OF THESE ARE REDUNDANT/NOT NEEDED< WILL FIX WHEN THRESHOLD IS OVERHAULED***
-#define MAP_THRESHOLD_OFFSET -1000 // Minimum threshold for heat map
-#define MAP_THRESHOLD_MAX 1300  // Minimum threshold for heat map
+#define MAP_THRESHOLD_TRACKBAR_VAL 0      // Initial threshold for heat map 
+#define MAP_THRESHOLD_OFFSET 100 // Offset for trackbar position relative to threshold value (trackbar pos - offset = threshold)
+#define MAP_THRESHOLD_MAX 0  // Maximum threshold for heat map
 
 #define DEFAULT_ALPHA 60       // Default alpha value (ALPHA * 100)
-#define DEFAULT_THRESHOLD 150  // Default threshold value
 
 // Text
 #define FONT_TYPE FONT_HERSHEY_PLAIN // Font for overlayed text
@@ -80,6 +79,10 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
+#define ENABLE_AUDIO
+#define ENABLE_VIDEO
+//#define ENABLE_RANDOM_DATA
+//#define ENABLE_STATIC_DATA
 #define AVG_SAMPLES 20
 
 #endif

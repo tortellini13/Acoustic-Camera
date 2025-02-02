@@ -34,11 +34,8 @@ private:
     // Actively captures video stream
     void captureVideo(VideoCapture& cap, atomic<bool>& is_running);
 
-    // Creates heatmap from input data
-    Mat createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit);
-
-    // Merges heatmap onto frame
-    Mat mergeHeatmap(Mat& frame, Mat& heatmap, double alpha);
+    // Creates heatmap from input data, thesholds, clamps, and merges with video frame. Also contains generators for test data.
+    Mat createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit, Mat& frame);
 
     // Draws color bar onto frame
     void drawColorBar(int scale_width, int scale_height);
@@ -68,6 +65,7 @@ private:
     int heat_map_state = 1;
     int FPS_count_state = 1;
     int data_clamp_state = 1;
+    int threshold_state = 1;
 
     // Button callbacks
     void onListMaxMag(int state, void* user_data);
@@ -76,6 +74,7 @@ private:
     void onHeatMap(int state, void* user_data);
     void onFPSCount(int state, void* user_data);
     void onDataClamp(int state, void* user_data);
+    void onThresholdState(int state, void* user_data);
 
     void UISetup();
 
@@ -98,7 +97,6 @@ private:
     // FPS counter
     void FPSCalculator();
     timer FPSTimer;
-    int FPS_frame_count;
     double FPS;
 
 };
@@ -161,19 +159,20 @@ void video::onHeatMap(int state, void* user_data)
 void video::onFPSCount(int state, void* user_data) 
 {
     FPS_count_state = state;
-    FPS_frame_count = 0;
-    if (state == 0) {
+    if (state == 1) {
         FPSTimer.start();
     }
-    if (state == 1) {
+    if (state == 0) {
         FPSTimer.end();
     }
-
+    
 }
 
 void video::onDataClamp(int state, void* user_data) 
 {data_clamp_state = state;}
 
+void video::onThresholdState(int state, void* user_data) 
+{threshold_state = state;}
 //=====================================================================================
 
 // Setup UI Buttons and trackbars
@@ -182,6 +181,10 @@ void video::UISetup()
 {   
     // Make a window for the buttons to go on
     drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
+
+    #ifdef ENABLE_STATIC_DATA
+    staticTestFrame(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, -100, 0);
+    #endif
 
     Mat initial_frame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
 
@@ -192,7 +195,7 @@ void video::UISetup()
 
     imshow("Window",initial_frame); 
 
-    createTrackbar("Threshold", "Window", nullptr, MAP_THRESHOLD_MAX);
+    createTrackbar("Threshold", "Window", nullptr, (MAP_THRESHOLD_MAX + MAP_THRESHOLD_OFFSET));
 
     createTrackbar("Alpha", "Window", nullptr, 100);
 
@@ -200,7 +203,7 @@ void video::UISetup()
 
     createTrackbar("Clamp maximum", "Window", nullptr, 100);
 
-    setTrackbarPos("Threshold", "Window", DEFAULT_THRESHOLD);
+    setTrackbarPos("Threshold", "Window", MAP_THRESHOLD_TRACKBAR_VAL);
     
     setTrackbarPos("Alpha", "Window", DEFAULT_ALPHA);
 
@@ -261,6 +264,16 @@ void video::UISetup()
             vid->onDataClamp(state, user_data);
         }, 
         this, QT_CHECKBOX, 1);
+
+    createButton("Threshold",
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onThresholdState(state, user_data);
+        }, 
+        this, QT_CHECKBOX, 1);
+
+        //FPSTimer.start();
     
 } // end UISetup
 
@@ -304,9 +317,40 @@ bool video::getFrame(Mat& frame)
 
 //=====================================================================================
 
-Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit)
+Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit, Mat& frame)
 {
     // Ensure data_input is of type CV_32F for proper normalization
+    #ifdef ENABLE_RANDOM_DATA
+    randu(data_input, Scalar(-100), Scalar(0));
+    #endif
+    #ifdef ENABLE_STATIC_DATA
+    //resize(static_test_frame, static_test_frame, data_input.size());
+    //Mat test_frame = staticTestFrame(NUM_ANGLES, NUM_ANGLES, -100, 0);
+    
+    double st_height = NUM_ANGLES;
+    double st_width = NUM_ANGLES;
+    double st_max = 0;
+    double st_min = -100;
+    Mat  static_test_frame(st_height, st_width, CV_32F);
+
+    for(int i = 0; i < st_width; ++i) {
+        for(int j = 0; j < st_height; ++j) {
+        float value;
+        float distance = sqrt(((st_width / 2 - i)*(st_width / 2 - i)) + ((st_height / 2 - j)*(st_height / 2 - j)));
+        if (distance == st_width) {
+            value = st_min;
+        } else {
+            value = static_cast<float>(st_max - st_min) * (1 - static_cast<float>(distance / st_width));
+            
+        }
+
+        static_test_frame.at<float>(j, i) = value;
+        }
+    }
+    static_test_frame.copyTo(data_input);
+    #endif
+    
+    
     if (data_clamp_state == 1) 
     {
     Mat data_clamped;
@@ -371,6 +415,7 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     data_clamped.copyTo(data_input);
     }
 
+
     // Normalizes data to be 0-255
     Mat data_normalized;
     data_input.convertTo(data_normalized, CV_32F);
@@ -394,15 +439,8 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     Mat heatmap;
     applyColorMap(heatmap_input, heatmap, COLORMAP_INFERNO);
 
-    return heatmap; // Return the generated heatmap
-} // end createHeatmap
-
-//=====================================================================================
-
-Mat video::mergeHeatmap(Mat& frame, Mat& heatmap, double alpha)
-{   
     Mat frame_merged;
-
+    
     if(heat_map_state == 0) 
     {   
         frame.copyTo(frame_merged);
@@ -412,17 +450,46 @@ Mat video::mergeHeatmap(Mat& frame, Mat& heatmap, double alpha)
     {
     // Ensure the heatmap is the same size as the frame
     Mat resized_heatmap;
+    Mat resized_data_input;
     resize(heatmap, resized_heatmap, frame.size());
-    
+    resize(data_input, resized_data_input, frame.size());
 
     // Blend the heatmap and the frame with an alpha value
+    double alpha2 = static_cast<double>(getTrackbarPos("Alpha", "Window"))/100;
     
-    addWeighted(frame, 1.0, resized_heatmap, alpha, 0.0, frame_merged);
+    if (threshold_state == 0) {
+    addWeighted(frame, 1.0, resized_heatmap, alpha2, 0.0, frame_merged);
+    }
+    if(threshold_state == 1) {
+        // Get threshold value of trackbar
+        int thresholdValue = (getTrackbarPos("Threshold", "Window") - MAP_THRESHOLD_OFFSET);
+        
+        for(int y = 0; y < resized_heatmap.rows; ++y)
+            {
+                for (int x = 0; x < resized_heatmap.cols; ++x) 
+                {
+                    
+                    if (resized_data_input.at<float>(y, x) > thresholdValue) 
+                    {
+                        Vec3b& pixel = frame.at<Vec3b>(y, x);         // Current pixel in camera
+                        Vec3b heatMapPixel = resized_heatmap.at<Vec3b>(y, x); // Current pixel in heatmap
 
+                        // Loops through R G & B channels
+                        for (int c = 0; c < 3; c++) 
+                        {
+                            // Merges heatmap with video and applies alpha value
+                            pixel[c] = static_cast<uchar>(alpha2 * heatMapPixel[c] + (1 - alpha2) * pixel[c]);
+                        } 
+                    }
+                }
+            } // end alphaMerge
+        
+        frame.copyTo(frame_merged);
+    }
     }
 
-    return frame_merged; // Return the merged frame
-} // end mergeHeatmap
+    return frame_merged; // Return the generated heatmap
+} // end createHeatmap
 
 //=====================================================================================
 
@@ -446,17 +513,21 @@ void video::drawColorBar(int scale_width, int scale_height)
     
 } // end drawColorBar
 
+//=====================================================================================
+
 void video::FPSCalculator()
 {
-    FPS_frame_count++;
-    if (FPS_frame_count == FPS_COUNTER_AVERAGE) 
-    {
-        FPSTimer.end();
-        FPS = FPSTimer.time(false);
-        FPSTimer.start();
-        FPS_frame_count = 0;
-    }
-}
+    FPSTimer.end();
+
+    double FPSTime = FPSTimer.time_avg(2, false);
+    if (FPSTime != -1) 
+    { FPS = 1/FPSTime; }
+    
+    //cout << FPSTime << endl;
+    cout << FPSTimer.getCurrentAvgCount() << endl;
+    FPSTimer.start();
+}   
+
 //=====================================================================================
 
 Mat video::drawUI(Mat& data_input)
@@ -552,11 +623,8 @@ void video::processFrame(Mat& data_input, const float lower_limit, const float u
     Mat frame;
     if (getFrame(frame)) 
     {
-        // Creates heatmap from beamformed audio data
-        Mat heatmap = createHeatmap(data_input, lower_limit, upper_limit);
-        
-        // Merge frame with heatmap
-        Mat frame_merged = mergeHeatmap(frame, heatmap, 0.8f); // alpha to be changed later***
+        // Creates heatmap from beamformed audio data, thresholds, clamps, and merges
+        Mat frame_merged = createHeatmap(data_input, lower_limit, upper_limit, frame);
         
         // Draw UI onto frame
         Mat frame_merged_UI = drawUI(frame_merged);

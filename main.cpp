@@ -35,8 +35,8 @@ int main()
     
     // Video frame and capture settings
     // Set framerate of capture from PARAMS.h
-    int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
-    string video_file_name = "testoutput";           // Set video file output file name
+    //int codec = VideoWriter::fourcc('M', 'J', 'P', 'G'); // Set codec of video recording
+    //string video_file_name = "testoutput";           // Set video file output file name
     
     // Audio data [M * N * FFT_SIZE]
     //float audio_data[NUM_CHANNELS * FFT_SIZE] = {0.0f};
@@ -50,11 +50,14 @@ int main()
     Mat frame;
     
     // Initialize classes
+    #ifdef ENABLE_AUDIO
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
     beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT,
                       MIC_SPACING, MIN_ANGLE, MAX_ANGLE, ANGLE_STEP, 343.0f);
+    #endif
+    #ifdef ENABLE_VIDEO
     video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE);
-
+    #endif
     //==============================================================================================
 
     // Create timers for debugging
@@ -65,11 +68,13 @@ int main()
     //==============================================================================================
     
     // Setup audio and data processing
+    #ifdef ENABLE_AUDIO
     ALSA.setup();
-
+    #endif
+    #ifdef ENABLE_VIDEO
     // Open window
     video.startCapture();
-
+    #endif
     //beamform.setup();
 
     //video.initializeWindow();
@@ -84,9 +89,11 @@ int main()
         ALSA_time.start();
         #endif
 
+        #ifdef ENABLE_AUDIO
         // Recieve audio and process data
         ALSA.recordAudio(audio_data);
         //cout << "recordAudio.\n"; // (debugging)
+        #endif
 
         #ifdef PRINT_AUDIO
         // Print out first frame of audio data
@@ -110,17 +117,20 @@ int main()
 
         beamform_time.start();
         #endif
+        #ifdef ENABLE_AUDIO
         beamform.processData(audio_data, processed_data, 16, 24, POST_dBFS); // 1kHz Full Octave Band
         //cout << "processData.\n"; // (debugging)
+        #endif
         
         #ifdef PROFILE_MAIN
         beamform_time.end();
 
         video_time.start();
         #endif
+        #ifdef ENABLE_VIDEO
         // Does all processing to frame including drawing UI and doing heat map
         video.processFrame(processed_data, -70.0f, -30.0f);
-       
+        #endif
         #ifdef PROFILE_MAIN
         video_time.end();
 
@@ -138,7 +148,8 @@ int main()
         if (waitKey(1) >= 0) break;
     
     } // end loop
+    #ifdef ENABLE_VIDEO
     video.stopCapture();
-
+    #endif
     return 0;
 } // end main
