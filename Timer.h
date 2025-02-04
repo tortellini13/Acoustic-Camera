@@ -115,12 +115,13 @@ double timer::time_avg(int num_samples, bool is_ms)
     {
         avg_time /= num_samples;
 
-        if (!is_ms) {return avg_time;}
-        else        {return avg_time * 1000;}
+        if (!is_ms) {time = avg_time;}
+        else        {time = avg_time * 1000;}
 
         // Reset avg
         avg_time = 0;
         avg_counter = 0;
+        return time;
     }
 } // end time_avg
 

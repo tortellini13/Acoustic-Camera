@@ -183,7 +183,7 @@ void video::UISetup()
     drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
 
     #ifdef ENABLE_STATIC_DATA
-    staticTestFrame(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, -100, 0);
+    //staticTestFrame(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, -100, 0);
     #endif
 
     Mat initial_frame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
@@ -331,7 +331,7 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     double st_width = NUM_ANGLES;
     double st_max = 0;
     double st_min = -100;
-    Mat  static_test_frame(st_height, st_width, CV_32F);
+    Mat static_test_frame(st_height, st_width, CV_32F);
 
     for(int i = 0; i < st_width; ++i) {
         for(int j = 0; j < st_height; ++j) {
@@ -345,6 +345,9 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
         }
 
         static_test_frame.at<float>(j, i) = value;
+
+        cout << value << endl;
+
         }
     }
     static_test_frame.copyTo(data_input);
@@ -519,12 +522,12 @@ void video::FPSCalculator()
 {
     FPSTimer.end();
 
-    double FPSTime = FPSTimer.time_avg(2, false);
+    double FPSTime = FPSTimer.time_avg(AVG_SAMPLES, false);
     if (FPSTime != -1) 
     { FPS = 1/FPSTime; }
     
     //cout << FPSTime << endl;
-    cout << FPSTimer.getCurrentAvgCount() << endl;
+    //cout << FPSTimer.getCurrentAvgCount() << endl;
     FPSTimer.start();
 }   
 
