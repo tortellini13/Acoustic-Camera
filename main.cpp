@@ -17,6 +17,9 @@ using namespace std;
 
 int main()
 {
+
+    Mat frame;
+
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
     beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT,
                       MIC_SPACING, 343.0f,
@@ -40,10 +43,10 @@ int main()
         audio_data.print_layer(0);
         #endif
 
-        //beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
+        beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
 
         video.processFrame(processed_data, -70.0f, -30.0f);
-        
+        if (waitKey(1) >= 0) break;
 
     }
     

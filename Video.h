@@ -182,9 +182,9 @@ void video::UISetup()
     // Make a window for the buttons to go on
     drawColorBar(SCALE_WIDTH, SCALE_HEIGHT);
 
-    #ifdef ENABLE_STATIC_DATA
+    //#ifdef ENABLE_STATIC_DATA
     //staticTestFrame(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, -100, 0);
-    #endif
+    //#endif
 
     Mat initial_frame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
 
@@ -194,6 +194,8 @@ void video::UISetup()
     }
 
     imshow("Window",initial_frame); 
+
+    cout << "window shown!" << endl;
 
     createTrackbar("Threshold", "Window", nullptr, (MAP_THRESHOLD_MAX + MAP_THRESHOLD_OFFSET));
 
