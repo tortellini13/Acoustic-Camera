@@ -160,3 +160,42 @@ struct array4D
         return data[i * dim_2 * dim_3 * dim_4 + j * dim_3 * dim_4 + k * dim_4 + l];
     }
 }; // end array4D
+
+//=====================================================================================
+
+// Template struct for 5D arrays
+template <typename T>
+struct array5D
+{
+    T* data;         // Pointer to the data array
+    size_t dim_1;    // First dimension
+    size_t dim_2;    // Second dimension
+    size_t dim_3;    // Third dimension
+    size_t dim_4;    // Fourth dimension
+    size_t dim_5;    // Fourth dimension
+
+    // Constructor
+    array5D(size_t d1, size_t d2, size_t d3, size_t d4, size_t d5) 
+        : dim_1(d1), dim_2(d2), dim_3(d3), dim_4(d4), dim_5(d5)
+    {
+        data = new T[d1 * d2 * d3 * d4 * d5](); // Allocate and zero-initialize the array
+    }
+
+    // Destructor
+    ~array5D()
+    {
+        delete[] data;
+    }
+
+    // Access element (read/write)
+    T& at(size_t i, size_t j, size_t k, size_t l, size_t m)
+    {
+        return data[i * dim_2 * dim_3 * dim_4 * dim_5 + j * dim_3 * dim_4 * dim_5 + k * dim_4 * dim_5 + l * dim_5 + m];
+    }
+
+    // Access element (read-only)
+    const T& at(size_t i, size_t j, size_t k, size_t l, size_t m) const
+    {
+        return data[i * dim_2 * dim_3 * dim_4 * dim_5 + j * dim_3 * dim_4 * dim_5 + k * dim_4 * dim_5 + l * dim_5 + m];
+    }
+}; // end array5D

@@ -15,17 +15,22 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 };
 #define MIC_GAIN 1.0f
 
-// Angles (ELEVATION = 36, AZIMUTH = 60)
-#define ANGLE_STEP 6  // Amount of degrees that the beamforming algorithm sweeps in each step
-#define MIN_ANGLE -90 // Minimum angle for beamforming algorithm to sweep from
-#define MAX_ANGLE  90 // Minimum angle for beamforming algorithm to sweep to
-const int NUM_ANGLES = ((MAX_ANGLE - MIN_ANGLE) / ANGLE_STEP) + 1; // Number of angles
+// Angles
+#define MIN_THETA -30
+#define MAX_THETA  30
+#define STEP_THETA 2
+const int NUM_THETA = ((MAX_THETA - MIN_THETA) / STEP_THETA) + 1;
+
+#define MIN_PHI -18
+#define MAX_PHI  18
+#define STEP_PHI 1
+const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 
 // FFT
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
 
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
@@ -71,7 +76,7 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 
 // For debugging. Uncomment to enable
 // #define PROFILE_MAIN
-// #define PROFILE_BEAMFORM
+#define PROFILE_BEAMFORM
 // #define PROFILE_VIDEO
 // #define PRINT_AUDIO
 // #define PRINT_BEAMFORM
@@ -83,6 +88,6 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 #define ENABLE_VIDEO
 //#define ENABLE_RANDOM_DATA
 //#define ENABLE_STATIC_DATA
-#define AVG_SAMPLES 20
+#define AVG_SAMPLES 10
 
 #endif
