@@ -40,7 +40,7 @@ int main()
         audio_data.print_layer(0);
         #endif
 
-        beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
+        //beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
 
         video.processFrame(processed_data, -70.0f, -30.0f);
         
