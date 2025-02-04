@@ -81,7 +81,7 @@ void timer::print_avg(int num_samples, bool is_ms)
         avg_time /= num_samples;
 
         if (!is_ms) {std::cout << timer_name << ": " << avg_time << " seconds.\n";}
-        else {std::cout << timer_name << ": " << avg_time * 1000 << " ms.\n";}
+        else        {std::cout << timer_name << ": " << avg_time * 1000 << " ms.\n";}
 
         // Reset avg
         avg_time = 0;
