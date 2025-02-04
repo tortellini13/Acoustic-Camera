@@ -1,12 +1,16 @@
 // Libraries
-#include <iostream>
 #include <opencv2/opencv.hpp>
+#include <iostream>
+#include <vector>
+#include <ctime>
+#include <chrono>
+#include <iomanip>
 
-// Headers
 #include "PARAMS.h"
-#include "Structs.h"
-#include "Beamform.h"
 #include "ALSA.h"
+#include "Beamform.h"
+#include "Video.h"
+#include "Timer.h"
 
 
 using namespace std;
@@ -18,6 +22,7 @@ int main()
                       MIC_SPACING, 343.0f,
                       MIN_THETA, MAX_THETA, STEP_THETA, NUM_THETA,
                       MIN_PHI, MAX_PHI, STEP_PHI, NUM_PHI);
+    video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE);
     timer test("Test");
 
     array3D<float> audio_data(M_AMOUNT, N_AMOUNT, FFT_SIZE);
@@ -25,6 +30,7 @@ int main()
 
     ALSA.setup();
     beamform.setup();
+    video.startCapture();
 
     while(1)
     {
@@ -35,7 +41,13 @@ int main()
         #endif
 
         beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
+
+        video.processFrame(processed_data, -70.0f, -30.0f);
+        
+
     }
+    
+    video.stopCapture();
     
     return 0;
 }
