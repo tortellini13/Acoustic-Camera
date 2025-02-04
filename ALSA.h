@@ -212,6 +212,7 @@ bool ALSA::recordAudio(array3D<float>& data_output)
             }
         }
     }
+    // cout << "Frames: " << frames << " --- pcm_return: " << pcm_return << "\n";
     return true;
 } // end recordAudio
 

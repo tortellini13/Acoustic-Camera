@@ -18,19 +18,21 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 // Angles
 #define MIN_THETA -30
 #define MAX_THETA  30
-#define STEP_THETA 2
+#define STEP_THETA 2 // 2 is correct
 const int NUM_THETA = ((MAX_THETA - MIN_THETA) / STEP_THETA) + 1;
 
 #define MIN_PHI -18
 #define MAX_PHI  18
-#define STEP_PHI 1
+#define STEP_PHI 3 // 1 is correct
 const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
+
+#define NUM_TAPS 7
 
 // FFT
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
 
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera

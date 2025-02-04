@@ -16,7 +16,7 @@
 class beamform
 {
 public:
-    beamform(int fft_size, int sample_rate, int m_channels, int n_channels,
+    beamform(int fft_size, int sample_rate, int m_channels, int n_channels, int num_taps,
              float mic_spacing, float speed_of_sound,
              int min_theta, int max_theta, int step_theta, int num_theta,
              int min_phi, int max_phi, int step_phi, int num_phi);
@@ -82,7 +82,7 @@ private:
 
     float speed_of_sound;
     int data_size;
-    int num_taps = 11; // move this into constructor
+    int num_taps; // move this into constructor
 
     // Plan for fft to reuse
     fftwf_plan fft_plan;
@@ -105,7 +105,7 @@ private:
     timer post_process_time;
 };
 
-beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels,
+beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels, int num_taps,
                    float mic_spacing, float speed_of_sound,
                    int min_theta, int max_theta, int step_theta, int num_theta,
                    int min_phi, int max_phi, int step_phi, int num_phi) :
@@ -114,6 +114,7 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     sample_rate(sample_rate),
     m_channels(m_channels),
     n_channels(n_channels),
+    num_taps(num_taps),
     num_channels(m_channels * n_channels),
     mic_spacing(mic_spacing),
 
@@ -245,7 +246,7 @@ void beamform::setupFIR()
                     float weight_sum = 0.0f;
 
                     // Compute filter taps and calculate sum
-                    for (int tap_index = 0; tap_index < FIR_weights.dim_1; tap_index++)
+                    for (int tap_index = 0; tap_index < FIR_weights.dim_5; tap_index++)
                     {
                         int tap_value = -floor(num_taps / 2) + tap_index;
 
@@ -375,12 +376,12 @@ void beamform::handleBeamforming()
     - Delay sample by integer, then FIR at new index (FIR_index = int_delay + tap_value)
     */
 
-    #pragma omp parallel for collapse(2) schedule(dynamic, 2)
-    for (int phi_index = 0; phi_index < data_beamform.dim_2; phi_index++) 
+    #pragma omp parallel for collapse(3) schedule(dynamic, 3)
+    for (int b = 0; b < data_beamform.dim_3; b++) 
     {
-        for (int theta_index = 0; theta_index < data_beamform.dim_1; theta_index++) 
+        for (int phi_index = 0; phi_index < data_beamform.dim_2; phi_index++) 
         {
-            for (int b = 0; b < data_beamform.dim_3; b++) 
+            for (int theta_index = 0; theta_index < data_beamform.dim_1; theta_index++) 
             {
                 float beamform_sum = 0;
                 for (int n = 0; n < n_channels; n++) 
@@ -393,6 +394,8 @@ void beamform::handleBeamforming()
                         // Sum for accumulating FIR filter
                         float FIR_sum = 0;
 
+                        // More stuff for multithreading (Single Instruction, Multiple Data)
+                        // #pragma omp simd reduction(+:FIR_sum)
                         for (int tap = 0; tap < num_taps; tap++)
                         {
                             // Makes tap (-num_taps / 2, num_taps / 2) so it looks backwards by half num_taps

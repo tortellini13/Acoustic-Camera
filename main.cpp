@@ -21,7 +21,7 @@ int main()
     Mat frame;
 
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
-    beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT,
+    beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT, NUM_TAPS,
                       MIC_SPACING, 343.0f,
                       MIN_THETA, MAX_THETA, STEP_THETA, NUM_THETA,
                       MIN_PHI, MAX_PHI, STEP_PHI, NUM_PHI);
@@ -37,15 +37,21 @@ int main()
 
     while(1)
     {
+        
         ALSA.recordAudio(audio_data);
 
-        #ifdef PRINT_AUDIO
-        audio_data.print_layer(0);
-        #endif
+
+        //audio_data.print_layer(0);
 
         beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
 
+        test.start();
         video.processFrame(processed_data, -70.0f, -30.0f);
+        test.end();
+
+        test.print_avg(10);
+
+        //test.print();
         if (waitKey(1) >= 0) break;
 
     }
