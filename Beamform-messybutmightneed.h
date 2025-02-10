@@ -83,7 +83,6 @@ private:
     float speed_of_sound;
     int data_size;
     int num_taps; // move this into constructor
-    int tap_offset;
 
     // Plan for fft to reuse
     fftwf_plan fft_plan;
@@ -94,6 +93,7 @@ private:
     array5D<float> FIR_weights;          // (m, n, theta, phi, num_taps)
     array3D<float> data_buffer_1;        // (m, n, fft_size)
     array3D<float> data_buffer_2;        // (m, n, fft_size)
+    //array6D<float> data_beamform_buffer; // (fft_size, m, n, theta, phi, num_taps)
     array3D<float> data_beamform;        // (theta, phi, fft_size)
     array3D<complex<float>> data_fft;    // (theta, phi, fft_size / 2)
     array2D<float> data_fft_collapse;    // (theta, phi)
@@ -131,7 +131,6 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
 
     speed_of_sound(speed_of_sound),
     data_size(m_channels * n_channels * fft_size),
-    tap_offset(-floor(num_taps / 2)),
 
     // Allocate memory for arrays
     time_delay_int(m_channels, n_channels, num_theta, num_phi),
@@ -139,6 +138,7 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     FIR_weights(m_channels, n_channels, num_theta, num_phi, num_taps),
     data_buffer_1(m_channels, n_channels, fft_size),
     data_buffer_2(m_channels, n_channels, fft_size),
+    //data_beamform_buffer(fft_size, m_channels, n_channels, num_theta, num_phi, num_taps),
     data_beamform(num_theta, num_phi, fft_size),
     data_fft(num_theta, num_phi, half_fft_size),
     data_fft_collapse(num_theta, num_phi),
@@ -378,89 +378,144 @@ void beamform::handleBeamforming()
     - Delay sample by integer, then FIR at new index (FIR_index = int_delay + tap_value)
     */
 
+    #pragma omp parallel for collapse(3) schedule(dynamic, 3)
+    for (int b = 0; b < data_beamform.dim_3; b++) 
+    {
+        for (int phi_index = 0; phi_index < data_beamform.dim_2; phi_index++) 
+        {
+            for (int theta_index = 0; theta_index < data_beamform.dim_1; theta_index++) 
+            {
+                float beamform_sum = 0;
+                for (int n = 0; n < n_channels; n++) 
+                {
+                    for (int m = 0; m < m_channels; m++) 
+                    {
+                        // Integer delay amount in samples
+                        int int_delay_index = b + time_delay_int.at(m, n, theta_index, phi_index);
+
+                        // Sum for accumulating FIR filter
+                        float FIR_sum = 0;
+
+                        // More stuff for multithreading (Single Instruction, Multiple Data)
+                        // #pragma omp simd reduction(+:FIR_sum)
+                        for (int tap = 0; tap < num_taps; tap++)
+                        {
+                            // Makes tap (-num_taps / 2, num_taps / 2) so it looks backwards by half num_taps
+                            int tap_value = -floor(num_taps / 2) + tap;
+
+                            // Sums windowed data from FIR
+                            FIR_sum += accessBuffer(m, n, int_delay_index + tap_value) * FIR_weights.at(m, n, theta_index, phi_index, tap);
+                        } // end tap
+
+                        // Normalize FIR sum
+                        //FIR_sum /= num_taps;
+
+                        // Sum delayed signals
+                        beamform_sum += FIR_sum;
+                    } // end m
+                } // end n
+
+                // Write beamformed data to output and normalize (-1, 1)
+                data_beamform.at(theta_index, phi_index, b) = beamform_sum / num_channels;
+            } // end b
+        } // end theta_index
+    } // end phi_index
+
+
+
     // Calculate beamforming and FIR and store into buffer for parallelization
-    #pragma omp for collapse(3) schedule(static, 4)
+    #pragma omp for collapse(3) //schedule(dynamic, 8) // also try schedule(static, 4). other numbers maybe, powers of 4
     for (int m = 0; m < m_channels; m++)
     {
-        // Calculate contribution to FIR_weights index
-        int m_index_weight = m * FIR_weights.dim_2 *
-                                 FIR_weights.dim_3 *
-                                 FIR_weights.dim_4 *
-                                 FIR_weights.dim_5;
-
-        // Calculate contribution to time_delay_int index
-        int m_index_integer = m * time_delay_int.dim_2 *
-                                  time_delay_int.dim_3 *
-                                  time_delay_int.dim_4;
+        // Calculate contribution to data_beamform_buffer index
+        //int m_index = m * data_beamform_buffer.dim_2 * 
+        //                  data_beamform_buffer.dim_3 * 
+        //                  data_beamform_buffer.dim_4 * 
+        //                  data_beamform_buffer.dim_5 * 
+        //                  data_beamform_buffer.dim_6; 
 
         for (int n = 0; n < n_channels; n++)
         {
-            // Calculate contribution to FIR_weights index
-            int n_index_weight = n * FIR_weights.dim_3 *
-                                     FIR_weights.dim_4 *
-                                     FIR_weights.dim_5;
-
-            // Calculate contribution to time_delay_int index
-            int n_index_integer = n * time_delay_int.dim_3 *
-                                      time_delay_int.dim_4;
+            // Calculate contribution to data_beamform_buffer index
+            //int n_index = n * data_beamform_buffer.dim_3 * 
+            //                  data_beamform_buffer.dim_4 * 
+            //                  data_beamform_buffer.dim_5 * 
+            //                  data_beamform_buffer.dim_6; 
 
             for (int theta = 0; theta < num_theta; theta++)
             {
-                // Calculate contribution to data_beamform index
-                int theta_index_result = theta * data_beamform.dim_2 * 
-                                                 data_beamform.dim_3; 
-
-                // Calculate contribution to FIR_weights index
-                int theta_index_weight = theta * FIR_weights.dim_4 *
-                                                 FIR_weights.dim_5;
-
-                // Calculate contribution to time_delay_int index
-                int theta_index_integer = theta * time_delay_int.dim_4;
+                // Calculate contribution to data_beamform_buffer index
+                //int theta_index = theta * data_beamform_buffer.dim_4 * 
+                //                          data_beamform_buffer.dim_5 * 
+                //                          data_beamform_buffer.dim_6; 
 
                 for (int phi = 0; phi < num_phi; phi++)
                 {
                     // Calculate contribution to data_beamform_buffer index
-                    int phi_index_result = phi * data_beamform.dim_3; 
-
-                    // Calculate contribution to FIR_weights index
-                    int phi_index_weight = phi * FIR_weights.dim_5;
-
-                    // Precalculate result index
-                    int result_index = theta_index_result + phi_index_result;
+                    //int phi_index = phi * data_beamform_buffer.dim_5 * 
+                    //                      data_beamform_buffer.dim_6; 
 
                     // Retrieve integer delay
-                    int integer_index = m_index_integer + n_index_integer + theta_index_integer + phi;
-                    int integer_delay = time_delay_int.data[integer_index];
+                    int integer_delay = time_delay_int.at(m, n, theta, phi);
 
                     for (int tap = 0; tap < num_taps; tap++)
                     {
                         // Makes tap (-num_taps / 2, num_taps / 2) so it looks backwards by half num_taps
-                        int tap_value = tap_offset + tap;
+                        int tap_value = -floor(num_taps / 2) + tap;
 
                         // Precompute part of integer delay
                         int delay_offset = integer_delay + tap_value;
 
                         // Retrieve weight 
-                        int weight_index = theta_index_weight + phi_index_weight + tap;
-                        float weight = FIR_weights.data[weight_index];
+                        float weight = FIR_weights.at(m, n, theta, phi, tap);
+
+                        // Calculate contribution to data_beamform_buffer index
+                        //int tap_index = tap * data_beamform_buffer.dim_6;
+
+                        //int base_index = m_index + n_index + theta_index + phi_index + tap_index;
 
                         // Single Instruction Multiple Data
-                        float result = 0.0f;
-                        #pragma omp simd reduction(+:result)
+                        #pragma omp simd
                         for (int b = 0; b < fft_size; b++)
                         {
-                            result += accessBuffer(m, n, delay_offset + b) * weight;
-                        } // end b
-                        
-                        // Accumulate data with atomic variable across threads
-                        #pragma omp atomic
-                        data_beamform.data[result_index] += result;
+                            //data_beamform_buffer.data[base_index + b] = accessBuffer(m, n, delay_offset + b) * weight;
+                            
+                            float result = accessBuffer(m, n, delay_offset + b) * weight;
 
+                            // Accumulate data with atomic variable across threads
+                            #pragma omp atomic
+                            data_beamform.at(theta, phi, b) += result;
+
+                        } // end b
                     } // end tap
                 } // end phi_index
             } // end theta_index
         } // end n
     } // end m
+
+/*
+    // Collapse buffered beamform data
+    for (int m = 0; m < data_beamform_buffer.dim_1; m++)
+    {
+        for (int n = 0; n < data_beamform_buffer.dim_2; n++)
+        {
+            for (int theta_index = 0; theta_index < data_beamform_buffer.dim_3; theta_index++)
+            {
+                for (int phi_index = 0; phi_index < data_beamform_buffer.dim_4; phi_index++)
+                {
+                    for (int tap = 0; tap < data_beamform_buffer.dim_5; tap++)
+                    {
+                        for (int b = 0; b < data_beamform_buffer.dim_6; b++)
+                        {
+                            data_beamform.at(theta_index, phi_index, b) += data_beamform_buffer.at(m, n, theta_index, phi_index, tap, b);
+                        } // end b
+                    } // end tap
+                } // end phi_index
+            } // end theta_index
+        } // end n
+    } // end m
+*/
+
 } // end handleBeamforming
 
 //=====================================================================================
@@ -586,7 +641,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     }
 
     float total_time = beamform_time.time() + fft_time.time() + fft_collapse_time.time() + post_process_time.time();
-    cout << "Total Time: " << total_time << " ms.\n\n";
+    //cout << "Total Time: " << total_time << " ms.\n\n";
     #endif
 
 } // end processData

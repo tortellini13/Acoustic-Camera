@@ -4,7 +4,7 @@
 // Mic channels
 #define M_AMOUNT 4 // Amount of mics in the M direction
 #define N_AMOUNT 4 // Amount of mics in the N direction
-#define MIC_SPACING 0.030f // ***Change this number to be correct. Also units?
+#define MIC_SPACING 0.030f // Meters
 const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
 const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 {
@@ -18,12 +18,12 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 // Angles
 #define MIN_THETA -30
 #define MAX_THETA  30
-#define STEP_THETA 2 // 2 is correct
+#define STEP_THETA 3 // 2 is correct
 const int NUM_THETA = ((MAX_THETA - MIN_THETA) / STEP_THETA) + 1;
 
 #define MIN_PHI -18
 #define MAX_PHI  18
-#define STEP_PHI 3 // 1 is correct
+#define STEP_PHI 2 // 1 is correct
 const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 
 #define NUM_TAPS 7
