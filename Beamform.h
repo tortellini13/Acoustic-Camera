@@ -382,6 +382,8 @@ void beamform::handleBeamforming()
     #pragma omp for collapse(3) schedule(static, 4)
     for (int m = 0; m < m_channels; m++)
     {
+        cout << "Start m\n";
+
         // Calculate contribution to FIR_weights index
         int m_index_weight = m * FIR_weights.dim_2 *
                                  FIR_weights.dim_3 *
@@ -399,6 +401,8 @@ void beamform::handleBeamforming()
 
         for (int n = 0; n < n_channels; n++)
         {
+            cout << "Start n\n";
+
             // Calculate contribution to FIR_weights index
             int n_index_weight = n * FIR_weights.dim_3 *
                                      FIR_weights.dim_4 *
@@ -413,6 +417,8 @@ void beamform::handleBeamforming()
 
             for (int theta = 0; theta < num_theta; theta++)
             {
+                cout << "Start theta\n";
+
                 // Calculate contribution to data_beamform index
                 int theta_index_result = theta * data_beamform.dim_2 * 
                                                  data_beamform.dim_3; 
@@ -426,6 +432,8 @@ void beamform::handleBeamforming()
 
                 for (int phi = 0; phi < num_phi; phi++)
                 {
+                    cout << "Start phi\n";
+
                     // Calculate contribution to data_beamform_buffer index
                     int phi_index_result = phi * data_beamform.dim_3; 
 
@@ -441,6 +449,8 @@ void beamform::handleBeamforming()
 
                     for (int tap = 0; tap < num_taps; tap++)
                     {
+                        cout << "Start tap\n";
+
                         // Makes tap (-num_taps / 2, num_taps / 2) so it looks backwards by half num_taps
                         int tap_value = tap_offset + tap;
 
@@ -456,6 +466,8 @@ void beamform::handleBeamforming()
                         #pragma omp simd reduction(+:result)
                         for (int b = 0; b < fft_size; b++)
                         {
+                            cout << "Start b\n";
+                            
                             result += accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
                         } // end b
                         
@@ -543,6 +555,8 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     // Ring buffer
     ringBuffer(data_input);
 
+    cout << "ringBuffer\n";
+
     // Beamforming
     beamform_time.start();
     handleBeamforming();
@@ -551,6 +565,8 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     #ifdef PRINT_BEAMFORM 
     data_beamform.print_layer(0); 
     #endif
+
+    cout << "handleBeamforming\n";
 
     // FFT
     fft_time.start();
@@ -561,6 +577,8 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     data_fft.print_layer(23);
     #endif
 
+    cout << "FFT\n";
+
     // FFT Collapse
     fft_collapse_time.start();
     FFTCollapse(lower_frequency, upper_frequency);
@@ -570,6 +588,8 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     data_fft_collapse.print();
     #endif
 
+    cout << "FFTCollapse\n";
+
     // Post Process
     post_process_time.start();
     postProcess(post_process_type, lower_frequency, upper_frequency);
@@ -578,6 +598,8 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     #ifdef PRINT_POST_PROCESS
     data_post_process.print();
     #endif
+
+    cout << "postProcess\n";
 
     // Convert output to cv::Mat
     data_output = arraytoMat(data_post_process);
