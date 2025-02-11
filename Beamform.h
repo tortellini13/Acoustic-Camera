@@ -43,8 +43,8 @@ private:
     // Writes data into a ring buffer
     void ringBuffer(array3D<float>& data_input);
 
-    // Access buffers at specified indecies
-    float accessBuffer(int m, int n, int b);
+    // Access buffers at specified indicies
+    float accessBuffer(int m_index, int n_index, int b);
 
     // Performs beamforming on audio data
     void handleBeamforming();
@@ -349,16 +349,16 @@ void beamform::ringBuffer(array3D<float>& data_input)
 
 //=====================================================================================
 
-float beamform::accessBuffer(int m, int n, int b)
+float beamform::accessBuffer(int m_index, int n_index, int b)
 {
     if (b < fft_size)
     {
-        return data_buffer_1.at(m, n, b);
+        return data_buffer_1.data[m_index + n_index + b];
     }
 
     else if (b >= fft_size)
     {
-        return data_buffer_2.at(m, n, b - fft_size);
+        return data_buffer_2.data[m_index + n_index + (b - fft_size)];
     }
 
     else
@@ -393,6 +393,10 @@ void beamform::handleBeamforming()
                                   time_delay_int.dim_3 *
                                   time_delay_int.dim_4;
 
+        // Calculate contribution to accessBuffer index     
+        int m_index_access = m * data_buffer_1.dim_2 * 
+                                 data_buffer_1.dim_3;   
+
         for (int n = 0; n < n_channels; n++)
         {
             // Calculate contribution to FIR_weights index
@@ -403,6 +407,9 @@ void beamform::handleBeamforming()
             // Calculate contribution to time_delay_int index
             int n_index_integer = n * time_delay_int.dim_3 *
                                       time_delay_int.dim_4;
+
+            // Calculate contribution to accessBuffer index     
+            int n_index_access = n * data_buffer_1.dim_3; 
 
             for (int theta = 0; theta < num_theta; theta++)
             {
@@ -449,7 +456,7 @@ void beamform::handleBeamforming()
                         #pragma omp simd reduction(+:result)
                         for (int b = 0; b < fft_size; b++)
                         {
-                            result += accessBuffer(m, n, delay_offset + b) * weight;
+                            result += accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
                         } // end b
                         
                         // Accumulate data with atomic variable across threads
