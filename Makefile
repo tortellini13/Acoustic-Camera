@@ -1,21 +1,17 @@
 OPENCV_FLAGS = `pkg-config --cflags --libs opencv4`
 
-FLAGS = -lrt -lpthread -lasound -fopenmp -march=native -O3 -ffast-math -funroll-loops -fprefetch-loop-arrays
-FFT_FLAGS = -lfftw3f -lm -lfftw3f_threads
+FLAGS = -lrt -lpthread -lasound -fopenmp
 
-HEADERS = PARAMS.h Video.h ALSA.h Beamform.h
-SOURCES = main.cpp Video.cpp ALSA.cpp Beamform.cpp
-OBJECTS = $(SOURCES:.cpp=.o)
+FFT_FLAGS = -O3 -lfftw3f -lm -lfftw3f_threads
+
+HEADERS = PARAMS.h Video.h ALSA.h Beamform.h 
 
 NAME = main
 
 all: $(NAME)
 
-$(NAME): $(OBJECTS)
-	g++ -o $(NAME) $(OBJECTS) $(FLAGS) $(FFT_FLAGS) $(OPENCV_FLAGS)
-
-%.o: %.cpp $(HEADERS)
-	g++ -c -o $@ $< $(FLAGS) $(FFT_FLAGS) $(OPENCV_FLAGS)
+$(NAME): $(NAME).cpp $(HEADERS)
+	g++ -g -o $(NAME) $(NAME).cpp $(FLAGS) $(FFT_FLAGS) $(OPENCV_FLAGS)
 
 clean:
-	rm -f $(NAME) $(OBJECTS)
+	rm -f $(NAME)
