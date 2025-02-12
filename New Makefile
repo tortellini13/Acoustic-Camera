@@ -16,7 +16,7 @@ $(NAME): $(OBJECTS)
 	g++ -o $(NAME) $(OBJECTS) $(FLAGS) $(OPTIMIZATION_FLAGS) $(FFT_FLAGS) $(OPENCV_FLAGS)
 
 %.o: %.cpp $(HEADERS)
-	g++ -c -o $@ $< $(FLAGS) $(FFT_FLAGS) $(OPENCV_FLAGS)
+	g++ -c -o $@ $< $(FLAGS) $(OPTIMIZATION_FLAGS) $(FFT_FLAGS) $(OPENCV_FLAGS)
 
 clean:
 	rm -f $(NAME) $(OBJECTS)

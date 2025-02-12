@@ -379,77 +379,69 @@ void beamform::handleBeamforming()
     */
 
     // Calculate beamforming and FIR and store into buffer for parallelization
-    #pragma omp for collapse(3) schedule(static, 4)
+    #pragma omp for collapse(4) schedule(static, 4)
     for (int m = 0; m < m_channels; m++)
     {
-        cout << "Start m\n";
-
-        // Calculate contribution to FIR_weights index
-        int m_index_weight = m * FIR_weights.dim_2 *
-                                 FIR_weights.dim_3 *
-                                 FIR_weights.dim_4 *
-                                 FIR_weights.dim_5;
-
-        // Calculate contribution to time_delay_int index
-        int m_index_integer = m * time_delay_int.dim_2 *
-                                  time_delay_int.dim_3 *
-                                  time_delay_int.dim_4;
-
-        // Calculate contribution to accessBuffer index     
-        int m_index_access = m * data_buffer_1.dim_2 * 
-                                 data_buffer_1.dim_3;   
+        // cout << "Start m\n"; 
 
         for (int n = 0; n < n_channels; n++)
         {
-            cout << "Start n\n";
-
-            // Calculate contribution to FIR_weights index
-            int n_index_weight = n * FIR_weights.dim_3 *
-                                     FIR_weights.dim_4 *
-                                     FIR_weights.dim_5;
-
-            // Calculate contribution to time_delay_int index
-            int n_index_integer = n * time_delay_int.dim_3 *
-                                      time_delay_int.dim_4;
-
-            // Calculate contribution to accessBuffer index     
-            int n_index_access = n * data_buffer_1.dim_3; 
+            // cout << "Start n\n";
 
             for (int theta = 0; theta < num_theta; theta++)
             {
-                cout << "Start theta\n";
-
-                // Calculate contribution to data_beamform index
-                int theta_index_result = theta * data_beamform.dim_2 * 
-                                                 data_beamform.dim_3; 
-
-                // Calculate contribution to FIR_weights index
-                int theta_index_weight = theta * FIR_weights.dim_4 *
-                                                 FIR_weights.dim_5;
-
-                // Calculate contribution to time_delay_int index
-                int theta_index_integer = theta * time_delay_int.dim_4;
+                // cout << "Start theta\n";
 
                 for (int phi = 0; phi < num_phi; phi++)
                 {
-                    cout << "Start phi\n";
+                    // cout << "Start phi\n";
+
+                    // Calculate contribution to accessBuffer index     
+                    int m_index_access = m * data_buffer_1.dim_2 * // Contribution of m to index
+                                             data_buffer_1.dim_3;  
+
+                    int n_index_access = n * data_buffer_1.dim_3;  // Contribution of n to index
 
                     // Calculate contribution to data_beamform_buffer index
-                    int phi_index_result = phi * data_beamform.dim_3; 
+                    int theta_index_result = theta * data_beamform.dim_2 * // Contribution of theta to index
+                                                     data_beamform.dim_3;  
+
+                    int phi_index_result =     phi * data_beamform.dim_3;  // Contribution of phi to index
+
+                    int result_index = theta_index_result + phi_index_result; // Precalculate result index
 
                     // Calculate contribution to FIR_weights index
-                    int phi_index_weight = phi * FIR_weights.dim_5;
+                    int m_index_weight =         m * FIR_weights.dim_2 * // Contribution of m to index
+                                                     FIR_weights.dim_3 *
+                                                     FIR_weights.dim_4 *
+                                                     FIR_weights.dim_5;
 
-                    // Precalculate result index
-                    int result_index = theta_index_result + phi_index_result;
+                    int n_index_weight =         n * FIR_weights.dim_3 * // Contribution of n to index
+                                                     FIR_weights.dim_4 *
+                                                     FIR_weights.dim_5;
+
+                    int theta_index_weight = theta * FIR_weights.dim_4 * // Contribution of theta to index
+                                                     FIR_weights.dim_5;
+                                             
+                    int phi_index_weight =     phi * FIR_weights.dim_5;  // Contribution of phi to index
 
                     // Retrieve integer delay
-                    int integer_index = m_index_integer + n_index_integer + theta_index_integer + phi;
-                    int integer_delay = time_delay_int.data[integer_index];
+                    int m_index_integer =         m * time_delay_int.dim_2 * // Contribution of m to index
+                                                      time_delay_int.dim_3 *
+                                                      time_delay_int.dim_4;
+
+                    int n_index_integer =         n * time_delay_int.dim_3 * // Contribution of n to index
+                                                      time_delay_int.dim_4;
+
+                    int theta_index_integer = theta * time_delay_int.dim_4;  // Contribution of theta to index
+
+                    int integer_index = m_index_integer + n_index_integer + theta_index_integer + phi; // Index of data point
+
+                    int integer_delay = time_delay_int.data[integer_index]; // Retrieve integer delay and cache it
 
                     for (int tap = 0; tap < num_taps; tap++)
                     {
-                        cout << "Start tap\n";
+                        // cout << "Start tap\n";
 
                         // Makes tap (-num_taps / 2, num_taps / 2) so it looks backwards by half num_taps
                         int tap_value = tap_offset + tap;
@@ -466,8 +458,8 @@ void beamform::handleBeamforming()
                         #pragma omp simd reduction(+:result)
                         for (int b = 0; b < fft_size; b++)
                         {
-                            cout << "Start b\n";
-                            
+                            // cout << "Start b\n";
+
                             result += accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
                         } // end b
                         
@@ -555,7 +547,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     // Ring buffer
     ringBuffer(data_input);
 
-    cout << "ringBuffer\n";
+    // cout << "ringBuffer\n";
 
     // Beamforming
     beamform_time.start();
@@ -566,7 +558,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     data_beamform.print_layer(0); 
     #endif
 
-    cout << "handleBeamforming\n";
+    // cout << "handleBeamforming\n";
 
     // FFT
     fft_time.start();
@@ -577,7 +569,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     data_fft.print_layer(23);
     #endif
 
-    cout << "FFT\n";
+    // cout << "FFT\n";
 
     // FFT Collapse
     fft_collapse_time.start();
@@ -588,7 +580,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     data_fft_collapse.print();
     #endif
 
-    cout << "FFTCollapse\n";
+    // cout << "FFTCollapse\n";
 
     // Post Process
     post_process_time.start();
@@ -599,7 +591,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     data_post_process.print();
     #endif
 
-    cout << "postProcess\n";
+    // cout << "postProcess\n";
 
     // Convert output to cv::Mat
     data_output = arraytoMat(data_post_process);
@@ -614,8 +606,8 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
         cout << "\n";
     }
 
-    float total_time = beamform_time.time() + fft_time.time() + fft_collapse_time.time() + post_process_time.time();
-    cout << "Total Time: " << total_time << " ms.\n\n";
+    // float total_time = beamform_time.time() + fft_time.time() + fft_collapse_time.time() + post_process_time.time();
+    // cout << "Total Time: " << total_time << " ms.\n\n";
     #endif
 
 } // end processData
