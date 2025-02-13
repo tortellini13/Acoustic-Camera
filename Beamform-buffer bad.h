@@ -85,18 +85,17 @@ private:
     int num_taps; // move this into constructor
     int tap_offset;
 
-    int beamform_data_size;
-
     // Plan for fft to reuse
     fftwf_plan fft_plan;
 
     // Arrays
     array4D<int>   time_delay_int;       // (m, n, theta, phi)
     array4D<float> time_delay_frac;      // (m, n, theta, phi)
-    array5D<float> FIR_weights;          // (m, n, theta, phi, num_taps)
+    array5D<float> FIR_weights;          // (m, n, theta, phi, taps)
     array3D<float> data_buffer_1;        // (m, n, fft_size)
     array3D<float> data_buffer_2;        // (m, n, fft_size)
     array3D<float> data_beamform;        // (theta, phi, fft_size)
+    array6D<float> data_beamform_buffer; // (m, n, theta, phi, taps, fft_size)
     array3D<complex<float>> data_fft;    // (theta, phi, fft_size / 2)
     array2D<float> data_fft_collapse;    // (theta, phi)
     array2D<float> data_post_process;    // (theta, phi)
@@ -135,8 +134,6 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     data_size(m_channels * n_channels * fft_size),
     tap_offset(-floor(num_taps / 2)),
 
-    beamform_data_size(num_theta * num_phi * fft_size),
-
     // Allocate memory for arrays
     time_delay_int(m_channels, n_channels, num_theta, num_phi),
     time_delay_frac(m_channels, n_channels, num_theta, num_phi),
@@ -144,6 +141,7 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     data_buffer_1(m_channels, n_channels, fft_size),
     data_buffer_2(m_channels, n_channels, fft_size),
     data_beamform(num_theta, num_phi, fft_size),
+    data_beamform_buffer(m_channels, n_channels, num_theta, num_phi, num_taps, fft_size),
     data_fft(num_theta, num_phi, half_fft_size),
     data_fft_collapse(num_theta, num_phi),
     data_post_process(num_theta, num_phi),
@@ -376,7 +374,6 @@ float beamform::accessBuffer(int m_index, int n_index, int b)
 
 void beamform::handleBeamforming()
 {
-    array3D<float> data_beamform_temp(num_theta, num_phi, fft_size);
     /*
     - For each coord
     - Every time integer delay is applied, and FIR for fractional delay
@@ -408,12 +405,23 @@ void beamform::handleBeamforming()
                     int n_index_access = n * data_buffer_1.dim_3;  // Contribution of n to index
 
                     // Calculate contribution to data_beamform_buffer index
-                    int theta_index_result = theta * data_beamform.dim_2 * // Contribution of theta to index
-                                                     data_beamform.dim_3;  
+                    int m_index_buffer =         m * data_beamform_buffer.dim_2 * // Contribution of m to index
+                                                     data_beamform_buffer.dim_3 *
+                                                     data_beamform_buffer.dim_4 *
+                                                     data_beamform_buffer.dim_5 *
+                                                     data_beamform_buffer.dim_6;
 
-                    int phi_index_result =     phi * data_beamform.dim_3;  // Contribution of phi to index
+                    int n_index_buffer =         n * data_beamform_buffer.dim_3 * // Contribution of n to index
+                                                     data_beamform_buffer.dim_4 *
+                                                     data_beamform_buffer.dim_5 *
+                                                     data_beamform_buffer.dim_6;
 
-                    int result_index = theta_index_result + phi_index_result; // Precalculate result index
+                    int theta_index_buffer = theta * data_beamform_buffer.dim_4 * // Contribution of theta to index
+                                                     data_beamform_buffer.dim_5 *
+                                                     data_beamform_buffer.dim_6;  
+
+                    int phi_index_buffer =     phi * data_beamform_buffer.dim_5 *  // Contribution of phi to index
+                                                     data_beamform_buffer.dim_6;
 
                     // Calculate contribution to FIR_weights index
                     int m_index_weight =         m * FIR_weights.dim_2 * // Contribution of m to index
@@ -448,6 +456,11 @@ void beamform::handleBeamforming()
                     {
                         // cout << "Start tap\n";
 
+                        // Calculate contribution to data_beamform_buffer index
+                        int tap_index_buffer = tap * data_beamform_buffer.dim_6; // contribution of tap to index
+
+                        int buffer_index = m_index_buffer + n_index_buffer + theta_index_buffer + phi_index_buffer + tap_index_buffer;
+
                         // Makes tap (-num_taps / 2, num_taps / 2) so it looks backwards by half num_taps
                         int tap_value = tap_offset + tap;
 
@@ -465,13 +478,8 @@ void beamform::handleBeamforming()
                         {
                             // cout << "Start b\n";
 
-                            result += accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
+                        data_beamform_buffer.data[buffer_index + b] = accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
                         } // end b
-                        
-                        // Accumulate data with atomic variable across threads
-                        //#pragma omp atomic
-                        data_beamform_temp.data[result_index] += result; // This is the issue***
-
                     } // end tap
                 } // end phi_index
             } // end theta_index

@@ -133,7 +133,7 @@ bool ALSA::setup()
         return false;
     }
 
-    // If specified rate is not availiable, set to nearest rate
+    // If specified rate is not available, set to nearest rate
     if (rate != exact_rate)
     {
         cerr << "The rate " << rate << " is not supported. Using " << exact_rate << " instead.\n";
@@ -212,6 +212,7 @@ bool ALSA::recordAudio(array3D<float>& data_output)
             }
         }
     }
+    // cout << "Frames: " << frames << " --- pcm_return: " << pcm_return << "\n";
     return true;
 } // end recordAudio
 

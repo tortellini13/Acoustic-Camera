@@ -21,7 +21,7 @@ int main()
     Mat frame;
     #ifdef ENABLE_AUDIO
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
-    beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT,
+    beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT, NUM_TAPS,
                       MIC_SPACING, 343.0f,
                       MIN_THETA, MAX_THETA, STEP_THETA, NUM_THETA,
                       MIN_PHI, MAX_PHI, STEP_PHI, NUM_PHI);
@@ -42,6 +42,7 @@ int main()
     #endif
     while(1)
     {
+        
         //ALSA.recordAudio(audio_data);
 
         #ifdef PRINT_AUDIO
