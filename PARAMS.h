@@ -59,7 +59,7 @@ const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find
 #define SCALE_POS_X 580  // X Position of color scale
 #define SCALE_POS_Y 40   // Y Position of color scale
 #define SCALE_BORDER 5   // Thickness of border around scale
-#define SCALE_POINTS 5   // Quantity of points on the scale to be marked
+#define SCALE_POINTS 5   // Quantity of points on the scale to be marked`
 
 // Crosshair
 #define CROSS_THICKNESS 2 // Thickness for cross at maximum magnitude
@@ -84,10 +84,13 @@ const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
-#define ENABLE_AUDIO
+//#define ENABLE_AUDIO
 #define ENABLE_VIDEO
-//#define ENABLE_RANDOM_DATA
+#define ENABLE_IMGUI
+#define ENABLE_RANDOM_DATA
 //#define ENABLE_STATIC_DATA
 #define AVG_SAMPLES 10
+//#define PI //Set for usage on Pi
+#define UBUNTU //Set for usage on ubuntu
 
 #endif

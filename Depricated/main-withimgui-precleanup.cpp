@@ -19,27 +19,22 @@ int main()
 {
 
     Mat frame;
-    #ifdef ENABLE_AUDIO
+
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);
     beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT,
                       MIC_SPACING, 343.0f,
                       MIN_THETA, MAX_THETA, STEP_THETA, NUM_THETA,
                       MIN_PHI, MAX_PHI, STEP_PHI, NUM_PHI);
-    #endif
-    #ifdef ENABLE_VIDEO
     video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE);
-    #endif
     timer test("Test");
 
     array3D<float> audio_data(M_AMOUNT, N_AMOUNT, FFT_SIZE);
     cv::Mat processed_data(NUM_THETA, NUM_PHI, CV_32FC1, cv::Scalar(0));
-    #ifdef ENABLE_AUDIO
-    ALSA.setup();
-    beamform.setup();
-    #endif
-    #ifdef ENABLE_VIDEO
+
+   // ALSA.setup();
+   // beamform.setup();
     video.startCapture();
-    #endif
+
     while(1)
     {
         //ALSA.recordAudio(audio_data);
@@ -47,17 +42,16 @@ int main()
         #ifdef PRINT_AUDIO
         audio_data.print_layer(0);
         #endif
-        #ifdef ENABLE_AUDIO
-        beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
-        #endif
-        #ifdef ENABLE_VIDEO
+
+        //beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
+
         if (video.processFrame(processed_data, -70.0f, -30.0f) == false) break;
         if (waitKey(1) >= 0) break;
-        #endif
+        
 
     }
-    #ifdef ENABLE_VIDEO
+    
     video.stopCapture();
-    #endif
+    
     return 0;
 }

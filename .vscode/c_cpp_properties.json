@@ -4,6 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}/imgui/",
                 "/usr/local/include/opencv4**",
                 "/usr/local/include",
                 "/usr/include/libcamera/libcamera/**",
@@ -11,7 +12,12 @@
                 "/usr/include/libcamera",
                 "/usr/include/rpicam-apps",
                 "/usr/include/libcamera-apps/**",
-                "/usr/lib/gcc/x86_64-linux-gnu/14/include"
+                "/usr/lib/gcc/x86_64-linux-gnu/14/include",
+                "${workspaceFolder}/imgui",
+                "${workspaceFolder}/imgui",
+                "/usr/include/SDL2",
+                "${workspaceFolder}/imgui",
+                "${workspaceFolder}/imgui/backends"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++-12",

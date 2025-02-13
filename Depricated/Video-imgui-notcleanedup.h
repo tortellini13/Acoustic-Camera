@@ -15,7 +15,11 @@
 using namespace std;
 using namespace cv;
 /*
-    -
+    - initialize class
+    - startCapture()
+    - processData() in loop with audio
+    - exit key in loop to break
+    - stopCapture() outside loop
 */
 class video 
 {
@@ -68,10 +72,20 @@ private:
     queue<Mat> frame_queue;
     mutex frame_mutex;  // Protects access to the frame queue
 
+    // Variables for buttons
+    //int list_max_mag_state = 1;
+    //int mark_max_mag_state = 1;
+    //int color_scale_state = 1;
+    //int heat_map_state = 1;
+    //int FPS_count_state = 1;
+    //int data_clamp_state = 0;
+    //int threshold_state = 0;
     // Variables for IMGUI buttons
+    bool list_max_mag_state = true;
     bool mark_max_mag_state = true;
     bool color_scale_state = true;
     bool heat_map_state = true;
+    bool FPS_count_state = true;
     bool data_clamp_state = true;
     bool threshold_state = true;
 
@@ -80,11 +94,23 @@ private:
     int imgui_clamp_max = 0;
     float imgui_alpha = 0.5;
 
+    // Button callbacks
+  /*  void onListMaxMag(int state, void* user_data);
+    void onMarkMaxMag(int state, void* user_data);
+    void onColorScaleState(int state, void* user_data);
+    void onHeatMap(int state, void* user_data);
+    void onFPSCount(int state, void* user_data);
+    void onDataClamp(int state, void* user_data);
+    void onThresholdState(int state, void* user_data);
+*/
     void UISetup();
 
     // For magnitude proccessing
     double magnitude_min;
     double magnitude_max;
+
+   // int Lower_limit;
+   // int Upper_limit;
 
     // Coords for max magnitude
     Point max_coord;        // Coords from data
@@ -98,17 +124,13 @@ private:
     // FPS counter
     void FPSCalculator();
     timer FPSTimer;
-    timer camFPSTimer;
     double FPS;
-    double camFPS;
 
     SDL_Window* window = nullptr;
     
     SDL_GLContext gl_context;
 
     SDL_Event event;
-
-    Mat frame;
 
 };
 
@@ -119,8 +141,7 @@ video::video(int frame_width, int frame_height, int frame_rate) :
     frame_height(frame_height),
     frame_rate(frame_rate),
     cap(0, CAP_V4L2),
-    FPSTimer("FPS Timer"),
-    camFPSTimer("CAM FPS Timer") {}
+    FPSTimer("FPS Timer") {}
 
 video::~video() 
 {
@@ -152,12 +173,45 @@ void video::stopCapture()
         video_thread.join();
     }
 
-    destroyAllWindows();
     shutdownIMGui();
-    
 } // end stopCapture
 
 //=====================================================================================
+
+// Callbacks for UI Buttons
+/*void video::onListMaxMag(int state, void* user_data) 
+{list_max_mag_state = state;}
+
+void video::onMarkMaxMag(int state, void* user_data) 
+{mark_max_mag_state = state;}
+
+void video::onColorScaleState(int state, void* user_data) 
+{color_scale_state = state;}
+
+void video::onHeatMap(int state, void* user_data) 
+{heat_map_state = state;}
+
+void video::onFPSCount(int state, void* user_data) 
+{
+    FPS_count_state = state;
+    if (state == 1) {
+        FPSTimer.start();
+    }
+    if (state == 0) {
+        FPSTimer.end();
+    }
+    
+} 
+
+void video::onDataClamp(int state, void* user_data) 
+{data_clamp_state = state;}
+
+void video::onThresholdState(int state, void* user_data) 
+{threshold_state = state;}
+*/
+//=====================================================================================
+
+// Setup UI Buttons and trackbars
 
 void video::UISetup() 
 {   
@@ -185,6 +239,90 @@ void video::UISetup()
     FPSTimer.start();
 
    
+   /*
+    cout << "window shown!" << endl;
+
+    createTrackbar("Threshold", "Window", nullptr, (MAP_THRESHOLD_MAX + MAP_THRESHOLD_OFFSET));
+
+    createTrackbar("Alpha", "Window", nullptr, 100);
+
+    createTrackbar("Clamp minimum", "Window", nullptr, 100);
+
+    createTrackbar("Clamp maximum", "Window", nullptr, 100);
+
+    setTrackbarPos("Threshold", "Window", MAP_THRESHOLD_TRACKBAR_VAL);
+    
+    setTrackbarPos("Alpha", "Window", DEFAULT_ALPHA);
+
+    setTrackbarPos("Clamp minimum", "Window", 0);
+
+    setTrackbarPos("Clamp maximum", "Window", 100);
+
+    
+    // Maximum magnitude button
+    createButton("List Maximum Magnitude", 
+        // Lambda function to call onListMaxMag
+        [](int state, void* user_data) 
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onListMaxMag(state, user_data);
+        }, 
+        this, QT_CHECKBOX, 1);
+    
+    // Mark maximum magnitude button
+    createButton("Mark Maximum Magnitude", 
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onMarkMaxMag(state, user_data);
+        },
+        this, QT_CHECKBOX, 1);
+
+    // Show color scale button
+    createButton("Show Color Scale",
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onColorScaleState(state, user_data);
+        },
+        this, QT_CHECKBOX, 1);
+
+    // Show heat map button
+    createButton("Show Heat Map",
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onHeatMap(state, user_data);
+        },
+        this, QT_CHECKBOX, 1);
+
+    // Show fps button
+    createButton("Show fps",
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onFPSCount(state, user_data);
+        }, 
+        this, QT_CHECKBOX, 1);
+
+    createButton("Data Clamp",
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onDataClamp(state, user_data);
+        }, 
+        this, QT_CHECKBOX, 1);
+
+    createButton("Threshold",
+        [](int state, void* user_data)
+        {
+            auto* vid = static_cast<video*>(user_data);
+            vid->onThresholdState(state, user_data);
+        }, 
+        this, QT_CHECKBOX, 1);
+
+        //FPSTimer.start();
+    */
 } // end UISetup
 
 //=====================================================================================
@@ -193,7 +331,6 @@ void video::captureVideo(VideoCapture& cap, atomic<bool>& is_running)
 {
     while (is_running) 
     {
-        camFPSTimer.start();
         Mat temp_frame;
         if (cap.read(temp_frame)) 
         {
@@ -206,10 +343,9 @@ void video::captureVideo(VideoCapture& cap, atomic<bool>& is_running)
             cerr << "Error: Could not capture frame from video source!" << "\n";
             is_running = false;
         }
-        camFPSTimer.end();
     }
 
-    
+    destroyAllWindows();
 } // end videoCapture
 
 //=====================================================================================
@@ -232,8 +368,6 @@ bool video::getFrame(Mat& frame)
 Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float upper_limit, Mat& frame)
 {
     // Ensure data_input is of type CV_32F for proper normalization
-    Mat workingFrame;
-    frame.copyTo(workingFrame);
     #ifdef ENABLE_RANDOM_DATA
     randu(data_input, Scalar(-100), Scalar(0));
     #endif
@@ -275,18 +409,61 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 
     data_input.convertTo(data_clamped, CV_32F);
 
-        if (imgui_clamp_min >= imgui_clamp_max) {
+    /*
+    if (Lower_limit != imgui_clamp_min) {
+        
+        Lower_limit = imgui_clamp_min;
+        
+        if (Lower_limit >= Upper_limit) {
+            if (Upper_limit == -100) {
+                Upper_limit = -99;
+            }
+            if (Lower_limit == 0) {
+                Lower_limit = -1;    
+            }
+        Upper_limit = Lower_limit + 1;
+
+        imgui_clamp_min = Lower_limit;
+        imgui_clamp_max = Upper_limit;
+
+        }
+    }
+
+    if (Upper_limit != imgui_clamp_max) {
+        
+        Upper_limit = imgui_clamp_max;
+        
+        if (Lower_limit >= Upper_limit) {
+            
+            if (Upper_limit == -100) {
+                Upper_limit = -99;
+            }
+            
+            if (Lower_limit == 0) {
+                Lower_limit = -1;    
+            }
+        
+        Lower_limit = Upper_limit - 1;
+
+        imgui_clamp_min = Lower_limit;
+        imgui_clamp_max = Upper_limit;
+        }
+    }
+        */
+
+        if (imgui_clamp_min >= imgui_clamp_min) {
             if(imgui_clamp_min == 0) {
                 imgui_clamp_min = -1;
                 imgui_clamp_max = 0;
-            } else if(imgui_clamp_max == -100) {
+            }
+            if(imgui_clamp_max == -100) {
                 imgui_clamp_max = -99;
                 imgui_clamp_min = -100;
-            } else {
-                imgui_clamp_max = imgui_clamp_min + 1;
             }
-
         }
+
+
+
 
     for(int col = 0; col < data_clamped.cols; col++ ) {
         for (int row = 0; row < data_clamped.rows; row++) {
@@ -327,13 +504,13 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 
     // Apply a colormap to create the heatmap
     Mat heatmap;
-    applyColorMap(heatmap_input, heatmap, COLORMAP_JET);
+    applyColorMap(heatmap_input, heatmap, COLORMAP_INFERNO);
 
     Mat frame_merged;
     
     if(heat_map_state == false) 
     {   
-        workingFrame.copyTo(frame_merged);
+        frame.copyTo(frame_merged);
     }
 
     if(heat_map_state == true) 
@@ -341,16 +518,19 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     // Ensure the heatmap is the same size as the frame
     Mat resized_heatmap;
     Mat resized_data_input;
-    resize(heatmap, resized_heatmap, workingFrame.size());
-    resize(data_input, resized_data_input, workingFrame.size());
+    resize(heatmap, resized_heatmap, frame.size());
+    resize(data_input, resized_data_input, frame.size());
 
     // Blend the heatmap and the frame with an alpha value
     //double alpha2 = static_cast<double>(getTrackbarPos("Alpha", "Window"))/100;
     
     if (threshold_state == false) {
-    addWeighted(workingFrame, 1.0, resized_heatmap, imgui_alpha, 0.0, frame_merged);
+    addWeighted(frame, 1.0, resized_heatmap, imgui_alpha, 0.0, frame_merged);
     }
     if(threshold_state == true) {
+        // Get threshold value of trackbar
+        //int thresholdValue = (getTrackbarPos("Threshold", "Window") - MAP_THRESHOLD_OFFSET);
+        
         for(int y = 0; y < resized_heatmap.rows; ++y)
             {
                 for (int x = 0; x < resized_heatmap.cols; ++x) 
@@ -358,7 +538,7 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
                     
                     if (resized_data_input.at<float>(y, x) > imgui_threshold) 
                     {
-                        Vec3b& pixel = workingFrame.at<Vec3b>(y, x);         // Current pixel in camera
+                        Vec3b& pixel = frame.at<Vec3b>(y, x);         // Current pixel in camera
                         Vec3b heatMapPixel = resized_heatmap.at<Vec3b>(y, x); // Current pixel in heatmap
 
                         // Loops through R G & B channels
@@ -371,7 +551,7 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
                 }
             } // end alphaMerge
         
-        workingFrame.copyTo(frame_merged);
+        frame.copyTo(frame_merged);
     }
     }
 
@@ -396,7 +576,7 @@ void video::drawColorBar(int scale_width, int scale_height)
         }
     }
     cout << scale_width << " " << scale_height << endl;
-    applyColorMap(scaleColor, color_bar, COLORMAP_JET);
+    applyColorMap(scaleColor, color_bar, COLORMAP_INFERNO);
     
 } // end drawColorBar
 
@@ -405,15 +585,14 @@ void video::drawColorBar(int scale_width, int scale_height)
 void video::FPSCalculator()
 {
     FPSTimer.end();
+
     double FPSTime = FPSTimer.time_avg(AVG_SAMPLES, false);
     if (FPSTime != -1) 
     { FPS = 1/FPSTime; }
+    
+    //cout << FPSTime << endl;
+    //cout << FPSTimer.getCurrentAvgCount() << endl;
     FPSTimer.start();
-
-    double camFPSTime = camFPSTimer.time_avg(AVG_SAMPLES, false);
-    if (camFPSTime != -1) 
-    { camFPS = 1/camFPSTime; }
-
 }   
 
 //=====================================================================================
@@ -462,6 +641,38 @@ Mat video::drawUI(Mat& data_input)
         drawMarker(data_input, max_point_scaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
     }
     
+    if (list_max_mag_state == true)
+    {
+        Point max_text_location(MAX_LABEL_POS_X, MAX_LABEL_POS_Y);
+        ostringstream max_magnitude_stream;
+        String max_magnitude_string;
+        int text_baseline = 0;
+    
+        max_magnitude_stream << fixed << setprecision(LABEL_PRECISION) << magnitude_max;
+        max_magnitude_string = "Maximum = " + max_magnitude_stream.str();
+
+        Size textSize = getTextSize(max_magnitude_string, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &text_baseline);
+        
+        rectangle(data_input, max_text_location + Point(0, text_baseline), max_text_location + Point(textSize.width, -textSize.height), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+        putText(data_input, max_magnitude_string, max_text_location + Point(0, +5), FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for maximum magnitude
+    } // end max mag
+    
+    // Draw FPS box and text
+    if (FPS_count_state == true) {
+        int FPSBaseline = 0;
+        Point FPSTextLocation(20, 460);
+        string FPS_string;
+        ostringstream FPS_stream;
+        
+        FPSCalculator();
+        FPS_stream << fixed << setprecision(LABEL_PRECISION) << FPS;
+        FPS_string = "FPS: " + FPS_stream.str();
+        Size FPStextSize = getTextSize(FPS_string, FONT_TYPE, FONT_SCALE, FONT_THICKNESS, &FPSBaseline);
+        
+        rectangle(data_input, FPSTextLocation + Point(0, 6), FPSTextLocation + Point(80, - 10 - 3), Scalar(0, 0, 0), FILLED); //Draw rectangle for text
+        putText(data_input, FPS_string, FPSTextLocation, FONT_TYPE, FONT_SCALE, Scalar(255, 255, 255), FONT_THICKNESS); //Write text for FPS
+    } // end fps
+    
     return data_input;
 } // end drawUI
 
@@ -469,8 +680,6 @@ Mat video::drawUI(Mat& data_input)
 
 // Function to initialize IMGui
 bool video::startIMGui() {
-    #ifdef UBUNTU
-    
     // Initialize SDL
 
     //cout << "starting imgui..." << endl;
@@ -533,75 +742,12 @@ bool video::startIMGui() {
     }
     cout << "finsihed starting imgui..." << endl;
     return true;
-
-    #endif
-
-    #ifdef PI
-
-    // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
-        std::cerr << "Error: SDL_Init failed: " << SDL_GetError() << std::endl;
-        return false;
-    }
-
-    // Set OpenGL ES attributes
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-
-    // Create an OpenGL ES window
-    window = SDL_CreateWindow("IMGui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 430, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-    if (!window) {
-        std::cerr << "Error: SDL_CreateWindow failed: " << SDL_GetError() << std::endl;
-        return false;
-    }
-
-    // Create OpenGL ES context
-    gl_context = SDL_GL_CreateContext(window);
-    if (!gl_context) {
-        std::cerr << "Error: SDL_GL_CreateContext failed: " << SDL_GetError() << std::endl;
-        return false;
-    }
-
-    SDL_GL_MakeCurrent(window, gl_context);
-    // SDL_GL_SetSwapInterval(1); // Enable V-Sync
-
-    // Initialize ImGui context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    (void)io;  // Avoid unused variable warning
-
-    // Setup ImGui style
-    ImGui::StyleColorsDark();
-
-    // Setup platform/renderer bindings
-    if (!ImGui_ImplSDL2_InitForOpenGL(window, gl_context)) {
-        std::cerr << "Error: ImGui_ImplSDL2_InitForOpenGL failed!\n";
-        return false;
-    }
-
-    if (!ImGui_ImplOpenGL3_Init("#version 300 es")) {
-        std::cerr << "Error: ImGui_ImplOpenGL3_Init failed!\n";
-        return false;
-    }
-
-    std::cout << "Finished starting ImGui..." << std::endl;
-    return true;
-
-
-    #endif
 }
 
 //=====================================================================================
 
 bool video::renderIMGui() {
     // Start a new frame
-    #ifdef UBUNTU
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL2_ProcessEvent(&event); // Pass events to ImGui
 
@@ -613,28 +759,6 @@ bool video::renderIMGui() {
     
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
-   #endif
-   
-   #ifdef PI
-
-   SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        ImGui_ImplSDL2_ProcessEvent(&event); // Pass events to ImGui
-
-        if (event.type == SDL_QUIT) {
-            return false;
-        }
-    }
-
-    // Start new ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
-
-   #endif
-   
-   
-   
-   
     ImGui::NewFrame();
 
     ImGui::SetNextWindowPos(ImVec2(0,0), ImGuiCond_Always);
@@ -671,30 +795,20 @@ bool video::renderIMGui() {
         ImGui::EndGroup();
 
     ImGui::End();
-    
+
+    // Create a simple window
     ImGui::SetNextWindowPos(ImVec2(290,0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(140, 140), ImGuiCond_Always);
-    ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-
-        ImGui::Text("Maximum: %.1f", magnitude_max);
-        ImGui::Text("Program FPS: %.1f", FPS);
-        ImGui::Text("Camera FPS: %.1f", camFPS);
-
-    ImGui::End();
-
-    ImGui::SetNextWindowPos(ImVec2(290,140), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(140, 340), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(140, 480), ImGuiCond_Always);
     ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-
+        ImGui::Checkbox("List Max Mag", &list_max_mag_state);
         ImGui::Checkbox("Mark Max Mag", &mark_max_mag_state);
         ImGui::Checkbox("Color Scale", &color_scale_state);
         ImGui::Checkbox("Heat Map", &heat_map_state);
+        ImGui::Checkbox("FPS Count", &FPS_count_state);
         ImGui::Checkbox("Data Clamp", &data_clamp_state);
         ImGui::Checkbox("Threshold", &threshold_state);
-
     ImGui::End();
 
-    #ifdef UBUNTU
     // Render UI
     ImGui::Render();
     glViewport(0, 0, 400, 600);
@@ -703,19 +817,6 @@ bool video::renderIMGui() {
 
     SDL_GL_SwapWindow(window);
     return true;
-    #endif
-
-    #ifdef PI
-    int winWidth, winHeight;
-    SDL_GetWindowSize(window, &winWidth, &winHeight);
-    glViewport(0, 0, winWidth, winHeight);
-
-    // Clear buffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Render ImGui draw data
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    #endif
 }
 
 //=====================================================================================
@@ -728,6 +829,8 @@ void video::shutdownIMGui() {
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
+
+
 }
 
 
@@ -742,26 +845,21 @@ bool video::processFrame(Mat& data_input, const float lower_limit, const float u
     - draw UI
     */
    
-    Mat newframe;
-    
-   if (getFrame(newframe)) {
-    newframe.copyTo(frame);
-   }
-    
+    Mat frame;
+    if (getFrame(frame)) 
+    {
+        // Creates heatmap from beamformed audio data, thresholds, clamps, and merges
+        Mat frame_merged = createHeatmap(data_input, lower_limit, upper_limit, frame);
         
-    // Creates heatmap from beamformed audio data, thresholds, clamps, and merges
-    Mat frame_merged = createHeatmap(data_input, lower_limit, upper_limit, frame);
+        // Draw UI onto frame
+        Mat frame_merged_UI = drawUI(frame_merged);
         
-    // Draw UI onto frame
-    Mat frame_merged_UI = drawUI(frame_merged);
-        
-    imshow("Window", frame_merged_UI);
-    FPSCalculator();
-    //cout << "rendering imgui..." << endl;
-    if (renderIMGui() == false) {
+        imshow("Window", frame_merged_UI);
+        //cout << "rendering imgui..." << endl;
+        if (renderIMGui() == false) {
             return false;
+        }
     }
-    
 
     return true;
     //
