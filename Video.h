@@ -241,30 +241,39 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     //resize(static_test_frame, static_test_frame, data_input.size());
     //Mat test_frame = staticTestFrame(NUM_ANGLES, NUM_ANGLES, -100, 0);
     
-    double st_height = NUM_ANGLES;
-    double st_width = NUM_ANGLES;
+    double st_height = NUM_PHI;
+    double st_width = NUM_THETA;
     double st_max = 0;
     double st_min = -100;
-    Mat static_test_frame(st_height, st_width, CV_32F);
+   // Mat static_test_frame(st_height, st_width, CV_32F);
 
-    for(int i = 0; i < st_width; ++i) {
-        for(int j = 0; j < st_height; ++j) {
-        float value;
-        float distance = sqrt(((st_width / 2 - i)*(st_width / 2 - i)) + ((st_height / 2 - j)*(st_height / 2 - j)));
-        if (distance == st_width) {
-            value = st_min;
-        } else {
-            value = static_cast<float>(st_max - st_min) * (1 - static_cast<float>(distance / st_width));
-            
-        }
+    array2D<float> static_test_frame(st_width, st_height);
 
-        static_test_frame.at<float>(j, i) = value;
+    for (int i = 0; i < static_test_frame.dim_1; i++)
+    {
+        for (int j = 0; j < static_test_frame.dim_2; j++)
+        {
+            float value;
+            float distance = sqrt(((st_width / 2 - i)*(st_width / 2 - i)) + ((st_height / 2 - j)*(st_height / 2 - j)));
+            if (distance == st_width) {
+                 value = st_min;
+            } else {
+                value = (static_cast<float>(st_max - st_min) * (1 - static_cast<float>(distance / st_width))) + st_min;
+            }
 
-        cout << value << endl;
+            static_test_frame.at(i, j) = value;
+        } // end j
+    } // end i
 
-        }
-    }
-    static_test_frame.copyTo(data_input);
+    // Create a Mat and reassign data
+    cv::Mat mat(static_test_frame.dim_1, static_test_frame.dim_2, CV_32FC1, static_test_frame.data);
+
+    mat.copyTo(data_input);
+
+
+
+
+
     #endif
     
     

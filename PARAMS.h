@@ -32,7 +32,7 @@ const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
 
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:1,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
@@ -86,10 +86,10 @@ const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
-//#define ENABLE_AUDIO
+#define ENABLE_AUDIO
 #define ENABLE_VIDEO
 #define ENABLE_IMGUI
-#define ENABLE_RANDOM_DATA
+//#define ENABLE_RANDOM_DATA
 //#define ENABLE_STATIC_DATA
 #define AVG_SAMPLES 10
 //#define PI //Set for usage on Pi

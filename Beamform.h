@@ -25,7 +25,7 @@ public:
 
     void setup();
 
-    void processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
+    void processData(array3D<float>& data_input, cv::Mat& data_output, array3D<float>& data_beamform_input, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
     
 private:
     // Calculates time delays
@@ -47,7 +47,7 @@ private:
     float accessBuffer(int m_index, int n_index, int b);
 
     // Performs beamforming on audio data
-    void handleBeamforming();
+    void handleBeamforming(array3D<float>& data_beamform);
 
     // Performs FFT on beamformed data
     void FFT();
@@ -374,7 +374,7 @@ float beamform::accessBuffer(int m_index, int n_index, int b)
 
 //=====================================================================================
 
-void beamform::handleBeamforming()
+void beamform::handleBeamforming(array3D<float>& data_beamform_input)
 {
     array3D<float> data_beamform_temp(num_theta, num_phi, fft_size);
     /*
@@ -476,9 +476,7 @@ void beamform::handleBeamforming()
                 } // end phi_index
             } // end theta_index
         } // end n
-    } // end m
-
-    
+    } // end m    
 } // end handleBeamforming
 
 
@@ -551,7 +549,7 @@ cv::Mat beamform::arraytoMat(const array2D<float>& data)
 
 //=====================================================================================
 
-void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
+void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, array3D<float>& data_beamform_input, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
 {
     // Ring buffer
     ringBuffer(data_input);
@@ -560,7 +558,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
 
     // Beamforming
     beamform_time.start();
-    handleBeamforming();
+    handleBeamforming(data_beamform_input);
     beamform_time.end();
 
     #ifdef PRINT_BEAMFORM 

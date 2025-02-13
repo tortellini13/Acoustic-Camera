@@ -17,6 +17,7 @@ using namespace std;
 
 int main()
 {
+    array3D<float> data_beamform(NUM_THETA, NUM_PHI, FFT_SIZE);
 
     Mat frame;
     #ifdef ENABLE_AUDIO
@@ -42,15 +43,14 @@ int main()
     #endif
     while(1)
     {
-        
-        //ALSA.recordAudio(audio_data);
 
-        #ifdef PRINT_AUDIO
-        audio_data.print_layer(0);
-        #endif
+
+        
         #ifdef ENABLE_AUDIO
-        beamform.processData(audio_data, processed_data, 1, 511, POST_dBFS);
+        ALSA.recordAudio(audio_data);
+        beamform.processData(audio_data, processed_data, data_beamform, 1, 511, POST_dBFS);
         #endif
+        
         #ifdef ENABLE_VIDEO
         if (video.processFrame(processed_data, -70.0f, -30.0f) == false) break;
         if (waitKey(1) >= 0) break;
