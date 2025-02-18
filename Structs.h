@@ -72,6 +72,75 @@ struct array3D
         data = new T[d1 * d2 * d3](); // Allocate and zero-initialize the array
     }
 
+    // Copy Constructor
+    array3D(const array3D& other) : dim_1(other.dim_1), dim_2(other.dim_2), dim_3(other.dim_3)
+    {
+        data = new T[dim_1 * dim_2 * dim_3];
+        for (size_t i = 0; i < dim_1 * dim_2 * dim_3; ++i)
+        {
+            data[i] = other.data[i];
+        }
+    }
+
+    // Copy Assignment Operator
+    array3D& operator=(const array3D& other)
+    {
+        if (this == &other)  // Prevent self-assignment
+            return *this;
+
+        // Free existing memory
+        delete[] data;
+
+        // Copy the dimensions
+        dim_1 = other.dim_1;
+        dim_2 = other.dim_2;
+        dim_3 = other.dim_3;
+
+        // Allocate new memory and copy data
+        data = new T[dim_1 * dim_2 * dim_3];
+        for (size_t i = 0; i < dim_1 * dim_2 * dim_3; ++i)
+        {
+            data[i] = other.data[i];
+        }
+
+        return *this;
+    }
+
+    // Move Constructor
+    array3D(array3D&& other) noexcept
+        : data(other.data), dim_1(other.dim_1), dim_2(other.dim_2), dim_3(other.dim_3)
+    {
+        // Leave other in a valid state
+        other.data = nullptr;
+        other.dim_1 = 0;
+        other.dim_2 = 0;
+        other.dim_3 = 0;
+    }
+
+    // Move Assignment Operator
+    array3D& operator=(array3D&& other) noexcept
+    {
+        if (this == &other)  // Prevent self-assignment
+            return *this;
+
+        // Free existing memory
+        delete[] data;
+
+        // Transfer ownership of data
+        data = other.data;
+        dim_1 = other.dim_1;
+        dim_2 = other.dim_2;
+        dim_3 = other.dim_3;
+
+        // Leave other in a valid state
+        other.data = nullptr;
+        other.dim_1 = 0;
+        other.dim_2 = 0;
+        other.dim_3 = 0;
+
+        return *this;
+    }
+
     // Destructor
     ~array3D()
     {
@@ -108,7 +177,7 @@ struct array3D
         }
     }
 
-    // Print array
+    // Print array layer
     void print_layer(const int layer) const
     {
         for (size_t i = 0; i < dim_1; ++i)
