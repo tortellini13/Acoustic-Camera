@@ -37,7 +37,7 @@ private:
     snd_pcm_access_t access = SND_PCM_ACCESS_RW_INTERLEAVED; // Stores data where ch1[0], ch2[0], ...ch16[0], ch1[1],...
     snd_pcm_format_t format = SND_PCM_FORMAT_S32_LE;         // Format for input data (32-bit little endian)
     int mode = 0;        // Mode for pcm (0 is default)
-    int periods = 2;     // Number of periods. For scheduling inturrupts
+    int periods = 2;     // Number of periods. For scheduling interrupts
     int num_bytes = 4;   // Number of bytes read per sample
     int COLS = M_AMOUNT; // Number of columns
     int ROWS = N_AMOUNT; // Number of rows
@@ -55,7 +55,7 @@ private:
     snd_pcm_uframes_t buffer_size;  // Size of buffer (BUFFER_SIZE * NUM_BYTES * NUM_CHANNELS)
     int32_t* data_buffer;           // Buffer for interlaced data to be written to
     int pcm_return;                 // Return value for pcm reading (for error handling)
-    array2D<int> channel_order;
+    array2D<int> channel_order;     // Physical channels may not be in correct order
 
 }; // end class def
 

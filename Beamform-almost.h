@@ -25,7 +25,7 @@ public:
 
     void setup();
 
-    void processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
+    void processData(array3D<float>& data_input, cv::Mat& data_output, array3D<float>& data_beamform_input, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
     
 private:
     // Calculates time delays
@@ -47,7 +47,7 @@ private:
     float accessBuffer(int m_index, int n_index, int b);
 
     // Performs beamforming on audio data
-    array3D<float> handleBeamforming();
+    void handleBeamforming(array3D<float>& data_beamform);
 
     // Performs FFT on beamformed data
     void FFT();
@@ -62,44 +62,44 @@ private:
     cv::Mat arraytoMat(const array2D<float>& data);
 
     // Initial conditions
-    int fft_size;      // Size of FFT and buffer
-    int half_fft_size; // Half of FFT size
-    int sample_rate;   // Audio sample rate
-    int m_channels;    // Number of channels in M dimension
-    int n_channels;    // Number of channels in N dimension
-    int num_channels;  // Total number of channels (N * M)
-    float mic_spacing; // Spacing between microphones in meters
+    int fft_size;
+    int half_fft_size;
+    int sample_rate;
+    int m_channels;
+    int n_channels;
+    int num_channels;
+    float mic_spacing;
 
-    int min_theta;     // Minimum azimuth 
-    int max_theta;     // Maximum azimuth
-    int step_theta;    // Step size for azimuth
-    int num_theta;     // Total number of azimuth angles
+    int min_theta;
+    int max_theta;
+    int step_theta;
+    int num_theta;
 
-    int min_phi;       // Minimum elevation
-    int max_phi;       // Maximum elevation
-    int step_phi;      // Step size for elevation
-    int num_phi;       // Total number of elevation angles
+    int min_phi;
+    int max_phi;
+    int step_phi;
+    int num_phi;
 
-    float speed_of_sound; // Speed of sound in m/s
-    int data_size;        // ???
-    int num_taps;         // Number of taps for FIR filter
-    int tap_offset;       // Number of taps to the left of 0
+    float speed_of_sound;
+    int data_size;
+    int num_taps; // move this into constructor
+    int tap_offset;
 
-    int beamform_data_size; // ???
+    int beamform_data_size;
 
     // Plan for fft to reuse
     fftwf_plan fft_plan;
 
     // Arrays
-    array4D<int>   time_delay_int;    // (m, n, theta, phi)
-    array4D<float> time_delay_frac;   // (m, n, theta, phi)
-    array5D<float> FIR_weights;       // (m, n, theta, phi, num_taps)
-    array3D<float> data_buffer_1;     // (m, n, fft_size)
-    array3D<float> data_buffer_2;     // (m, n, fft_size)
-    array3D<float> data_beamform;     // (theta, phi, fft_size)
-    array3D<complex<float>> data_fft; // (theta, phi, fft_size / 2)
-    array2D<float> data_fft_collapse; // (theta, phi)
-    array2D<float> data_post_process; // (theta, phi)
+    array4D<int>   time_delay_int;       // (m, n, theta, phi)
+    array4D<float> time_delay_frac;      // (m, n, theta, phi)
+    array5D<float> FIR_weights;          // (m, n, theta, phi, num_taps)
+    array3D<float> data_buffer_1;        // (m, n, fft_size)
+    array3D<float> data_buffer_2;        // (m, n, fft_size)
+    array3D<float> data_beamform;        // (theta, phi, fft_size)
+    array3D<complex<float>> data_fft;    // (theta, phi, fft_size / 2)
+    array2D<float> data_fft_collapse;    // (theta, phi)
+    array2D<float> data_post_process;    // (theta, phi)
 
     // Timers
     timer beamform_time;
@@ -374,7 +374,7 @@ float beamform::accessBuffer(int m_index, int n_index, int b)
 
 //=====================================================================================
 
-array3D<float> beamform::handleBeamforming()
+void beamform::handleBeamforming(array3D<float>& data_beamform_input)
 {
     array3D<float> data_beamform_temp(num_theta, num_phi, fft_size);
     /*
@@ -477,10 +477,9 @@ array3D<float> beamform::handleBeamforming()
             } // end theta_index
         } // end n
     } // end m    
-
-    return data_beamform_temp;
-
 } // end handleBeamforming
+
+
 
 //=====================================================================================
 
@@ -550,7 +549,7 @@ cv::Mat beamform::arraytoMat(const array2D<float>& data)
 
 //=====================================================================================
 
-void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
+void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, array3D<float>& data_beamform_input, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
 {
     // Ring buffer
     ringBuffer(data_input);
@@ -559,7 +558,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
 
     // Beamforming
     beamform_time.start();
-    data_beamform = handleBeamforming();
+    handleBeamforming(data_beamform_input);
     beamform_time.end();
 
     #ifdef PRINT_BEAMFORM 
