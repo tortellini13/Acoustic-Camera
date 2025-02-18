@@ -49,9 +49,11 @@ private:
     //IMGUI
     bool startIMGui();
 
-    bool renderIMGui();
+    bool renderIMGui(Mat& frame_in);
     
     void shutdownIMGui();
+
+    GLuint textureID;
 
     // Camera params
     int frame_width;
@@ -180,7 +182,7 @@ void video::UISetup()
         this_thread::sleep_for(chrono::seconds(1));
     }
 
-    imshow("Window",initial_frame); 
+    //imshow("Window",initial_frame); 
 
     FPSTimer.start();
 
@@ -498,7 +500,7 @@ bool video::startIMGui() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 
     // Create an OpenGL window
-    window = SDL_CreateWindow("IMGui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 430, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Acoustic Camera", 0, 0, 1024, 600, SDL_WINDOW_OPENGL);
     if (!window) {
         std::cerr << "Error: SDL_CreateWindow failed: " << SDL_GetError() << std::endl;
         return false;
@@ -540,7 +542,23 @@ bool video::startIMGui() {
         std::cerr << "Error: ImGui_ImplOpenGL3_Init failed!\n";
         return false;
     }
-    cout << "finsihed starting imgui..." << endl;
+    
+    //Create texture for displaying each frame of video feed
+    
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Allocate memory for texture (will be updated every frame)
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, RESOLUTION_WIDTH, RESOLUTION_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+    // Set texture parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+
+
     return true;
 
     #endif
@@ -563,7 +581,7 @@ bool video::startIMGui() {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 
     // Create an OpenGL ES window
-    window = SDL_CreateWindow("IMGui Window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 430, 480, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Acoustic Camera", 0, 0, 1024, 600, SDL_WINDOW_OPENGL);
     if (!window) {
         std::cerr << "Error: SDL_CreateWindow failed: " << SDL_GetError() << std::endl;
         return false;
@@ -608,7 +626,7 @@ bool video::startIMGui() {
 
 //=====================================================================================
 
-bool video::renderIMGui() {
+bool video::renderIMGui(Mat &frame_in) {
     // Start a new frame
     #ifdef UBUNTU
     while (SDL_PollEvent(&event)) {
@@ -640,6 +658,13 @@ bool video::renderIMGui() {
     ImGui_ImplSDL2_NewFrame();
 
    #endif
+
+    Mat frameRGBA;
+    cvtColor(frame_in, frameRGBA, COLOR_BGR2RGBA);  // Convert OpenCV BGR to RGBA
+
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frameRGBA.cols, frameRGBA.rows, GL_RGBA, GL_UNSIGNED_BYTE, frameRGBA.data);
+    glBindTexture(GL_TEXTURE_2D, 0);
    
    
    
@@ -647,28 +672,34 @@ bool video::renderIMGui() {
     ImGui::NewFrame();
 
     ImGui::SetNextWindowPos(ImVec2(0,0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(290, 480), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(660, 500), ImGuiCond_Always);
+    ImGui::Begin("Video", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+        ImGui::Image(textureID, ImVec2(frame.cols, frame.rows));
+    ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(660,0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(200, 600), ImGuiCond_Always);
     ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         // First Column: Threshold
         ImGui::BeginGroup(); // Start grouping for alignment
-        ImGui::Text("Threshold");
-        ImGui::VSliderInt("##Threshold", ImVec2(50, 420), &imgui_threshold, -100, 0, "%d");
+        ImGui::Text("Thresh");
+        ImGui::VSliderInt("##Threshold", ImVec2(40, 500), &imgui_threshold, -100, 0, "%d");
         ImGui::EndGroup();
 
         ImGui::SameLine(); // Move to the next column
 
         // Second Column: Clamp Min
         ImGui::BeginGroup();
-        ImGui::Text("Clamp Min");
-        ImGui::VSliderInt("##Clamp_Min", ImVec2(50, 420), &imgui_clamp_min, -100, 0, "%d");
+        ImGui::Text("Min");
+        ImGui::VSliderInt("##Clamp_Min", ImVec2(40, 500), &imgui_clamp_min, -100, 0, "%d");
         ImGui::EndGroup();
 
         ImGui::SameLine(); 
 
         // Third Column: Clamp Max
         ImGui::BeginGroup();
-        ImGui::Text("Clamp Max");
-        ImGui::VSliderInt("##Clamp_Max", ImVec2(50, 420), &imgui_clamp_max, -100, 0, "%d");
+        ImGui::Text("Max");
+        ImGui::VSliderInt("##Clamp_Max", ImVec2(40, 500), &imgui_clamp_max, -100, 0, "%d");
         ImGui::EndGroup();
 
         ImGui::SameLine(); 
@@ -676,13 +707,13 @@ bool video::renderIMGui() {
         // Fourth Column: Alpha
         ImGui::BeginGroup();
         ImGui::Text("Alpha");
-        ImGui::VSliderFloat("##Alpha", ImVec2(50, 420), &imgui_alpha, 0.0f, 1.0f, "%.2f");
+        ImGui::VSliderFloat("##Alpha", ImVec2(40, 500), &imgui_alpha, 0.0f, 1.0f, "%.2f");
         ImGui::EndGroup();
 
     ImGui::End();
     
-    ImGui::SetNextWindowPos(ImVec2(290,0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(140, 140), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(0,500), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(660, 100), ImGuiCond_Always);
     ImGui::Begin("Info", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
         ImGui::Text("Maximum: %.1f", magnitude_max);
@@ -691,8 +722,8 @@ bool video::renderIMGui() {
 
     ImGui::End();
 
-    ImGui::SetNextWindowPos(ImVec2(290,140), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(140, 340), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(860,0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(164, 600), ImGuiCond_Always);
     ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
         ImGui::Checkbox("Mark Max Mag", &mark_max_mag_state);
@@ -706,7 +737,7 @@ bool video::renderIMGui() {
     #ifdef UBUNTU
     // Render UI
     ImGui::Render();
-    glViewport(0, 0, 400, 600);
+    glViewport(0, 0, 1024, 600);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -715,9 +746,9 @@ bool video::renderIMGui() {
     #endif
 
     #ifdef PI
-    int winWidth, winHeight;
-    SDL_GetWindowSize(window, &winWidth, &winHeight);
-    glViewport(0, 0, winWidth, winHeight);
+    //int winWidth, winHeight;
+    //SDL_GetWindowSize(window, &winWidth, &winHeight);
+    glViewport(0, 0, 1024, 600);
 
     // Clear buffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -764,10 +795,11 @@ bool video::processFrame(Mat& data_input, const float lower_limit, const float u
     // Draw UI onto frame
     Mat frame_merged_UI = drawUI(frame_merged);
         
-    imshow("Window", frame_merged_UI);
+    //imshow("Window", frame_merged_UI);
     FPSCalculator();
+    
     //cout << "rendering imgui..." << endl;
-    if (renderIMGui() == false) {
+    if (renderIMGui(frame_merged_UI) == false) {
             return false;
     }
     

@@ -53,7 +53,7 @@ int main()
         
         #ifdef ENABLE_VIDEO
         if (video.processFrame(processed_data, -70.0f, -30.0f) == false) break;
-        if (waitKey(1) >= 0) break;
+        //if (waitKey(1) >= 0) break;
         #endif
 
     }
