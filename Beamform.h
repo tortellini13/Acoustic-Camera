@@ -35,10 +35,7 @@ private:
     void setupFIR();
 
     // Creates FFT plan
-    void setupFFT(int dim_1, int dim_2, int dim_3);
-
-    // Deletes FFT
-    void cleanupFFT(array3D<float>& data_input, array3D<complex<float>> data_output);
+    void setupFFT();
 
     // Converts degrees to radians
     float degtorad(const float angle_deg);
@@ -50,10 +47,10 @@ private:
     float accessBuffer(int m_index, int n_index, int b);
 
     // Performs beamforming on audio data
-    array3D<float> handleBeamforming();
+    void handleBeamforming();
 
     // Performs FFT on beamformed data
-    void FFT(array3D<float>& data_input);
+    void FFT();
 
     // Combines all bins and band passes data
     void FFTCollapse(const int lower_frequency, const int upper_frequency);
@@ -65,47 +62,44 @@ private:
     cv::Mat arraytoMat(const array2D<float>& data);
 
     // Initial conditions
-    int fft_size;      // Size of FFT and buffer
-    int half_fft_size; // Half of FFT size
-    int sample_rate;   // Audio sample rate
-    int m_channels;    // Number of channels in M dimension
-    int n_channels;    // Number of channels in N dimension
-    int num_channels;  // Total number of channels (N * M)
-    float mic_spacing; // Spacing between microphones in meters
+    int fft_size;
+    int half_fft_size;
+    int sample_rate;
+    int m_channels;
+    int n_channels;
+    int num_channels;
+    float mic_spacing;
 
-    int min_theta;     // Minimum azimuth 
-    int max_theta;     // Maximum azimuth
-    int step_theta;    // Step size for azimuth
-    int num_theta;     // Total number of azimuth angles
+    int min_theta;
+    int max_theta;
+    int step_theta;
+    int num_theta;
 
-    int min_phi;       // Minimum elevation
-    int max_phi;       // Maximum elevation
-    int step_phi;      // Step size for elevation
-    int num_phi;       // Total number of elevation angles
+    int min_phi;
+    int max_phi;
+    int step_phi;
+    int num_phi;
 
-    float speed_of_sound; // Speed of sound in m/s
-    int data_size;        // ???
-    int num_taps;         // Number of taps for FIR filter
-    int tap_offset;       // Number of taps to the left of 0
+    float speed_of_sound;
+    int data_size;
+    int num_taps; // move this into constructor
+    int tap_offset;
 
-    int beamform_data_size; // ???
+    int beamform_data_size;
 
     // Plan for fft to reuse
     fftwf_plan fft_plan;
-    //float* fft_input;
-    //fftwf_complex* fft_output;
 
     // Arrays
-    array4D<int>   time_delay_int;    // (m, n, theta, phi)
-    array4D<float> time_delay_frac;   // (m, n, theta, phi)
-    array5D<float> FIR_weights;       // (m, n, theta, phi, num_taps)
-    array3D<float> data_buffer_1;     // (m, n, fft_size)
-    array3D<float> data_buffer_2;     // (m, n, fft_size)
-    array3D<float> data_beamform;     // (theta, phi, fft_size)
-    array3D<float> data_fft_input;    // (theta, phi, fft_size)
-    array3D<complex<float>> data_fft_output; // (theta, phi, fft_size / 2)
-    array2D<float> data_fft_collapse; // (theta, phi)
-    array2D<float> data_post_process; // (theta, phi)
+    array4D<int>   time_delay_int;       // (m, n, theta, phi)
+    array4D<float> time_delay_frac;      // (m, n, theta, phi)
+    array5D<float> FIR_weights;          // (m, n, theta, phi, num_taps)
+    array3D<float> data_buffer_1;        // (m, n, fft_size)
+    array3D<float> data_buffer_2;        // (m, n, fft_size)
+    array3D<float> data_beamform;        // (theta, phi, fft_size)
+    array3D<complex<float>> data_fft;    // (theta, phi, fft_size / 2)
+    array2D<float> data_fft_collapse;    // (theta, phi)
+    array2D<float> data_post_process;    // (theta, phi)
 
     // Timers
     timer beamform_time;
@@ -150,8 +144,7 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     data_buffer_1(m_channels, n_channels, fft_size),
     data_buffer_2(m_channels, n_channels, fft_size),
     data_beamform(num_theta, num_phi, fft_size),
-    data_fft_input(num_theta, num_phi, fft_size),
-    data_fft_output(num_theta, num_phi, half_fft_size + 1),
+    data_fft(num_theta, num_phi, half_fft_size),
     data_fft_collapse(num_theta, num_phi),
     data_post_process(num_theta, num_phi),
 
@@ -289,29 +282,8 @@ void beamform::setupFIR()
 
 //=====================================================================================
 
-void beamform::setupFFT(int dim_1, int dim_2, int dim_3)
+void beamform::setupFFT()
 {
-    /* // Allocate input and output buffers
-    fft_input = (float*)fftwf_malloc(sizeof(float) * num_theta * num_phi * fft_size);
-    fft_output = (fftwf_complex*)fftwf_malloc(sizeof(fftwf_complex) * num_theta * num_phi * (fft_size / 2 + 1));
-
-    // Batched 1D FFT parameters
-    int batch_size = num_theta * num_phi;  // Number of independent 1D FFTs
-    int rank = 1;                  // 1D FFTs
-    int n[] = { fft_size };         // FFT length per batch
-    int howmany = batch_size;       // Number of independent transforms
-
-    int istride = 1, idist = fft_size;         // Input stride
-    int ostride = 1, odist = (fft_size / 2 + 1);  // Output stride
-
-    // Create batched 1D real-to-complex FFT plan
-    fft_plan = fftwf_plan_many_dft_r2c(rank, n, howmany,
-                                   fft_input, nullptr, istride, idist,
-                                   fft_output, nullptr, ostride, odist,
-                                   FFTW_MEASURE);
- */
-
-    
     // Enable FFTW multithreading
     if (fftwf_init_threads() == 0)
     {
@@ -322,11 +294,11 @@ void beamform::setupFFT(int dim_1, int dim_2, int dim_3)
     // Set the number of threads for FFTW
     fftwf_plan_with_nthreads(omp_get_max_threads()); // Use all available threads
 
-    float* fft_input = reinterpret_cast<float*>(data_fft_input.data); // Allocate real input array
-    fftwf_complex* fft_output = reinterpret_cast<fftwf_complex*>(data_fft_output.data); // Allocate complex output array
+    float* input = reinterpret_cast<float*>(data_beamform.data); // Allocate real input array
+    fftwf_complex* output = reinterpret_cast<fftwf_complex*>(data_fft.data); // Allocate complex output array
 
-    fft_plan = fftwf_plan_dft_r2c_3d(data_fft_input.dim_1, data_fft_input.dim_2, data_fft_input.dim_3, 
-                                     fft_input, fft_output, 
+    fft_plan = fftwf_plan_dft_r2c_3d(data_beamform.dim_1, data_beamform.dim_2, data_beamform.dim_3, 
+                                     input, output, 
                                      FFTW_ESTIMATE);
 
     if (!fft_plan)
@@ -334,24 +306,7 @@ void beamform::setupFFT(int dim_1, int dim_2, int dim_3)
         cerr << "Error: Failed to create FFT plan.\n";
         throw runtime_error("FFTW plan creation failed");
     }
-    
 } // end setupFFT
-
-void beamform::cleanupFFT(array3D<float>& data_input, array3D<complex<float>> data_output)
-{
-    if (fft_plan)
-    {
-        fftwf_destroy_plan(fft_plan);
-        fft_plan = nullptr;
-    }
-
-    fftwf_free(data_input.data);
-    fftwf_free(data_output.data);
-    data_input.data = nullptr;
-    data_output.data = nullptr;
-
-    fftwf_cleanup_threads();
-}
 
 //=====================================================================================
 
@@ -364,7 +319,7 @@ void beamform::setup()
     setupFIR();
 
     // Creates FFT plan
-    setupFFT(num_theta, num_phi, fft_size);
+    setupFFT();
 
     // Initialize buffers with 0's
     for (int n = 0; n < data_buffer_1.dim_2; n++)
@@ -419,9 +374,8 @@ float beamform::accessBuffer(int m_index, int n_index, int b)
 
 //=====================================================================================
 
-array3D<float> beamform::handleBeamforming()
+void beamform::handleBeamforming()
 {
-    cout << "Beamform start\n";
     array3D<float> data_beamform_temp(num_theta, num_phi, fft_size);
     /*
     - For each coord
@@ -430,7 +384,7 @@ array3D<float> beamform::handleBeamforming()
     */
 
     // Calculate beamforming and FIR and store into buffer for parallelization
-    //#pragma omp for collapse(3) schedule(static, 4)
+    
     for (int m = 0; m < m_channels; m++)
     {
         // cout << "Start m\n"; 
@@ -504,69 +458,31 @@ array3D<float> beamform::handleBeamforming()
                         int weight_index = theta_index_weight + phi_index_weight + tap;
                         float weight = FIR_weights.data[weight_index];
 
-                        // Single Instruction Multiple Data
                         float result = 0.0f;
-                        //#pragma omp simd reduction(+:result)
+                        
                         for (int b = 0; b < fft_size; b++)
                         {
                             // cout << "Start b\n";
 
                             result += accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
                         } // end b
-                        
-                        // Accumulate data with atomic variable across threads
-                        //#pragma omp atomic
-                        data_beamform_temp.data[result_index] += result; // This is the issue***
+                                              
+                        data_beamform.data[result_index] += result; // This is the issue***
 
                     } // end tap
                 } // end phi_index
             } // end theta_index
         } // end n
     } // end m    
-
-    cout << "Beamform done\n";
-
-    return data_beamform_temp;
-
 } // end handleBeamforming
 
 //=====================================================================================
 
 // Performs FFT on audio data, real-to-complex
-void beamform::FFT(array3D<float>& data_input)
+void beamform::FFT()
 {
-    // Copy input data onto the array allocated for the fft
-    //memcpy(data_fft_input.data, data_input.data, num_theta * num_phi * fft_size);
-
-    data_fft_input = data_input;
-
-    fftwf_execute(fft_plan);
-
-
-    /*
-    // Copy new data into FFTW input buffer
-    std::memcpy(fft_input, new_input, sizeof(float) * data_size);
-
-    // Execute the batched FFT
-    fftwf_execute(fft_plan);
-
-    // Flatten the 3D array and copy data directly into array3D.data() (raw memory access)
-    for (int t = 0; t < num_theta; ++t) {
-        for (int p = 0; p < num_phi; ++p) {
-            for (int f = 0; f < fft_size / 2 + 1; ++f) {
-                // Calculate the index in the flat array
-                int index = (t * num_phi + p) * (fft_size / 2 + 1) + f;
-                // Directly copy the complex values into the 3D array's flat memory
-                data_fft.at(t, p, f) = std::complex<float>(output[index][0], output[index][1]);
-            }
-        }
-    }
-    */
-
-    //fftwf_execute_dft_r2c(fft_plan, fft_input, output);
-    
     // Execute the FFT
-    //fftwf_execute(fft_plan);
+    fftwf_execute(fft_plan);
 } // end FFT
 
 //=====================================================================================
@@ -576,14 +492,14 @@ void beamform::FFTCollapse(const int lower_frequency, const int upper_frequency)
 {
     // cout << "FFTCollapse start\n"; // (debugging)
     int num_bins = upper_frequency - lower_frequency + 1;
-    for (int theta_index = 0; theta_index < data_fft_output.dim_1; theta_index++)
+    for (int theta_index = 0; theta_index < data_fft.dim_1; theta_index++)
     {
-        for (int phi_index = 0; phi_index < data_fft_output.dim_2; phi_index++)
+        for (int phi_index = 0; phi_index < data_fft.dim_2; phi_index++)
         {
             complex<float> sum = 0;
             for (int k = lower_frequency; k <= upper_frequency; k++)
             {
-                sum += data_fft_output.at(theta_index, phi_index, k);
+                sum += data_fft.at(theta_index, phi_index, k);
             }
 
             // Write data to array
@@ -637,34 +553,25 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
 
     // Beamforming
     beamform_time.start();
-    //array3D<float> beamform_help(num_theta, num_phi, fft_size);
-    //cout << "Help created\n";
-    //beamform_help = handleBeamforming();
-    array3D<float> beamform_help = handleBeamforming();
+    handleBeamforming();
     beamform_time.end();
 
     #ifdef PRINT_BEAMFORM 
-    beamform_help.print_layer(0); 
+    data_beamform.print_layer(0); 
     #endif
 
-    cout << "handleBeamforming\n";
+    // cout << "handleBeamforming\n";
 
     // FFT
-
-    // cout << beamform_help.dim_1 << " " << beamform_help.dim_2 << " " << beamform_help.dim_3 << "\n";
     fft_time.start();
-
-    //cout << "setupFFT\n";
-    //setupFFT(beamform_help, data_fft);
-    //cout << "FFT\n";
-    FFT(beamform_help);
+    FFT();
     fft_time.end();
 
     #ifdef PRINT_FFT
-    data_fft.
+    data_fft.print_layer(23);
     #endif
 
-    cout << "FFT\n";
+    // cout << "FFT\n";
 
     // FFT Collapse
     fft_collapse_time.start();
@@ -675,7 +582,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     data_fft_collapse.print();
     #endif
 
-    cout << "FFTCollapse\n";
+    // cout << "FFTCollapse\n";
 
     // Post Process
     post_process_time.start();
@@ -704,8 +611,6 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, con
     // float total_time = beamform_time.time() + fft_time.time() + fft_collapse_time.time() + post_process_time.time();
     // cout << "Total Time: " << total_time << " ms.\n\n";
     #endif
-
-    //cleanupFFT(beamform_help, data_fft_output);
 
 } // end processData
 
