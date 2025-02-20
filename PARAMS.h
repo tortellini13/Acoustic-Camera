@@ -92,8 +92,8 @@ enum post_processing: uint8_t
 // #define ENABLE_AUDIO
 #define ENABLE_VIDEO
 #define ENABLE_IMGUI
-#define ENABLE_RANDOM_DATA
-//#define ENABLE_STATIC_DATA
+// #define ENABLE_RANDOM_DATA
+#define ENABLE_STATIC_DATA
 #define AVG_SAMPLES 10
 #define PI // Set for usage on Pi
 //#define UBUNTU // Set for usage on ubuntu
