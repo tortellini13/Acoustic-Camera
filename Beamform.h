@@ -25,7 +25,7 @@ public:
 
     void setup();
 
-    void processData(array3D<float>& data_input, cv::Mat& data_output, array3D<float>& data_beamform_input, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
+    void processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
     
 private:
     // Calculates time delays
@@ -47,7 +47,7 @@ private:
     float accessBuffer(int m_index, int n_index, int b);
 
     // Performs beamforming on audio data
-    void handleBeamforming(array3D<float>& data_beamform);
+    void handleBeamforming();
 
     // Performs FFT on beamformed data
     void FFT();
@@ -374,7 +374,7 @@ float beamform::accessBuffer(int m_index, int n_index, int b)
 
 //=====================================================================================
 
-void beamform::handleBeamforming(array3D<float>& data_beamform_input)
+void beamform::handleBeamforming()
 {
     array3D<float> data_beamform_temp(num_theta, num_phi, fft_size);
     /*
@@ -384,7 +384,7 @@ void beamform::handleBeamforming(array3D<float>& data_beamform_input)
     */
 
     // Calculate beamforming and FIR and store into buffer for parallelization
-    //#pragma omp for collapse(3) schedule(static, 4)
+    
     for (int m = 0; m < m_channels; m++)
     {
         // cout << "Start m\n"; 
@@ -458,19 +458,16 @@ void beamform::handleBeamforming(array3D<float>& data_beamform_input)
                         int weight_index = theta_index_weight + phi_index_weight + tap;
                         float weight = FIR_weights.data[weight_index];
 
-                        // Single Instruction Multiple Data
                         float result = 0.0f;
-                        //#pragma omp simd reduction(+:result)
+                        
                         for (int b = 0; b < fft_size; b++)
                         {
                             // cout << "Start b\n";
 
                             result += accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
                         } // end b
-                        
-                        // Accumulate data with atomic variable across threads
-                        //#pragma omp atomic
-                        data_beamform_temp.data[result_index] += result; // This is the issue***
+                                              
+                        data_beamform.data[result_index] += result; // This is the issue***
 
                     } // end tap
                 } // end phi_index
@@ -478,8 +475,6 @@ void beamform::handleBeamforming(array3D<float>& data_beamform_input)
         } // end n
     } // end m    
 } // end handleBeamforming
-
-
 
 //=====================================================================================
 
@@ -549,7 +544,7 @@ cv::Mat beamform::arraytoMat(const array2D<float>& data)
 
 //=====================================================================================
 
-void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, array3D<float>& data_beamform_input, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
+void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
 {
     // Ring buffer
     ringBuffer(data_input);
@@ -558,7 +553,7 @@ void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, arr
 
     // Beamforming
     beamform_time.start();
-    handleBeamforming(data_beamform_input);
+    handleBeamforming();
     beamform_time.end();
 
     #ifdef PRINT_BEAMFORM 
