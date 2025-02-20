@@ -4,7 +4,8 @@ FLAGS = -lrt -lpthread -lasound -fopenmp
 
 FFT_FLAGS = -O3 -lfftw3f -lm -lfftw3f_threads
 
-IMGUI_FLAGS = -I/usr/include/SDL2 -D_REENTRANT -lSDL2 -lGL -lGLEW -ldl -pthread
+IMGUI_FLAGS = -I/usr/include/SDL2 -D_REENTRANT -lSDL2 -lGL -lGLEW -ldl -pthread 
+ 
 
 IMGUI_SRC = imgui/imgui.cpp \
             imgui/imgui_demo.cpp \

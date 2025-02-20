@@ -11,12 +11,11 @@
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 
+// add this to try on pi to makefile:            sdl2-config --cflags
 
 using namespace std;
 using namespace cv;
-/*
-    -
-*/
+
 class video 
 {
 public:
@@ -76,6 +75,8 @@ private:
     bool heat_map_state = true;
     bool data_clamp_state = true;
     bool threshold_state = true;
+
+    bool options_menu = false; //if false, the slider menu displays, if true, the options window displays
 
     int imgui_threshold = -50;
     int imgui_clamp_min = -100;
@@ -170,10 +171,6 @@ void video::UISetup()
         cout << "IMGui init FAILED :(" << endl;
     }
 
-    //#ifdef ENABLE_STATIC_DATA
-    //staticTestFrame(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, -100, 0);
-    //#endif
-
     Mat initial_frame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
 
     while (!getFrame(initial_frame)) 
@@ -182,11 +179,8 @@ void video::UISetup()
         this_thread::sleep_for(chrono::seconds(1));
     }
 
-    //imshow("Window",initial_frame); 
-
     FPSTimer.start();
 
-   
 } // end UISetup
 
 //=====================================================================================
@@ -240,14 +234,11 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     randu(data_input, Scalar(-100), Scalar(0));
     #endif
     #ifdef ENABLE_STATIC_DATA
-    //resize(static_test_frame, static_test_frame, data_input.size());
-    //Mat test_frame = staticTestFrame(NUM_ANGLES, NUM_ANGLES, -100, 0);
     
     double st_height = NUM_PHI;
     double st_width = NUM_THETA;
     double st_max = 0;
     double st_min = -100;
-   // Mat static_test_frame(st_height, st_width, CV_32F);
 
     array2D<float> static_test_frame(st_width, st_height);
 
@@ -272,18 +263,12 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 
     mat.copyTo(data_input);
 
-
-
-
-
     #endif
-    
     
     if (data_clamp_state == true) 
     {
     Mat data_clamped;
     
-
     data_input.convertTo(data_clamped, CV_32F);
 
         if (imgui_clamp_min >= imgui_clamp_max) {
@@ -315,7 +300,6 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 
     data_clamped.copyTo(data_input);
     }
-
 
     // Normalizes data to be 0-255
     Mat data_normalized;
@@ -557,8 +541,6 @@ bool video::startIMGui() {
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-
-
     return true;
 
     #endif
@@ -576,12 +558,12 @@ bool video::startIMGui() {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 
     // Create an OpenGL ES window
-    window = SDL_CreateWindow("Acoustic Camera", 0, 0, 1024, 600, SDL_WINDOW_OPENGL);
+    window = SDL_CreateWindow("Acoustic Camera", 1, 1, 1024, 600, SDL_WINDOW_OPENGL);
     if (!window) {
         std::cerr << "Error: SDL_CreateWindow failed: " << SDL_GetError() << std::endl;
         return false;
@@ -619,7 +601,6 @@ bool video::startIMGui() {
 
     std::cout << "Finished starting ImGui..." << std::endl;
     return true;
-
 
     #endif
 }
@@ -677,8 +658,12 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::Image(textureID, ImVec2(frame.cols, frame.rows));
     ImGui::End();
 
+    // Slider Menu
+
+    if (options_menu == false) {
+
     ImGui::SetNextWindowPos(ImVec2(660,0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(200, 600), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(364, 600), ImGuiCond_Always);
     ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
         // First Column: Threshold
         ImGui::BeginGroup(); // Start grouping for alignment
@@ -711,6 +696,8 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::EndGroup();
 
     ImGui::End();
+
+    }
     
     ImGui::SetNextWindowPos(ImVec2(0,500), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(660, 100), ImGuiCond_Always);
@@ -719,11 +706,16 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::Text("Maximum: %.1f", magnitude_max);
         ImGui::Text("Program FPS: %.1f", FPS);
         ImGui::Text("Camera FPS: %.1f", camFPS);
+        ImGui::Checkbox("Options", &options_menu);
 
     ImGui::End();
 
-    ImGui::SetNextWindowPos(ImVec2(860,0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(164, 600), ImGuiCond_Always);
+    // Options menu
+    
+    if (options_menu == true) {
+ 
+    ImGui::SetNextWindowPos(ImVec2(660,0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(364, 600), ImGuiCond_Always);
     ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
         ImGui::Checkbox("Mark Max Mag", &mark_max_mag_state);
@@ -734,7 +726,9 @@ bool video::renderIMGui(Mat &frame_in) {
 
     ImGui::End();
 
-    #ifdef UBUNTU
+    }
+
+    //#ifdef UBUNTU
     // Render UI
     ImGui::Render();
     glViewport(0, 0, 1024, 600);
@@ -743,9 +737,9 @@ bool video::renderIMGui(Mat &frame_in) {
 
     SDL_GL_SwapWindow(window);
     return true;
-    #endif
+   // #endif
 
-    #ifdef PI
+    //#ifdef PI
     //int winWidth, winHeight;
     //SDL_GetWindowSize(window, &winWidth, &winHeight);
     glViewport(0, 0, 1024, 600);
@@ -755,7 +749,7 @@ bool video::renderIMGui(Mat &frame_in) {
 
     // Render ImGui draw data
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    #endif
+    //#endif
 }
 
 //=====================================================================================
@@ -788,7 +782,6 @@ bool video::processFrame(Mat& data_input, const float lower_limit, const float u
     newframe.copyTo(frame);
    }
     
-        
     // Creates heatmap from beamformed audio data, thresholds, clamps, and merges
     Mat frame_merged = createHeatmap(data_input, lower_limit, upper_limit, frame);
         
@@ -803,7 +796,6 @@ bool video::processFrame(Mat& data_input, const float lower_limit, const float u
             return false;
     }
     
-
     return true;
     //
 } // end processData
