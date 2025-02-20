@@ -18,15 +18,15 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 // Angles
 #define MIN_THETA -30
 #define MAX_THETA  30
-#define STEP_THETA 3 // 2 is correct
+#define STEP_THETA 5 // 2 is correct
 const int NUM_THETA = ((MAX_THETA - MIN_THETA) / STEP_THETA) + 1;
 
 #define MIN_PHI -18
 #define MAX_PHI  18
-#define STEP_PHI 2 // 1 is correct
+#define STEP_PHI 4 // 1 is correct
 const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 
-#define NUM_TAPS 7
+#define NUM_TAPS 5
 
 // FFT
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
@@ -89,11 +89,11 @@ enum post_processing: uint8_t
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
-#define ENABLE_AUDIO
-//#define ENABLE_VIDEO
+// #define ENABLE_AUDIO
+#define ENABLE_VIDEO
 #define ENABLE_IMGUI
-//#define ENABLE_RANDOM_DATA
-#define ENABLE_STATIC_DATA
+#define ENABLE_RANDOM_DATA
+//#define ENABLE_STATIC_DATA
 #define AVG_SAMPLES 10
 #define PI // Set for usage on Pi
 //#define UBUNTU // Set for usage on ubuntu
