@@ -4,9 +4,6 @@
 // Internal Libraries
 #include <iostream>
 #include <iomanip>
-#include <thread>
-#include <atomic>
-#include <mutex>
 
 // External Libraries
 #include <alsa/asoundlib.h>
@@ -14,7 +11,6 @@
 // Header Files
 #include "PARAMS.h"
 #include "Structs.h"
-#include "Timer.h"
 
 using namespace std;
 
@@ -24,8 +20,7 @@ class ALSA
 {
 public:
     // Initialize ALSA class
-    ALSA(const char* device_name, int m_channels, int n_channels, 
-         int sample_rate, int num_frames);
+    ALSA(const char* device_name, int total_channels, int sample_rate, int num_frames);
 
     // Clear memory for all arrays
     ~ALSA();
@@ -33,19 +28,10 @@ public:
     // Send settings to audio device
     bool setup();
 
-    // Starts recording audio
-    void start();
-
-    // Stops recording audio
-    void stop();
-
-    // Access ring buffer
-    void copyRingBuffer(array3D<float>& data_output_1, array3D<float>& data_output_2);
+    // Call this in a loop to record audio
+    bool recordAudio(array3D<float>& data_output);
 
 private:
-    // Records audio from device
-    bool recordAudio();
-
     // Configs
     snd_pcm_stream_t stream = SND_PCM_STREAM_CAPTURE;        // Set the pcm stream to capture
     snd_pcm_access_t access = SND_PCM_ACCESS_RW_INTERLEAVED; // Stores data where ch1[0], ch2[0], ...ch16[0], ch1[1],...
@@ -71,59 +57,31 @@ private:
     int pcm_return;                 // Return value for pcm reading (for error handling)
     array2D<int> channel_order;     // Physical channels may not be in correct order
 
-    array3D<float> data_buffer_1;   // Buffer for audio data
-    array3D<float> data_buffer_2;   // Buffer for audio data
-
-    thread recording_thread;        // Thread for recording audio
-    atomic<bool> is_recording;      // Flag for recording status
-    mutex buffer_mutex;             // Mutex for buffer access
-
-    timer ALSA_timer;              // Timer for debugging
-
 }; // end class def
 
 //=====================================================================================
 
-ALSA::ALSA(const char* device_name, int m_channels, int n_channels, int sample_rate, int num_frames):
+ALSA::ALSA(const char* device_name, int total_channels, int sample_rate, int num_frames):
     pcm_name(device_name),
-    num_channels(m_channels * n_channels),
+    num_channels(total_channels),
     rate(sample_rate),
     frames(num_frames),
-    frame_size(m_channels * n_channels * num_frames),
+    frame_size(total_channels * num_frames),
     buffer_size(frames * num_channels),
-    channel_order(m_channels, n_channels),
-
-    data_buffer_1(m_channels, n_channels, num_frames),
-    data_buffer_2(m_channels, n_channels, num_frames),
-
-    ALSA_timer("ALSA")
-
+    channel_order(M_AMOUNT, N_AMOUNT)
     {
         // Allocate memory for dataBuffer
         data_buffer = new int32_t[buffer_size]; 
 
         // Map channel order
-        for (int m = 0; m < channel_order.dim_1; m++)
+        for (int m = 0; m < M_AMOUNT; m++)
         {
-            for (int n = 0; n < channel_order.dim_2; n++)
+            for (int n = 0; n < N_AMOUNT; n++)
             {
                 channel_order.at(m, n) = CHANNEL_ORDER[m][n];
             }
         }
-
-        // Clear buffers
-        for (int m = 0; m < data_buffer_1.dim_1; m++)
-        {
-            for (int n = 0; n < data_buffer_1.dim_2; n++)
-            {
-                for (int b = 0; b < data_buffer_1.dim_3; b++)
-                {
-                    data_buffer_1.at(m, n, b) = 0.0f;
-                    data_buffer_2.at(m, n, b) = 0.0f;
-                } // end b
-            } // end n
-        } // end m
-    } // end ALSA
+    }
 
 //=====================================================================================
 
@@ -219,97 +177,45 @@ bool ALSA::setup()
 //=====================================================================================
 
 // Data outputs to M * N * FFT_SIZE array
-bool ALSA::recordAudio()
+bool ALSA::recordAudio(array3D<float>& data_output)
 {
-    while (is_recording)
+    // Read data from microphones into interlaced buffer
+    pcm_return = snd_pcm_readi(pcm_handle, data_buffer, frames);
+   
+    // Check for error
+    if (pcm_return == -EPIPE) 
+    { 
+        // Buffer overrun/underrun error
+        cerr << "Buffer overrun/underrun occurred. Recovering..." << endl;
+        snd_pcm_prepare(pcm_handle); // Prepare the device again
+        return false;
+    } 
+    else if (pcm_return < 0) 
     {
-        lock_guard<mutex> lock(buffer_mutex);
-        // Swap data from buffer_2 to buffer_1
-        swap(data_buffer_1.data, data_buffer_2.data);
+        cerr << "Error reading PCM data: " << snd_strerror(pcm_return) << endl;
+        return false;
+    } 
+    else if (pcm_return != frames) 
+    {
+        cerr << "PCM read returned fewer frames than expected." << endl;
+        return false;
+    }
 
-        // Read data from microphones into interlaced buffer
-        pcm_return = snd_pcm_readi(pcm_handle, data_buffer, frames);
-    
-        // Check for error
-        if (pcm_return == -EPIPE) 
-        { 
-            // Buffer overrun/underrun error
-            cerr << "Buffer overrun/underrun occurred. Recovering..." << endl;
-            snd_pcm_prepare(pcm_handle); // Prepare the device again
-            return false;
-        } 
-        else if (pcm_return < 0) 
+    // Remap the data to not-interlaced floats and normalize (-1, 1)
+    for (int b = 0; b < frames; b++)
+    {
+        for (int n = 0; n < ROWS; n++)
         {
-            cerr << "Error reading PCM data: " << snd_strerror(pcm_return) << endl;
-            return false;
-        } 
-        else if (pcm_return != frames) 
-        {
-            cerr << "PCM read returned fewer frames than expected." << endl;
-            return false;
-        }
-
-        // Remap the data to not-interlaced floats and normalize (-1, 1)
-        for (int b = 0; b < frames; b++)
-        {
-            for (int n = 0; n < ROWS; n++)
+            for (int m = 0; m < COLS; m++)
             {
-                for (int m = 0; m < COLS; m++)
-                {
-                    data_buffer_2.at(m, n, b) = MIC_GAIN * static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
-                } // end m
-            } // end n
-        } // end b
-        // cout << "End recordAudio\n";
-
-        // data_buffer_1.print_layer(100);
-    } // end loop
-
+                data_output.at(m, n, b) = MIC_GAIN * static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
+            }
+        }
+    }
     // cout << "Frames: " << frames << " --- pcm_return: " << pcm_return << "\n";
     return true;
 } // end recordAudio
 
 //=====================================================================================
-
-void ALSA::start()
-{
-    is_recording = true;
-    recording_thread = thread(&ALSA::recordAudio, this);
-} // end start
-
-//=====================================================================================
-
-void ALSA::stop()
-{
-    is_recording = false;
-    if (recording_thread.joinable())
-    {
-        recording_thread.join();
-    }
-} // end stop
-
-//=====================================================================================
-
-void ALSA::copyRingBuffer(array3D<float>& data_output_1, array3D<float>& data_output_2)
-{
-    ALSA_timer.start();
-    lock_guard<mutex> lock(buffer_mutex);
-    // memcpy(data_output_1.data, data_buffer_1.data, frame_size);
-    // memcpy(data_output_2.data, data_buffer_2.data, frame_size);
-
-    for (int m = 0; m < data_buffer_1.dim_1; m++)
-    {
-        for (int n = 0; n < data_buffer_1.dim_2; n++)
-        {
-            for (int b = 0; b < data_buffer_1.dim_3; b++)
-            {
-                data_output_1.at(m, n, b) = data_buffer_1.at(m, n, b);
-                data_output_2.at(m, n, b) = data_buffer_2.at(m, n, b);
-            } // end b
-        } // end n
-    } // end m 
-    ALSA_timer.end();
-    ALSA_timer.print();
-} // end copyRingBuffer
 
 #endif

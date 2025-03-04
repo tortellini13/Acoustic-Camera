@@ -25,7 +25,7 @@ public:
 
     void setup();
 
-    void processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
+    void processData(array3D<float>& data_buffer_1, array3D<float>& data_buffer_2, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type);
     
 private:
     // Calculates time delays
@@ -40,14 +40,11 @@ private:
     // Converts degrees to radians
     float degtorad(const float angle_deg);
 
-    // Writes data into a ring buffer
-    void ringBuffer(array3D<float>& data_input);
-
     // Access buffers at specified indicies
-    float accessBuffer(int m_index, int n_index, int b);
+    float accessBuffer(int m_index, int n_index, int b, array3D<float>& data_buffer_1, array3D<float>& data_buffer_2);
 
     // Performs beamforming on audio data
-    void handleBeamforming();
+    void handleBeamforming(array3D<float>& data_buffer_1, array3D<float>& data_buffer_2);
 
     // Performs FFT on beamformed data
     void FFT();
@@ -94,10 +91,7 @@ private:
     array4D<int>   time_delay_int;       // (m, n, theta, phi)
     array4D<float> time_delay_frac;      // (m, n, theta, phi)
     array5D<float> FIR_weights;          // (m, n, theta, phi, num_taps)
-    array3D<float> data_buffer_1;        // (m, n, fft_size)
-    array3D<float> data_buffer_2;        // (m, n, fft_size)
     array3D<float> data_beamform;        // (theta, phi, fft_size)
-    array6D<float> data_beamform_buffer; // (fft_size, m, n, theta, phi, num_taps)
     array3D<complex<float>> data_fft;    // (theta, phi, fft_size / 2)
     array2D<float> data_fft_collapse;    // (theta, phi)
     array2D<float> data_post_process;    // (theta, phi)
@@ -142,10 +136,7 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     time_delay_int(m_channels, n_channels, num_theta, num_phi),
     time_delay_frac(m_channels, n_channels, num_theta, num_phi),
     FIR_weights(m_channels, n_channels, num_theta, num_phi, num_taps),
-    data_buffer_1(m_channels, n_channels, fft_size),
-    data_buffer_2(m_channels, n_channels, fft_size),
     data_beamform(num_theta, num_phi, fft_size),
-    data_beamform_buffer(m_channels, n_channels, num_theta, num_phi, num_taps, fft_size),
     data_fft(num_theta, num_phi, half_fft_size),
     data_fft_collapse(num_theta, num_phi),
     data_post_process(num_theta, num_phi),
@@ -323,19 +314,6 @@ void beamform::setup()
     // Creates FFT plan
     setupFFT();
 
-    // Initialize buffers with 0's
-    for (int n = 0; n < data_buffer_1.dim_2; n++)
-    {
-        for (int m = 0; m < data_buffer_1.dim_1; m++)
-        {
-            for (int b = 0; b < data_buffer_1.dim_3; b++)
-            {
-                data_buffer_1.at(m, n, b) = 0.0f;
-                data_buffer_2.at(m, n, b) = 0.0f;
-            } // end b
-        } // end m
-    } // end n
-
     cout << "Finished setting up Beamform.\n"; // (debugging)
 
     // cout << "Max delay value: " << max_val << "\n";
@@ -344,27 +322,16 @@ void beamform::setup()
 
 //=====================================================================================
 
-void beamform::ringBuffer(array3D<float>& data_input)
-{
-    // Move buffer_2 into buffer_1
-    swap(data_buffer_1.data, data_buffer_2.data);
-
-    // Read new data into buffer_2
-    memcpy(data_buffer_2.data, data_input.data, data_size);
-} // end ringBuffer
-
-//=====================================================================================
-
-float beamform::accessBuffer(int m_index, int n_index, int b)
+float beamform::accessBuffer(int m_index, int n_index, int b, array3D<float>& data_buffer_1, array3D<float>& data_buffer_2)
 {
     if (b < fft_size)
     {
-        return data_buffer_1.data[m_index + n_index + b];
+        return m_index + n_index + b;
     }
 
     else if (b >= fft_size)
     {
-        return data_buffer_2.data[m_index + n_index + (b - fft_size)];
+        return m_index + n_index + (b - fft_size);
     }
 
     else
@@ -376,18 +343,43 @@ float beamform::accessBuffer(int m_index, int n_index, int b)
 
 //=====================================================================================
 
-void beamform::handleBeamforming()
+void beamform::handleBeamforming(array3D<float>& data_buffer_1, array3D<float>& data_buffer_2)
 {
-    //array3D<float> data_beamform_temp(num_theta, num_phi, fft_size);
-    /*
-    - For each coord
-    - Every time integer delay is applied, and FIR for fractional delay
-    - Delay sample by integer, then FIR at new index (FIR_index = int_delay + tap_value)
-    */
+    #pragma omp for collapse(3) schedule(static, 4)
+    for (int theta = 0; theta < num_theta; theta++)
+    {
+        for (int phi = 0; phi < num_phi; phi++)
+        {
+            for (int b = 0; b < fft_size; b++)
+            {
+                // To accumulate beamform data
+                float result = 0.0f;
+                for (int m = 0; m < m_channels; m++)
+                {
+                    for (int n = 0; n < n_channels; n++)
+                    {
+                        // Retrieve integer delay and cache it
+                        int integer_delay = time_delay_int.at(m, n, theta, phi);
 
-    // Calculate beamforming and FIR and store into buffer for parallelization
-    
+                        for (int tap = 0; tap < num_taps; tap++)
+                        {
+                            // Adjust integer delay for FIR filter
+                            int delay_offset = integer_delay + tap_offset + tap;
 
+                            // Retrieve weight and cache it
+                            float weight = FIR_weights.at(m, n, theta, phi, tap);
+
+                            // Perform beamforming
+                            result += accessBuffer(m, n, delay_offset + b, data_buffer_1, data_buffer_2) * weight; 
+
+                        } // end tap
+                    } // end n
+                } // end m
+
+                data_beamform.at(theta, phi, b) = result / 16.0f;
+            } // end b
+        } // end phi
+    } // end theta
 } // end handleBeamforming
 
 //=====================================================================================
@@ -458,108 +450,11 @@ cv::Mat beamform::arraytoMat(const array2D<float>& data)
 
 //=====================================================================================
 
-void beamform::processData(array3D<float>& data_input, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
+void beamform::processData(array3D<float>& data_buffer_1, array3D<float>& data_buffer_2, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
 {
-    // Ring buffer
-    ringBuffer(data_input);
-
-    // cout << "ringBuffer\n";
-
     // Beamforming
     beamform_time.start();
-    //handleBeamforming();
-
-    //array3D<float> data_beamform_temp(num_theta, num_phi, fft_size);
-
-    /*
-    - For each coord
-    - Every time integer delay is applied, and FIR for fractional delay
-    - Delay sample by integer, then FIR at new index (FIR_index = int_delay + tap_value)
-    */
-
-    // Calculate beamforming and FIR and store into buffer for parallelization
-    
-    #pragma omp parallel for collapse(2)
-    for (int m = 0; m < m_channels; m++)
-    {
-        for (int n = 0; n < n_channels; n++)
-        {
-            // Precompute indices that don't change in theta/phi loops
-            const int m_index_access = m * data_buffer_1.dim_2 * data_buffer_1.dim_3;
-            const int n_index_access = n * data_buffer_1.dim_3;
-            
-            const int m_index_buffer = m * data_beamform_buffer.dim_2 * 
-                                        data_beamform_buffer.dim_3 * 
-                                        data_beamform_buffer.dim_4 * 
-                                        data_beamform_buffer.dim_5 * 
-                                        data_beamform_buffer.dim_6;
-            
-            const int n_index_buffer = n * data_beamform_buffer.dim_3 * 
-                                        data_beamform_buffer.dim_4 * 
-                                        data_beamform_buffer.dim_5 * 
-                                        data_beamform_buffer.dim_6;
-
-            for (int theta = 0; theta < num_theta; theta++)
-            {
-                const int theta_index_buffer = theta * data_beamform_buffer.dim_4 *
-                                                    data_beamform_buffer.dim_5 *
-                                                    data_beamform_buffer.dim_6;
-                
-                const int theta_index_weight = theta * FIR_weights.dim_4 * FIR_weights.dim_5;
-                
-                for (int phi = 0; phi < num_phi; phi++)
-                {
-                    const int phi_index_buffer = phi * data_beamform_buffer.dim_5 *
-                                                    data_beamform_buffer.dim_6;
-                    
-                    const int phi_index_weight = phi * FIR_weights.dim_5;
-                    
-                    // Calculate integer delay once per theta/phi combination
-                    const int integer_index = m * time_delay_int.dim_2 * time_delay_int.dim_3 * time_delay_int.dim_4 +
-                                            n * time_delay_int.dim_3 * time_delay_int.dim_4 +
-                                            theta * time_delay_int.dim_4 + phi;
-                    
-                    const int integer_delay = time_delay_int.data[integer_index];
-                    
-                    // Base indices for the current m,n,theta,phi combination
-                    const int base_buffer_index = m_index_buffer + n_index_buffer + 
-                                                theta_index_buffer + phi_index_buffer;
-                    
-                    const int base_weight_index = theta_index_weight + phi_index_weight;
-
-                    // Process taps in chunks for better cache utilization
-                    #pragma omp simd
-                    for (int tap = 0; tap < num_taps; tap++)
-                    {
-                        const int tap_index_buffer = tap * data_beamform_buffer.dim_6;
-                        const int buffer_index = base_buffer_index + tap_index_buffer;
-                        const int tap_value = tap_offset + tap;
-                        const int delay_offset = integer_delay + tap_value;
-                        const float weight = FIR_weights.data[base_weight_index + tap];
-                        
-                        // Use SIMD for the innermost loop
-                        #pragma omp simd
-                        for (int b = 0; b < fft_size; b++)
-                        {
-                            data_beamform_buffer.data[buffer_index + b] = 
-                                accessBuffer(m_index_access, n_index_access, delay_offset + b) * weight;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-/*
-    for (int m = 0; m < data_beamform_buffer.dim_1; m++)
-    {
-        for (int n = 0; n < data_bemform_buffer.dim_2; n++)
-        {
-
-        } // end n
-    } // end m
-*/
-
+    handleBeamforming(data_buffer_1, data_buffer_2);
     beamform_time.end();
 
     #ifdef PRINT_BEAMFORM 
