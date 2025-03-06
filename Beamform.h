@@ -346,6 +346,7 @@ float beamform::accessBuffer(int m_index, int n_index, int b, array3D<float>& da
 
 void beamform::handleBeamforming(array3D<float>& data_buffer_1, array3D<float>& data_buffer_2)
 {
+    data_buffer_1.print_layer(100);
     // #pragma omp for collapse(3) schedule(static, 4)
     for (int theta = 0; theta < num_theta; theta++)
     {
@@ -377,7 +378,7 @@ void beamform::handleBeamforming(array3D<float>& data_buffer_1, array3D<float>& 
                     } // end n
                 } // end m
 
-                data_beamform.at(theta, phi, b) = result / static_cast<float>(m_channels * n_channels * num_taps);
+                // data_beamform.at(theta, phi, b) = result / static_cast<float>(m_channels * n_channels * num_taps);
             } // end b
         } // end phi
     } // end theta

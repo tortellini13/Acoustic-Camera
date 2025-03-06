@@ -34,7 +34,7 @@ const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
 
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
