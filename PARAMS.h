@@ -130,7 +130,7 @@ extern CONFIG configs;
 #define PROFILE_BEAMFORM
 // #define PROFILE_VIDEO
 // #define PRINT_AUDIO
-// #define PRINT_BEAMFORM
+#define PRINT_BEAMFORM
 // #define PRINT_FFT
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
