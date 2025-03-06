@@ -17,7 +17,8 @@
                 "${workspaceFolder}/imgui",
                 "/usr/include/SDL2",
                 "${workspaceFolder}/imgui",
-                "${workspaceFolder}/imgui/backends"
+                "${workspaceFolder}/imgui/backends",
+                "${workspaceFolder}/imgui"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/g++-12",

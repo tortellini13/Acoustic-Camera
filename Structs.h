@@ -308,3 +308,53 @@ struct array6D
         return data[i * dim_2 * dim_3 * dim_4 * dim_5 * dim_6 + j * dim_3 * dim_4 * dim_5 * dim_6 + k * dim_4 * dim_5 * dim_6 + l * dim_5 * dim_6 + m * dim_6 + n];
     }
 }; // end array6D
+
+//=====================================================================================
+
+struct CONFIG
+{
+        int*   iA;
+        float* fA;
+        bool*  bA;
+        string* sA;
+
+        size_t i_size;
+        size_t f_size;
+        size_t b_size;
+        size_t s_size;
+
+        CONFIG(size_t i_s, size_t f_s, size_t b_s, size_t s_s) : i_size(i_s), f_size(f_s), b_size(b_s), s_size(s_s)
+        {
+                iA = new int[i_s]();
+                fA = new float[f_s]();
+                bA = new bool[b_s]();
+                sA = new string[s_s]();
+        }
+        ~CONFIG()
+        {
+                delete[] iA;
+                delete[] fA;
+                delete[] bA;
+                delete[] sA;
+        }
+
+        int& i(size_t index)
+        {
+                return iA[index];
+        }
+
+        float& f(size_t index)
+        {
+                return fA[index];
+        }
+
+        bool& b(size_t index)
+        {
+                return bA[index];
+        }
+
+        string& s(size_t index)
+        {
+                return sA[index];
+        }
+};

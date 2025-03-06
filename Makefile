@@ -13,7 +13,8 @@ IMGUI_SRC = imgui/imgui.cpp \
             imgui/imgui_widgets.cpp \
             imgui/imgui_tables.cpp \
             imgui/imgui_impl_sdl2.cpp \
-            imgui/imgui_impl_opengl3.cpp
+            imgui/imgui_impl_opengl3.cpp \
+            imgui/ImGuiFileDialog.cpp 
 
 
 HEADERS = PARAMS.h Video.h ALSA.h Beamform.h 

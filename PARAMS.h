@@ -1,6 +1,8 @@
 #ifndef PARAMS
 #define PARAMS
 
+#include "Structs.h"
+
 // Mic channels
 #define M_AMOUNT 4 // Amount of mics in the M direction
 #define N_AMOUNT 4 // Amount of mics in the N direction
@@ -78,6 +80,50 @@ enum post_processing: uint8_t
     POST_dBA,
     POST_dBC
 };
+
+enum int_configs: uint8_t
+{
+    imgui_clamp_min,
+    imgui_clamp_max,
+    imgui_threshold,
+    quality,
+    NUM_INT_CONFIGS
+};
+
+enum float_configs: uint8_t
+{
+    imgui_alpha,
+    NUM_FLOAT_CONFIGS
+};
+
+enum bool_configs: uint8_t
+{
+    mark_max_mag_state,
+    color_scale_state,
+    heat_map_state,
+    data_clamp_state,
+    threshold_state,
+
+    auto_save_state,
+    record_state,
+    capture_image_state,
+
+    random_state,
+    static_state,
+
+    options_menu,
+    hidden_menu,
+    NUM_BOOL_CONFIGS
+};
+
+enum string_configs: uint8_t
+{
+    heatmap,
+    save_path,
+    NUM_STRING_CONFIGS
+};
+
+extern CONFIG configs;
 
 // For debugging. Uncomment to enable
 // #define PROFILE_MAIN

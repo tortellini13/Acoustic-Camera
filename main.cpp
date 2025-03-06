@@ -15,9 +15,11 @@
 
 using namespace std;
 
+CONFIG configs(NUM_INT_CONFIGS, NUM_FLOAT_CONFIGS, NUM_BOOL_CONFIGS, NUM_STRING_CONFIGS);
+
 int main()
 {
-
+    
     Mat frame;
     #ifdef ENABLE_AUDIO
     ALSA ALSA(AUDIO_DEVICE_NAME, NUM_CHANNELS, SAMPLE_RATE, FFT_SIZE);

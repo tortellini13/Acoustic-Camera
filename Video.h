@@ -5,9 +5,14 @@
 #include <mutex>
 #include <queue>
 #include <chrono>
+#include <fstream>
+#include <sstream>
+#include <unordered_map>
+#include <algorithm>
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl2.h"
 #include "imgui/imgui_impl_opengl3.h"
+#include "imgui/ImGuiFileDialog.h"
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
 
@@ -45,21 +50,33 @@ private:
     // Draws UI onto frame
     Mat drawUI(Mat& data_input);
 
+    void saveImage(const Mat& frame); //save image
+
     //IMGUI
-    bool startIMGui();
+    bool startIMGui(); //setup the imgui stuff
 
-    bool renderIMGui(Mat& frame_in);
+    bool renderIMGui(Mat& frame_in); //render each imgui window frame
     
-    void shutdownIMGui();
+    void shutdownIMGui(); // kill john lennon (imgui)
 
-    GLuint textureID;
+    void UISetup(); //setup the UI
+
+    void FPSCalculator(); //calculate the FPS
+
+    bool readConfig(); //read the config file
+
+    bool writeConfig(); //write the config file
+
+    bool was_pcm_error = false; //error flag
+
+    GLuint textureID; //this is the ID for the video frame (opencv mat) that is converted into a texture for imgui
 
     // Camera params
-    int frame_width;
+    int frame_width; // I dont remember why this are explicit but i had a reason
     int frame_height;
     int frame_rate;
 
-    VideoCapture cap;
+    VideoCapture cap; //for capturing video
 
     // For multithreading
     atomic<bool> is_running;
@@ -69,21 +86,9 @@ private:
     queue<Mat> frame_queue;
     mutex frame_mutex;  // Protects access to the frame queue
 
-    // Variables for IMGUI buttons
-    bool mark_max_mag_state = true;
-    bool color_scale_state = true;
-    bool heat_map_state = true;
-    bool data_clamp_state = true;
-    bool threshold_state = true;
-
-    bool options_menu = false; //if false, the slider menu displays, if true, the options window displays
-
-    int imgui_threshold = -50;
-    int imgui_clamp_min = -100;
-    int imgui_clamp_max = 0;
-    float imgui_alpha = 0.5;
-
-    void UISetup();
+    int column_width = 10; //stuff for sliders
+    int slider_width = 50;
+    
 
     // For magnitude proccessing
     double magnitude_min;
@@ -99,7 +104,7 @@ private:
     Mat scaleColor;
 
     // FPS counter
-    void FPSCalculator();
+    
     timer FPSTimer;
     timer camFPSTimer;
     double FPS;
@@ -113,6 +118,17 @@ private:
 
     Mat frame;
 
+
+    //stuff for the config file
+    unordered_map<string, string> config; //somewhere to store the data from the config file
+
+    ifstream configfile;
+    ofstream wrconfigfile;
+
+    string heatmap_style; //COLORMAP_JET
+
+    int loopcounter; //num of loops for deciding when to write the configuration to file again
+
 };
 
 //=====================================================================================
@@ -123,17 +139,141 @@ video::video(int frame_width, int frame_height, int frame_rate) :
     frame_rate(frame_rate),
     cap(0, CAP_V4L2),
     FPSTimer("FPS Timer"),
-    camFPSTimer("CAM FPS Timer") {}
+    camFPSTimer("CAM FPS Timer") {    
+    }
 
 video::~video() 
 {
     stopCapture();
-} // end ~video
+}// end ~video
+
+//=====================================================================================
+
+bool video::readConfig() {
+    
+    configfile.open("config.txt"); //open configuration file
+
+    //Write defaults into map
+    
+    string cfgline;
+
+    //Load all defualts
+    config["heatmap"]               = "COLORMAP_JET";
+    config["mark_max_mag_state"]    = "true";
+    config["color_scale_state"]     = "true";
+    config["heat_map_state"]        = "true";
+    config["data_clamp_state"]      = "true";
+    config["threshold_state"]       = "true";
+    config["auto_save_state"]       = "true";
+    config["record_state"]          = "false";
+    config["capture_image_state"]   = "false";
+    config["random_state"]          = "false";
+    config["static_state"]          = "false";
+    config["options_menu"]          = "false";
+    config["hidden_menu"]           = "false";
+    config["imgui_threshold"]       = to_string(-50);
+    config["imgui_clamp_min"]       = to_string(-100);
+    config["imgui_clamp_max"]       = to_string(0);
+    config["imgui_alpha"]           = to_string(0.5);
+    config["quality"]               = to_string(2);
+    config["save_path"]             = "";
+
+        if (configfile) { //load current config
+            cout << "Now loading current config" << endl;
+            while (getline(configfile, cfgline)) { //read the config files
+                cfgline.erase(0, cfgline.find_first_not_of(" \t\r\n")); // Trim leading spaces
+                cfgline.erase(cfgline.find_last_not_of(" \t\r\n") + 1); // Trim trailing spaces
+                cout << cfgline << endl;
+                if (cfgline.empty() || cfgline[0] == '#') continue; // Skip empty lines and comments
+                size_t pos = cfgline.find('='); //look for equal sign
+                if (pos != string::npos) { //split up the "parameter"="value"
+                    string key = cfgline.substr(0, pos);
+                    string value = cfgline.substr(pos + 1);
+                    key.erase(0, key.find_first_not_of(" \t\r\n"));
+                    key.erase(key.find_last_not_of(" \t\r\n") + 1);
+                    value.erase(0, value.find_first_not_of(" \t\r\n"));
+                    value.erase(value.find_last_not_of(" \t\r\n") + 1);
+                    config[key] = value; //write it to the map
+                    }
+                }
+        } else {
+            cout << "Restoring defualt configuration" << endl;
+            wrconfigfile.open("config.txt");
+            if(!wrconfigfile) {cout << "ERROR OPENING CONFIG.TXT FOR WRITING" << endl; return false;}
+            for (const auto& pair : config) {
+                wrconfigfile << pair.first << "=" << pair.second << endl;
+            }
+            wrconfigfile.close();
+        }
+
+        // Load these values into structure configs
+        //For bools, the config[] stores true/false a string and not bool, so this is how I am converting it #sorrynotsorry
+
+    configs.s(heatmap)              = config["heatmap"]; 
+    configs.b(mark_max_mag_state)   = config["mark_max_mag_state"]  == "true";
+    configs.b(color_scale_state)    = config["color_scale_state"]   == "true";
+    configs.b(heat_map_state)       = config["heat_map_state"]      == "true";
+    configs.b(data_clamp_state)     = config["data_clamp_state"]    == "true";
+    configs.b(threshold_state)      = config["threshold_state"]     == "true";
+    configs.b(auto_save_state)      = config["auto_save_state"]     == "true";
+    configs.b(record_state)         = config["record_state"]        == "true";
+    configs.b(capture_image_state)  = false;
+    configs.b(random_state)         = config["random_state"]        == "true";
+    configs.b(static_state)         = config["static_state"]        == "true";
+    configs.b(options_menu)         = config["options_menu"]        == "true";
+    configs.b(hidden_menu)          = config["hidden_menu"]         == "true";
+    configs.i(imgui_threshold)      = stoi(config["imgui_threshold"]);
+    configs.i(imgui_clamp_min)      = stoi(config["imgui_clamp_min"]);
+    configs.i(imgui_clamp_max)      = stoi(config["imgui_clamp_max"]);
+    configs.f(imgui_alpha)          = stof(config["imgui_alpha"]);
+    configs.i(quality)              = stoi(config["quality"]);
+    configs.s(save_path)            = config["save_path"];
+
+        return true;
+     }
+
+//=====================================================================================
+
+bool video::writeConfig() {
+    
+    config["heatmap"]               = configs.s(heatmap);
+    config["mark_max_mag_state"]    = configs.b(mark_max_mag_state) ? "true" : "false";
+    config["color_scale_state"]     = configs.b(color_scale_state) ? "true" : "false";
+    config["heat_map_state"]        = configs.b(heat_map_state) ? "true" : "false";
+    config["data_clamp_state"]      = configs.b(data_clamp_state) ? "true" : "false";
+    config["threshold_state"]       = configs.b(threshold_state) ? "true" : "false";
+    config["auto_save_state"]       = configs.b(auto_save_state) ? "true" : "false";
+    config["record_state"]          = configs.b(record_state) ? "true" : "false";
+    config["capture_image_state"]   = configs.b(capture_image_state) ? "true" : "false";
+    config["random_state"]          = configs.b(random_state) ? "true" : "false";
+    config["static_state"]          = configs.b(static_state) ? "true" : "false";
+    config["options_menu"]          = configs.b(options_menu) ? "true" : "false";
+    config["hidden_menu"]           = configs.b(hidden_menu) ? "true" : "false";
+    config["imgui_threshold"]       = to_string(configs.i(imgui_threshold));
+    config["imgui_clamp_min"]       = to_string(configs.i(imgui_clamp_min));
+    config["imgui_clamp_max"]       = to_string(configs.i(imgui_clamp_max));
+    config["imgui_alpha"]           = to_string(configs.f(imgui_alpha));
+    config["quality"]               = to_string(configs.i(quality));
+    config["save_path"]             = configs.s(save_path);
+
+    wrconfigfile.open("config.txt");
+    if(!wrconfigfile) {cout << "ERROR OPENING CONFIG.TXT FOR WRITING" << endl; return false;}
+    for (const auto& pair : config) {
+        wrconfigfile << pair.first << "=" << pair.second << endl;
+    }
+    wrconfigfile.close();
+
+    return true;
+
+}
 
 //=====================================================================================
 
 void video::startCapture() 
 {
+    if (!readConfig()) {
+        cout << "Could not read config....." << endl;
+    }
     // Configure capture properties
     cap.set(CAP_PROP_FRAME_WIDTH, frame_width);
     cap.set(CAP_PROP_FRAME_HEIGHT, frame_height);
@@ -230,10 +370,10 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     // Ensure data_input is of type CV_32F for proper normalization
     Mat workingFrame;
     frame.copyTo(workingFrame);
-    #ifdef ENABLE_RANDOM_DATA
+    if(configs.b(random_state) == true) {
     randu(data_input, Scalar(-100), Scalar(0));
-    #endif
-    #ifdef ENABLE_STATIC_DATA
+    }
+    if(configs.b(static_state) == true) {
     
     double st_height = NUM_PHI;
     double st_width = NUM_THETA;
@@ -263,23 +403,23 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 
     mat.copyTo(data_input);
 
-    #endif
+}
     
-    if (data_clamp_state == true) 
+    if (configs.b(data_clamp_state) == true) 
     {
     Mat data_clamped;
     
     data_input.convertTo(data_clamped, CV_32F);
 
-        if (imgui_clamp_min >= imgui_clamp_max) {
-            if(imgui_clamp_min == 0) {
-                imgui_clamp_min = -1;
-                imgui_clamp_max = 0;
+        if (configs.i(imgui_clamp_min) >= configs.i(imgui_clamp_max)) {
+            if(configs.i(imgui_clamp_min) == 0) {
+                configs.i(imgui_clamp_min) = -1;
+                configs.i(imgui_clamp_max) = 0;
             } else if(imgui_clamp_max == -100) {
-                imgui_clamp_max = -99;
-                imgui_clamp_min = -100;
+                configs.i(imgui_clamp_max) = -99;
+                configs.i(imgui_clamp_min) = -100;
             } else {
-                imgui_clamp_max = imgui_clamp_min + 1;
+                configs.i(imgui_clamp_max) = configs.i(imgui_clamp_min) + 1;
             }
 
         }
@@ -287,12 +427,12 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     for(int col = 0; col < data_clamped.cols; col++ ) {
         for (int row = 0; row < data_clamped.rows; row++) {
 
-            if(data_clamped.at<float>(row, col) < imgui_clamp_min) {
-                data_clamped.at<float>(row, col) = imgui_clamp_min;
+            if(data_clamped.at<float>(row, col) < configs.i(imgui_clamp_min)) {
+                data_clamped.at<float>(row, col) = configs.i(imgui_clamp_min);
             }
 
-            if(data_clamped.at<float>(row, col) > imgui_clamp_max) {
-                data_clamped.at<float>(row, col) = imgui_clamp_max;
+            if(data_clamped.at<float>(row, col) > configs.i(imgui_clamp_max)) {
+                data_clamped.at<float>(row, col) = configs.i(imgui_clamp_max);
             }   
 
         }
@@ -326,12 +466,12 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 
     Mat frame_merged;
     
-    if(heat_map_state == false) 
+    if(configs.b(heat_map_state) == false) 
     {   
         workingFrame.copyTo(frame_merged);
     }
 
-    if(heat_map_state == true) 
+    if(configs.b(heat_map_state) == true) 
     {
     // Ensure the heatmap is the same size as the frame
     Mat resized_heatmap;
@@ -342,16 +482,16 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
     // Blend the heatmap and the frame with an alpha value
     //double alpha2 = static_cast<double>(getTrackbarPos("Alpha", "Window"))/100;
     
-    if (threshold_state == false) {
-    addWeighted(workingFrame, 1.0, resized_heatmap, imgui_alpha, 0.0, frame_merged);
+    if (configs.b(threshold_state) == false) {
+    addWeighted(workingFrame, 1.0, resized_heatmap, configs.f(imgui_alpha), 0.0, frame_merged);
     }
-    if(threshold_state == true) {
+    if(configs.b(threshold_state) == true) {
         for(int y = 0; y < resized_heatmap.rows; ++y)
             {
                 for (int x = 0; x < resized_heatmap.cols; ++x) 
                 {
                     
-                    if (resized_data_input.at<float>(y, x) > imgui_threshold) 
+                    if (resized_data_input.at<float>(y, x) > configs.i(imgui_threshold)) 
                     {
                         Vec3b& pixel = workingFrame.at<Vec3b>(y, x);         // Current pixel in camera
                         Vec3b heatMapPixel = resized_heatmap.at<Vec3b>(y, x); // Current pixel in heatmap
@@ -360,7 +500,7 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
                         for (int c = 0; c < 3; c++) 
                         {
                             // Merges heatmap with video and applies alpha value
-                            pixel[c] = static_cast<uchar>(imgui_alpha * heatMapPixel[c] + (1 - imgui_alpha) * pixel[c]);
+                            pixel[c] = static_cast<uchar>(configs.f(imgui_alpha) * heatMapPixel[c] + (1 - configs.f(imgui_alpha)) * pixel[c]);
                         } 
                     }
                 }
@@ -416,7 +556,7 @@ void video::FPSCalculator()
 Mat video::drawUI(Mat& data_input)
 {
     // Color Bar Scale
-    if (color_scale_state == true) 
+    if (configs.b(color_scale_state) == true) 
     {   
         Rect color_bar_location(SCALE_POS_X, SCALE_POS_Y, SCALE_WIDTH, SCALE_HEIGHT);
         rectangle(data_input, Point(SCALE_POS_X, SCALE_POS_Y) + Point(-SCALE_BORDER, -SCALE_BORDER - 10), Point(SCALE_POS_X, SCALE_POS_Y) + Point(SCALE_WIDTH + SCALE_BORDER - 1, SCALE_HEIGHT + SCALE_BORDER + 5), Scalar(0, 0, 0), FILLED); //Draw rectangle behind scale to make a border
@@ -434,7 +574,7 @@ Mat video::drawUI(Mat& data_input)
             String scaleTextString;
             String scaleTextSymbol = " ";
 
-            if (data_clamp_state == 1) {
+            if (configs.b(data_clamp_state) == 1) {
                 if (i == 0) {
                     scaleTextSymbol = "<";
                 }
@@ -451,7 +591,7 @@ Mat video::drawUI(Mat& data_input)
     } // end colar bar scale
     
     // Mark maximum location
-    if (mark_max_mag_state == true) 
+    if (configs.b(mark_max_mag_state) == true) 
     {
         drawMarker(data_input, max_point_scaled, Scalar(0, 0, 0), MARKER_CROSS, CROSS_SIZE + 1, CROSS_THICKNESS + 1, 8); //Mark the maximum magnitude point
         drawMarker(data_input, max_point_scaled, Scalar(255, 255, 255), MARKER_CROSS, CROSS_SIZE, CROSS_THICKNESS, 8); //Mark the maximum magnitude point
@@ -649,6 +789,9 @@ bool video::renderIMGui(Mat &frame_in) {
         if (event.type == SDL_QUIT) {
             return false;
         }
+        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
+            return false;
+        }
     }
 
     // Start new ImGui frame
@@ -675,44 +818,84 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::Image((ImTextureID)(intptr_t)textureID, ImVec2(frame.cols, frame.rows));
     ImGui::End();
 
+    //Error window
+    /*
+    if (!(ALSA.pcm_error == 0) || (was_pcm_error == true)) {
+        was_pcm_error = true;
+
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(660, 500), ImGuiCond_Always);
+        ImGui::Begin("Error", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        switch(ALSA.pcm_error) {
+            case 1: ImGui::Text("Error: Buffer"); break;
+            case 2: ImGui::Text("Error: Buffer"); break;
+            case 3: ImGui::Text("Error: Buffer"); break;
+        }
+        ImGui::Text("Error: Could not capture frame from video source!");
+        if(ALSA.pcm_error == 0) {if (ImGui::Button("Ok")) {was_pcm_error = false;}}
+        ImGui::End();
+    }
+    
+*/
+    
+    
     // Slider Menu
 
-    if (options_menu == false) {
+    if (configs.b(options_menu) == false) {
 
-    ImGui::SetNextWindowPos(ImVec2(660,0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(364, 550), ImGuiCond_Always);
-    ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        // First Column: Threshold
-        ImGui::BeginGroup(); // Start grouping for alignment
+        ImGui::SetNextWindowPos(ImVec2(660, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(364, 550), ImGuiCond_Always);
+        ImGui::Begin("Controls", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+        
+        // Define a constant width for sliders and labels to maintain uniformity
+        ImGui::Text("FPS Counters:");
+        ImGui::BeginGroup();
+        ImGui::Text("Gui: %.1f", FPS);
+        ImGui::Text("Camera: %.1f", camFPS);
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+        
+        ImGui::BeginGroup();
+        ImGui::Text("Audio: --");
+        ImGui::Text("Beamform: --");
+        ImGui::EndGroup();
+
+
+        ImGui::BeginGroup(); // First Column: Threshold
         ImGui::Text("Threshold");
-        ImGui::VSliderInt("##Threshold", ImVec2(50, 475), &imgui_threshold, -100, 0, "%d");
+        ImGui::VSliderInt("##Threshold", ImVec2(slider_width, 425), &configs.i(imgui_threshold), -100, 0, "%d");
         ImGui::EndGroup();
-
-        ImGui::SameLine(); // Move to the next column
-
-        // Second Column: Clamp Min
-        ImGui::BeginGroup();
+        
+        ImGui::SameLine(0, column_width); // Add some space between columns
+        
+        ImGui::BeginGroup(); // Second Column: Clamp Min
         ImGui::Text("Clamp Min");
-        ImGui::VSliderInt("##Clamp_Min", ImVec2(50, 475), &imgui_clamp_min, -100, 0, "%d");
+        ImGui::VSliderInt("##Clamp_Min", ImVec2(slider_width, 425), &configs.i(imgui_clamp_min), -100, 0, "%d");
         ImGui::EndGroup();
-
-        ImGui::SameLine(); 
-
-        // Third Column: Clamp Max
-        ImGui::BeginGroup();
+        
+        ImGui::SameLine(0, column_width); // Add some space between columns
+        
+        ImGui::BeginGroup(); // Third Column: Clamp Max
         ImGui::Text("Clamp Max");
-        ImGui::VSliderInt("##Clamp_Max", ImVec2(50, 475), &imgui_clamp_max, -100, 0, "%d");
+        ImGui::VSliderInt("##Clamp_Max", ImVec2(slider_width, 425), &configs.i(imgui_clamp_max), -100, 0, "%d");
         ImGui::EndGroup();
-
-        ImGui::SameLine(); 
-
-        // Fourth Column: Alpha
-        ImGui::BeginGroup();
+        
+        ImGui::SameLine(0, column_width); // Add some space between columns
+        
+        ImGui::BeginGroup(); // Fourth Column: Alpha
         ImGui::Text("Alpha");
-        ImGui::VSliderFloat("##Alpha", ImVec2(50, 475), &imgui_alpha, 0.0f, 1.0f, "%.2f");
+        ImGui::VSliderFloat("##Alpha", ImVec2(slider_width, 425), &configs.f(imgui_alpha), 0.0f, 1.0f, "%.2f");
         ImGui::EndGroup();
-
-    ImGui::End();
+        
+        ImGui::SameLine(0, column_width + 7); // Add some space between columns
+        
+        ImGui::BeginGroup(); // Fifth Column: Quality
+        ImGui::Text("Quality");
+        ImGui::VSliderInt("##Quality", ImVec2(slider_width, 425), &configs.i(quality), 1, 3, "%d");
+        ImGui::EndGroup();
+        
+        ImGui::End(); // End the window
 
     }
     
@@ -722,46 +905,112 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::BeginGroup();
         ImGui::Text("Maximum: %.1f", magnitude_max);
         ImGui::SameLine();
-        ImGui::Text("Program FPS: %.1f", FPS);
+        
         ImGui::SameLine();
-        ImGui::Text("Camera FPS: %.1f", camFPS);
+        ImGui::Checkbox("Options", &configs.b(options_menu));
         ImGui::SameLine();
-        ImGui::Checkbox("Options", &options_menu);
+        ImGui::Checkbox("Record", &configs.b(record_state));
+        ImGui::SameLine();
+        //ImGui::Checkbox("Image", &configs.b(capture_image_state));
+        if(ImGui::Button("Capture Image")) {
+            configs.b(capture_image_state) = true;
+        }
         ImGui::EndGroup();
 
     ImGui::End();
 
     // Options menu
     
-    if (options_menu == true) {
+    if (configs.b(options_menu) == true) {
  
     ImGui::SetNextWindowPos(ImVec2(660,0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(364, 550), ImGuiCond_Always);
     ImGui::Begin("Options", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
-        ImGui::Checkbox("Mark Max Mag", &mark_max_mag_state);
-        ImGui::Checkbox("Color Scale", &color_scale_state);
-        ImGui::Checkbox("Heat Map", &heat_map_state);
-        ImGui::Checkbox("Data Clamp", &data_clamp_state);
-        ImGui::Checkbox("Threshold", &threshold_state);
+        ImGui::Checkbox("Mark Max Mag", &configs.b(mark_max_mag_state));
+        ImGui::Checkbox("Color Scale", &configs.b(color_scale_state));
+        ImGui::Checkbox("Heat Map", &configs.b(heat_map_state));
+        ImGui::Checkbox("Data Clamp", &configs.b(data_clamp_state));
+        ImGui::Checkbox("Threshold", &configs.b(threshold_state));
+        ImGui::Checkbox("AutoSave Config", &configs.b(auto_save_state));
+
+        ImGui::Checkbox("Hidden Menu", &configs.b(hidden_menu));
+
+        if (ImGui::Button("Select Save Directory")) {
+            ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+            ImGui::SetNextWindowSize(ImVec2(1024, 500), ImGuiCond_Always);
+            
+            IGFD::FileDialogConfig configfig;
+	        configfig.path = ".";
+            
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseDirDlgKey", "Choose Directory", nullptr, configfig);
+
+        }
+    
+        if (ImGuiFileDialog::Instance()->Display("ChooseDirDlgKey")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                configs.s(save_path) = ImGuiFileDialog::Instance()->GetCurrentPath();
+                cout << "Selected directory: " << configs.s(save_path) << endl;
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+    
+    ImGui::End();
+
+    }
+
+    if (configs.b(hidden_menu) == true) {
+        ImGui::SetNextWindowPos(ImVec2(0,0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(640, 480), ImGuiCond_Always);
+        ImGui::Begin("Wow, its a Hidden Menu! :O", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+
+        ImGui::Checkbox("Random Data", &configs.b(random_state));
+        ImGui::SameLine();
+        ImGui::Checkbox("Static Data", &configs.b(static_state));
+
+        ImGui::BeginGroup(); // First Column: Threshold
+        ImGui::Text("slider_width");
+        ImGui::VSliderInt("##slide_ width", ImVec2(slider_width, 475), &slider_width, 0, 100, "%d");
+        ImGui::EndGroup();
+        
+        ImGui::SameLine(0, column_width); // Add some space between columns
+        
+        ImGui::BeginGroup(); // Second Column: Clamp Min
+        ImGui::Text("column_width");
+        ImGui::VSliderInt("##column_width", ImVec2(slider_width, 475), &column_width, 0, 100, "%d");
+        ImGui::EndGroup();
+       
+       
 
     ImGui::End();
+
 
     }
 
     // Render UI
     ImGui::Render();
-    glViewport(0, 0, 1024, 550);
+    glViewport(0, 0, 1024, 550); 
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     SDL_GL_SwapWindow(window);
+    //write config if the lord sees it fit
+    ++loopcounter;
+    if ((loopcounter == 600) && (configs.b(auto_save_state))) {
+        loopcounter = 0;
+        if(!writeConfig()) {cout << "ERROR WRITING CONFIG" << endl;}
+    }
+    
+    
+    
+    
     return true;
 }
 
 //=====================================================================================
 
 void video::shutdownIMGui() {
+    if(configs.b(auto_save_state)){writeConfig();}
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
@@ -771,6 +1020,28 @@ void video::shutdownIMGui() {
     SDL_Quit();
 }
 
+
+//=====================================================================================
+
+void video::saveImage(const Mat& image) {
+    // Get the current time
+    auto now = chrono::system_clock::now();
+    auto in_time_t = chrono::system_clock::to_time_t(now);
+
+    // Convert time to a string
+    stringstream ss;
+    ss << put_time(localtime(&in_time_t), "%Y%m%d%H%M%S");
+
+    // Create a unique filename
+    string filename = configs.s(save_path) + "/image_" + ss.str() + ".png";
+
+    // Save the image
+    if (imwrite(filename, image)) {
+        cout << "Image saved as " << filename << endl;
+    } else {
+        cerr << "Error: Could not save image" << endl;
+    }
+}
 
 //=====================================================================================
 
@@ -797,6 +1068,11 @@ bool video::processFrame(Mat& data_input, const float lower_limit, const float u
         
     //imshow("Window", frame_merged_UI);
     FPSCalculator();
+
+    if (configs.b(capture_image_state) == true) {
+        saveImage(frame_merged_UI);
+        configs.b(capture_image_state) = false;
+    }
     
     //cout << "rendering imgui..." << endl;
     if (renderIMGui(frame_merged_UI) == false) {
