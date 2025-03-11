@@ -127,12 +127,12 @@ extern CONFIG configs;
 
 // For debugging. Uncomment to enable
 // #define PROFILE_MAIN
-#define PROFILE_BEAMFORM
+// #define PROFILE_BEAMFORM
 // #define PROFILE_VIDEO
 // #define PRINT_AUDIO
-#define PRINT_BEAMFORM
+// #define PRINT_BEAMFORM
 // #define PRINT_FFT
-// #define PRINT_FFT_COLLAPSE
+#define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
 #define ENABLE_AUDIO

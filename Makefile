@@ -6,7 +6,7 @@ FFT_FLAGS = -O3 -lfftw3f -lm -lfftw3f_threads
 
 IMGUI_FLAGS = -I/usr/include/SDL2 -D_REENTRANT -lSDL2 -lGL -lGLEW -ldl -pthread 
 
-OPTIMIZATION_FLAGS = #-march=native -ffast-math -funroll-loops -fprefetch-loop-arrays
+OPTIMIZATION_FLAGS = -march=native -ffast-math -funroll-loops -fprefetch-loop-arrays
  
 
 IMGUI_SRC = imgui/imgui.cpp \

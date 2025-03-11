@@ -85,7 +85,7 @@ int main()
 
         // audio_data_buffer_1.print_layer(100);
 
-        beamform.processData(audio_data_buffer_1, audio_data_buffer_2, processed_data, 1, 511, POST_dBFS);
+        beamform.processData(audio_data_buffer_1, audio_data_buffer_2, processed_data, 20, 27, POST_dBFS);
         // cout << "End of processData\n";
 
         
