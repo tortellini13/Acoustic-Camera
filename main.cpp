@@ -41,7 +41,7 @@ int main()
     //=====================================================================================
 
     // Timer for testing
-    timer test("Test");
+    //timer test("Test");
 
     // Arrays to store data
     array3D<float> audio_data_buffer_1(M_AMOUNT, N_AMOUNT, FFT_SIZE);
@@ -79,7 +79,7 @@ int main()
     while(1)
     {
         
-        test.start();
+        //test.start();
         // Copy data from ring buffer and process beamforming
         #ifdef ENABLE_AUDIO
         ALSA.copyRingBuffer(audio_data_buffer_1, audio_data_buffer_2);
@@ -96,8 +96,8 @@ int main()
         //if (waitKey(1) >= 0) break;
         #endif
 
-        test.end();
-        test.print();
+        //test.end();
+        //test.print();
         // test.print_avg(AVG_SAMPLES);
 
     } // end loop

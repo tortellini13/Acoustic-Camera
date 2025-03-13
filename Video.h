@@ -34,6 +34,7 @@ public:
 
     bool processFrame(Mat& data_input, const float lower_limit, const float upper_limit);
 
+
 private:
     // Gets frame from other thread
     bool getFrame(Mat& frame); 
@@ -177,6 +178,10 @@ bool video::readConfig() {
     config["imgui_alpha"]           = to_string(0.5);
     config["quality"]               = to_string(2);
     config["save_path"]             = "";
+    config["full_range"]            = "true";
+    config["octave_bands"]          = "false";
+    config["octave_band_value"]       = to_string(1);
+    config["third_band_value"]      = to_string(1);
 
         if (configfile) { //load current config
             cout << "Now loading current config" << endl;
@@ -228,6 +233,10 @@ bool video::readConfig() {
     configs.f(imgui_alpha)          = stof(config["imgui_alpha"]);
     configs.i(quality)              = stoi(config["quality"]);
     configs.s(save_path)            = config["save_path"];
+    configs.b(full_range)           = config["full_range"]          == "true";
+    configs.b(octave_bands)         = config["octave_bands"]        == "true";
+    configs.i(octave_band_value)      = stoi(config["octave_band_value"]);
+    configs.i(third_band_value)     = stoi(config["third_band_value"]);
 
         return true;
      }
@@ -255,6 +264,10 @@ bool video::writeConfig() {
     config["imgui_alpha"]           = to_string(configs.f(imgui_alpha));
     config["quality"]               = to_string(configs.i(quality));
     config["save_path"]             = configs.s(save_path);
+    config["full_range"]            = configs.b(full_range) ? "true" : "false";
+    config["octave_bands"]          = configs.b(octave_bands) ? "true" : "false";
+    config["octave_band_value"]       = to_string(configs.i(octave_band_value));
+    config["third_band_value"]      = to_string(configs.i(third_band_value)); 
 
     wrconfigfile.open("config.txt");
     if(!wrconfigfile) {cout << "ERROR OPENING CONFIG.TXT FOR WRITING" << endl; return false;}
@@ -881,12 +894,204 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::VSliderInt("##Clamp_Max", ImVec2(slider_width, 425), &configs.i(imgui_clamp_max), -100, 0, "%d");
         ImGui::EndGroup();
         
-        ImGui::SameLine(0, column_width); // Add some space between columns
+        if(configs.b(full_range == false)){
         
-        ImGui::BeginGroup(); // Fourth Column: Alpha
-        ImGui::Text("Alpha");
-        ImGui::VSliderFloat("##Alpha", ImVec2(slider_width, 425), &configs.f(imgui_alpha), 0.0f, 1.0f, "%.2f");
-        ImGui::EndGroup();
+        if(configs.b(octave_bands) == true && configs.b(full_range) == false) {
+            ImGui::SameLine(0, column_width); // Add some space between columns
+            ImGui::BeginGroup(); // Fourth Column: Alpha
+            ImGui::Text("%s", configs.s(current_band).c_str());
+            ImGui::VSliderInt("##band1", ImVec2(slider_width, 425), &configs.i(octave_band_value), 0, NUM_FULL_OCTAVE_BANDS, "%d");
+            switch (configs.i(octave_band_value)) 
+			{
+				// 63 Hz
+				case FULL_63:	
+                configs.s(current_band) = "63 Hz";
+				break;	
+				
+				// 125 Hz
+				case FULL_125:	
+                configs.s(current_band) = "125 Hz";
+				break;	
+				
+				// 250 Hz
+				case FULL_250:	
+                configs.s(current_band) = "250 Hz";
+				break;	
+				
+				// 500 Hz
+				case FULL_500:	
+                configs.s(current_band) = "500 Hz";
+				break;	
+					
+				// 1000 Hz
+				case FULL_1000:	
+                configs.s(current_band) = "1000 Hz";
+				break;	
+				
+				// 2000 Hz
+				case FULL_2000:	
+                configs.s(current_band) = "2000 Hz";
+				break;	
+				
+				// 4000 Hz
+				case FULL_4000:	
+                configs.s(current_band) = "4000 Hz";
+				break;	
+				
+				// 8000 Hz
+				case FULL_8000:	
+                configs.s(current_band) = "8000 Hz";
+				break;	
+				
+				// 16000 Hz
+				case FULL_16000:	
+                configs.s(current_band) = "16000 Hz";
+				break;	
+			}    // end Full Octave Band
+			ImGui::EndGroup();
+        }
+        
+        if(configs.b(octave_bands) == false && configs.b(full_range) == false) {
+            
+                  
+            ImGui::SameLine(0, column_width); // Add some space between columns
+            ImGui::BeginGroup(); // Fourth Column: Alpha
+            ImGui::Text("%s", configs.s(current_band).c_str());
+            ImGui::VSliderInt("##band2", ImVec2(slider_width, 425), &configs.i(third_band_value), 0, NUM_THIRD_OCTAVE_BANDS, "%d");
+            switch (configs.i(third_band_value)) 
+            {
+                case THIRD_63:	
+                configs.s(current_band) = "63 Hz";
+                break;	
+        
+            // 80 Hz
+            case THIRD_80:	
+                configs.s(current_band) = "80 Hz";
+                break;	
+        
+            // 100 Hz
+            case THIRD_100:	
+                configs.s(current_band) = "100 Hz";
+                break;	
+        
+            // 125 Hz
+            case THIRD_125:	
+                configs.s(current_band) = "125 Hz";
+                break;	
+        
+            // 160 Hz
+            case THIRD_160:	
+                configs.s(current_band) = "160 Hz";
+                break;	
+        
+            // 200 Hz
+            case THIRD_200:	
+                configs.s(current_band) = "200 Hz";
+                break;	
+        
+            // 250 Hz
+            case THIRD_250:	
+                configs.s(current_band) = "250 Hz";
+                break;	
+        
+            // 315 Hz
+            case THIRD_315:	
+                configs.s(current_band) = "315 Hz";
+                break;	
+        
+            // 400 Hz
+            case THIRD_400:	
+                configs.s(current_band) = "400 Hz";
+                break;	
+        
+            // 500 Hz
+            case THIRD_500:	
+                configs.s(current_band) = "500 Hz";
+                break;	
+        
+            // 630 Hz
+            case THIRD_630:	
+                configs.s(current_band) = "630 Hz";
+                break;	
+        
+            // 800 Hz
+            case THIRD_800:	
+                configs.s(current_band) = "800 Hz";
+                break;	
+        
+            // 1000 Hz
+            case THIRD_1000:	
+                configs.s(current_band) = "1000 Hz";
+                break;	
+        
+            // 1250 Hz
+            case THIRD_1250:	
+                configs.s(current_band) = "1250 Hz";
+                break;	
+        
+            // 1600 Hz
+            case THIRD_1600:	
+                configs.s(current_band) = "1600 Hz";
+                break;	
+        
+            // 2000 Hz
+            case THIRD_2000:	
+                configs.s(current_band) = "2000 Hz";
+                break;	
+        
+            // 2500 Hz
+            case THIRD_2500:	
+                configs.s(current_band) = "2500 Hz";
+                break;	
+        
+            // 3150 Hz
+            case THIRD_3150:	
+                configs.s(current_band) = "3150 Hz";
+                break;	
+        
+            // 4000 Hz
+            case THIRD_4000:	
+                configs.s(current_band) = "4000 Hz";
+                break;	
+        
+            // 5000 Hz
+            case THIRD_5000:	
+                configs.s(current_band) = "5000 Hz";
+                break;	
+        
+            // 6300 Hz
+            case THIRD_6300:	
+                configs.s(current_band) = "6300 Hz";
+                break;	
+        
+            // 8000 Hz
+            case THIRD_8000:	
+                configs.s(current_band) = "8000 Hz";
+                break;	
+        
+            // 10000 Hz
+            case THIRD_10000:	
+                configs.s(current_band) = "10000 Hz";
+                break;	
+        
+            // 12500 Hz
+            case THIRD_12500:	
+                configs.s(current_band) = "12500 Hz";
+                break;	
+        
+            // 16000 Hz
+            case THIRD_16000:	
+                configs.s(current_band) = "16000 Hz";
+                break;	
+                    // // 20000 Hz
+                    // case THIRD_20000:	
+                    //     configs.s(third_band_value) = "20000 Hz";
+                    //     break;	
+            }    // end Third Octave Band
+			    ImGui::EndGroup();
+                }
+
+        }
         
         ImGui::SameLine(0, column_width + 7); // Add some space between columns
         
@@ -896,8 +1101,11 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::EndGroup();
         
         ImGui::End(); // End the window
+    
+            
 
-    }
+    
+    }  
     
     ImGui::SetNextWindowPos(ImVec2(0,500), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(660, 50), ImGuiCond_Always);
@@ -905,6 +1113,23 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::BeginGroup();
         ImGui::Text("Maximum: %.1f", magnitude_max);
         ImGui::SameLine();
+        if(configs.b(full_range) == true) {
+            ImGui::Text("| Full Range");
+        }
+        if(configs.b(full_range) == false) {
+            if(configs.b(octave_bands) == true) {
+                ImGui::SameLine();
+                ImGui::Text("| Octave Band: ");
+                ImGui::SameLine();
+                ImGui::Text("%s",configs.s(current_band).c_str());
+            }
+            if(configs.b(octave_bands) == false) {
+                ImGui::SameLine();
+                ImGui::Text("| 1/3 Octave Band: ");
+                ImGui::SameLine();
+                ImGui::Text("%s",configs.s(current_band).c_str());
+            }
+        }
         
         ImGui::SameLine();
         ImGui::Checkbox("Options", &configs.b(options_menu));
@@ -921,6 +1146,8 @@ bool video::renderIMGui(Mat &frame_in) {
 
     // Options menu
     
+    
+
     if (configs.b(options_menu) == true) {
  
     ImGui::SetNextWindowPos(ImVec2(660,0), ImGuiCond_Always);
@@ -933,6 +1160,30 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::Checkbox("Data Clamp", &configs.b(data_clamp_state));
         ImGui::Checkbox("Threshold", &configs.b(threshold_state));
         ImGui::Checkbox("AutoSave Config", &configs.b(auto_save_state));
+        
+        if (configs.b(full_range) == true) {
+            if(ImGui::Button("Full Range")) {
+                configs.b(full_range) = false;
+            }
+        }
+        if (configs.b(full_range) == false) {
+            if(ImGui::Button("Filtered")) {
+                configs.b(full_range) = true;
+            }
+
+            if(configs.b(octave_bands) == true) {
+                if(ImGui::Button("Octave Bands")) {
+                    configs.b(octave_bands) = false;
+                }
+            }
+            if(configs.b(octave_bands) == false) {
+                if(ImGui::Button("1/3 Octave Bands")) {
+                    configs.b(octave_bands) = true;
+                }
+            }
+        }
+
+        
 
         ImGui::Checkbox("Hidden Menu", &configs.b(hidden_menu));
 
@@ -954,10 +1205,17 @@ bool video::renderIMGui(Mat &frame_in) {
             }
             ImGuiFileDialog::Instance()->Close();
         }
+
+        ImGui::NewLine();
+
+        ImGui::BeginGroup(); // Fourth Column: Alpha
+        ImGui::Text("Alpha");
+        ImGui::VSliderFloat("##Alpha", ImVec2(slider_width, 200), &configs.f(imgui_alpha), 0.0f, 1.0f, "%.2f");
+        ImGui::EndGroup();
     
     ImGui::End();
 
-    }
+    } 
 
     if (configs.b(hidden_menu) == true) {
         ImGui::SetNextWindowPos(ImVec2(0,0), ImGuiCond_Always);
@@ -979,32 +1237,25 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::Text("column_width");
         ImGui::VSliderInt("##column_width", ImVec2(slider_width, 475), &column_width, 0, 100, "%d");
         ImGui::EndGroup();
-       
-       
+        
+        ImGui::End();
+        }   
+ 
+        // Render UI
+        ImGui::Render();
+        glViewport(0, 0, 1024, 550); 
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-    ImGui::End();
-
-
-    }
-
-    // Render UI
-    ImGui::Render();
-    glViewport(0, 0, 1024, 550); 
-    glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    SDL_GL_SwapWindow(window);
-    //write config if the lord sees it fit
-    ++loopcounter;
-    if ((loopcounter == 600) && (configs.b(auto_save_state))) {
-        loopcounter = 0;
-        if(!writeConfig()) {cout << "ERROR WRITING CONFIG" << endl;}
-    }
-    
-    
-    
-    
-    return true;
+        SDL_GL_SwapWindow(window);
+        //write config if the lord sees it fit
+        ++loopcounter;
+            if ((loopcounter == 600) && (configs.b(auto_save_state))) {
+            loopcounter = 0;
+            if(!writeConfig()) {cout << "ERROR WRITING CONFIG" << endl;}
+            }
+        
+        return true;
 }
 
 //=====================================================================================

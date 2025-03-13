@@ -87,6 +87,8 @@ enum int_configs: uint8_t
     imgui_clamp_max,
     imgui_threshold,
     quality,
+    octave_band_value,
+    third_band_value,
     NUM_INT_CONFIGS
 };
 
@@ -113,6 +115,9 @@ enum bool_configs: uint8_t
 
     options_menu,
     hidden_menu,
+
+    full_range,
+    octave_bands,
     NUM_BOOL_CONFIGS
 };
 
@@ -120,14 +125,65 @@ enum string_configs: uint8_t
 {
     heatmap,
     save_path,
+    current_band,
     NUM_STRING_CONFIGS
+};
+
+enum FULL_OCTAVE_BANDS: uint8_t
+{
+    FULL_63,
+    FULL_125,
+    FULL_250,
+    FULL_500,
+    FULL_1000,
+    FULL_2000,
+    FULL_4000,
+    FULL_8000,
+    FULL_16000,
+    NUM_FULL_OCTAVE_BANDS
+};
+
+enum THIRD_OCTAVE_BANDS: uint8_t
+{
+    //THIRD_20,
+    //THIRD_25,
+    //THIRD_31_5,
+    //THIRD_40,
+    //THIRD_50,
+    THIRD_63,
+    THIRD_80,
+    THIRD_100,
+    THIRD_125,
+    THIRD_160,
+    THIRD_200,
+    THIRD_250,
+    THIRD_315,
+    THIRD_400,
+    THIRD_500,
+    THIRD_630,
+    THIRD_800,
+    THIRD_1000,
+    THIRD_1250,
+    THIRD_1600,
+    THIRD_2000,
+    THIRD_2500,
+    THIRD_3150,
+    THIRD_4000,
+    THIRD_5000,
+    THIRD_6300,
+    THIRD_8000,
+    THIRD_10000,
+    THIRD_12500,
+    THIRD_16000,
+    //THIRD_20000,
+    NUM_THIRD_OCTAVE_BANDS
 };
 
 extern CONFIG configs;
 
 // For debugging. Uncomment to enable
 // #define PROFILE_MAIN
-#define PROFILE_BEAMFORM
+// #define PROFILE_BEAMFORM
 // #define PROFILE_VIDEO
 // #define PRINT_AUDIO
 // #define PRINT_BEAMFORM
@@ -135,11 +191,9 @@ extern CONFIG configs;
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
-#define ENABLE_AUDIO
+//#define ENABLE_AUDIO
 #define ENABLE_VIDEO
 #define ENABLE_IMGUI
-// #define ENABLE_RANDOM_DATA
-// #define ENABLE_STATIC_DATA
 #define AVG_SAMPLES 10
 #define PI // Set for usage on Pi
 //#define UBUNTU // Set for usage on ubuntu
