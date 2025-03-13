@@ -186,7 +186,6 @@ void beamform::setupDelays()
     for (int phi = min_phi, phi_index = 0; phi_index < num_phi; phi += step_phi, phi_index++)
     {
         float sin_phi = sinf(phi);
-        float cos_phi = cosf(phi);
         for (int theta = min_theta, theta_index = 0; theta_index < num_theta; theta += step_theta, theta_index++)
         {
             float sin_theta = sinf(theta);
@@ -195,7 +194,7 @@ void beamform::setupDelays()
             {
                 for (int m = 0; m < m_channels; m++)
                 {
-                    delay_time = (mic_spacing * (n * sin_theta * sin_phi + m * sin_theta * cos_phi)) / speed_of_sound;
+                    delay_time = (mic_spacing * sin_phi * (n * sin_theta + m * cos_theta)) / speed_of_sound;
 
                     // Keep track of minimum value
                     if (delay_time < min_val)
@@ -390,7 +389,7 @@ void beamform::handleBeamforming(array3D<float>& data_buffer_1, array3D<float>& 
                 } // end m
                 // if (abs(result) >= 1) {cout << theta << " " << phi << " " << b << " " << result << "\n";}
 
-                data_beamform.at(theta, phi, b) = result / static_cast<float>(m_channels * n_channels);
+                data_beamform.at(theta, phi, b) = result / static_cast<float>(m_channels * n_channels * num_taps);
             } // end b
         } // end phi
     } // end theta
@@ -466,17 +465,13 @@ cv::Mat beamform::arraytoMat(const array2D<float>& data)
 
 void beamform::processData(array3D<float>& data_buffer_1, array3D<float>& data_buffer_2, cv::Mat& data_output, const int lower_frequency, const int upper_frequency, uint8_t post_process_type)
 {
-    #ifdef PRINT_AUDIO
-    data_buffer_1.print_layer(100);
-    #endif
-
     // Beamforming
     beamform_time.start();
     handleBeamforming(data_buffer_1, data_buffer_2);
     beamform_time.end();
 
     #ifdef PRINT_BEAMFORM 
-    data_beamform.print_layer(100); 
+    data_beamform.print_layer(0); 
     #endif
 
     // cout << "handleBeamforming\n";
