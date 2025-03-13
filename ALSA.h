@@ -42,6 +42,9 @@ public:
     // Access ring buffer
     void copyRingBuffer(array3D<float>& data_output_1, array3D<float>& data_output_2);
 
+    atomic<int> pcm_error = 0;   // Flag for buffer error
+
+
 private:
     // Records audio from device
     bool recordAudio();
@@ -223,7 +226,7 @@ bool ALSA::recordAudio()
 {
     while (is_recording)
     {
-        lock_guard<mutex> lock(buffer_mutex);
+        // lock_guard<mutex> lock(buffer_mutex);
         // Swap data from buffer_2 to buffer_1
         swap(data_buffer_1.data, data_buffer_2.data);
 
@@ -234,19 +237,27 @@ bool ALSA::recordAudio()
         if (pcm_return == -EPIPE) 
         { 
             // Buffer overrun/underrun error
+            pcm_error = 1;
             cerr << "Buffer overrun/underrun occurred. Recovering..." << endl;
             snd_pcm_prepare(pcm_handle); // Prepare the device again
             return false;
         } 
         else if (pcm_return < 0) 
         {
+            pcm_error = 2;
             cerr << "Error reading PCM data: " << snd_strerror(pcm_return) << endl;
             return false;
         } 
         else if (pcm_return != frames) 
         {
+            pcm_error = 3;
             cerr << "PCM read returned fewer frames than expected." << endl;
             return false;
+        }
+
+        else if (pcm_return == frames)
+        {
+            pcm_error = 0;
         }
 
         // Remap the data to not-interlaced floats and normalize (-1, 1)
@@ -292,8 +303,8 @@ void ALSA::stop()
 
 void ALSA::copyRingBuffer(array3D<float>& data_output_1, array3D<float>& data_output_2)
 {
-    ALSA_timer.start();
-    lock_guard<mutex> lock(buffer_mutex);
+    // ALSA_timer.start();
+    // lock_guard<mutex> lock(buffer_mutex);
     // memcpy(data_output_1.data, data_buffer_1.data, frame_size);
     // memcpy(data_output_2.data, data_buffer_2.data, frame_size);
 
@@ -308,8 +319,8 @@ void ALSA::copyRingBuffer(array3D<float>& data_output_1, array3D<float>& data_ou
             } // end b
         } // end n
     } // end m 
-    ALSA_timer.end();
-    ALSA_timer.print();
+    // ALSA_timer.end();
+    // ALSA_timer.print();
 } // end copyRingBuffer
 
 #endif

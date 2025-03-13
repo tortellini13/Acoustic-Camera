@@ -146,7 +146,16 @@ beamform::beamform(int fft_size, int sample_rate, int m_channels, int n_channels
     fft_time("FFT"),
     fft_collapse_time("FFT Collapse"),
     post_process_time("Post Process")
-    {}
+    {
+        // Fill arrays with zeros
+        time_delay_int.fill(0);
+        time_delay_frac.fill(0.0f);
+        FIR_weights.fill(0.0f);
+        data_beamform.fill(0.0f);
+        data_fft.fill(complex<float>(0.0f, 0.0f));
+        data_fft_collapse.fill(0.0f);
+        data_post_process.fill(0.0f);
+    }
 
 beamform::~beamform()
 {
@@ -216,7 +225,7 @@ void beamform::setupDelays()
                     time_delay_frac.at(m, n, theta_index, phi_index) = modf(time_delay_float.at(m, n, theta_index, phi_index) * sample_rate, &time_delay_int_temp);
                     
                     // Integer part of delay, shifted right by half of taps for FIR filter
-                    time_delay_int.at(m, n, theta_index, phi_index) = static_cast<int>(time_delay_int_temp) + floor(num_taps / 2);
+                    time_delay_int.at(m, n, theta_index, phi_index) = static_cast<int>(time_delay_int_temp) - tap_offset;
                     
                     // Track max value for testing
                     if (time_delay_int.at(m, n, theta_index, phi_index) > max_val)
@@ -247,12 +256,13 @@ void beamform::setupFIR()
                     // Compute filter taps and calculate sum
                     for (int tap_index = 0; tap_index < FIR_weights.dim_5; tap_index++)
                     {
-                        int tap_value = -floor(num_taps / 2) + tap_index;
+                        int tap_value = tap_offset + tap_index;
 
                         // Hamming window
-                        float window = 0.53836f - 0.46164f * cosf((2 * M_PI * tap_value) / (num_taps - 1));
+                        float a0 = (25.0f / 46.0f);
+                        float window = a0 + (1.0f - a0) * cosf((2 * M_PI * static_cast<float>(tap_value)) / static_cast<float>(num_taps));
 
-                        float x = tap_value - time_delay_frac.at(m, n, theta_index, phi_index);
+                        float x = static_cast<float>(tap_value) - time_delay_frac.at(m, n, theta_index, phi_index);
 
                         // Compute filter tap value
                         float weight = (x == 0) ? (1.0f * window) : ((sinf(M_PI * x) / (M_PI * x)) * window);
@@ -326,12 +336,12 @@ float beamform::accessBuffer(int m_index, int n_index, int b, array3D<float>& da
 {
     if (b < fft_size)
     {
-        return m_index + n_index + b;
+        return data_buffer_1.data[m_index + n_index + b];
     }
 
     else if (b >= fft_size)
     {
-        return m_index + n_index + (b - fft_size);
+        return data_buffer_2.data[m_index + n_index + (b - fft_size)];
     }
 
     else
@@ -345,7 +355,8 @@ float beamform::accessBuffer(int m_index, int n_index, int b, array3D<float>& da
 
 void beamform::handleBeamforming(array3D<float>& data_buffer_1, array3D<float>& data_buffer_2)
 {
-    #pragma omp for collapse(3) schedule(static, 4)
+    // data_buffer_1.print_layer(100);
+    // #pragma omp for collapse(3) schedule(static, 4)
     for (int theta = 0; theta < num_theta; theta++)
     {
         for (int phi = 0; phi < num_phi; phi++)
@@ -370,13 +381,15 @@ void beamform::handleBeamforming(array3D<float>& data_buffer_1, array3D<float>& 
                             float weight = FIR_weights.at(m, n, theta, phi, tap);
 
                             // Perform beamforming
-                            result += accessBuffer(m, n, delay_offset + b, data_buffer_1, data_buffer_2) * weight; 
-
+                            result += accessBuffer(m, n, delay_offset + b, data_buffer_1, data_buffer_2) * weight;
+                            // if (abs(result) >= 1) {cout << result << "\n";} 
+                            // cout << accessBuffer(m, n, delay_offset + b, data_buffer_1, data_buffer_2) << "\n";
                         } // end tap
                     } // end n
                 } // end m
+                // if (abs(result) >= 1) {cout << theta << " " << phi << " " << b << " " << result << "\n";}
 
-                data_beamform.at(theta, phi, b) = result / 16.0f;
+                data_beamform.at(theta, phi, b) = result / static_cast<float>(m_channels * n_channels * num_taps);
             } // end b
         } // end phi
     } // end theta
