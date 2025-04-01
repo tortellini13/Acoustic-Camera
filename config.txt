@@ -1,29 +1,19 @@
-<<<<<<< HEAD
-third_band_value=25
-save_path=
-quality=2
-full_range=true
-imgui_alpha=0.500000
-imgui_clamp_max=-2
 =======
+third_band_value=4
 save_path=/home/nate/Desktop/Acoustic-Camera/Captures
 quality=1
+full_range=false
 imgui_alpha=1.000000
 imgui_clamp_max=0
->>>>>>> bee69f0762c4ddadf599741896acb509bbd0988c
 imgui_clamp_min=-100
 heatmap=COLORMAP_JET
 hidden_menu=false
 mark_max_mag_state=true
-octave_bands=true
+octave_bands=false
 color_scale_state=true
 heat_map_state=true
-<<<<<<< HEAD
 octave_band_value=6
-imgui_threshold=-50
-=======
 imgui_threshold=-33
->>>>>>> bee69f0762c4ddadf599741896acb509bbd0988c
 static_state=false
 data_clamp_state=false
 threshold_state=false
@@ -31,8 +21,4 @@ auto_save_state=true
 record_state=false
 capture_image_state=false
 random_state=false
-<<<<<<< HEAD
-options_menu=false
-=======
 options_menu=true
->>>>>>> bee69f0762c4ddadf599741896acb509bbd0988c

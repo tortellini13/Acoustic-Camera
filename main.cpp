@@ -94,7 +94,12 @@ int main()
         
         // Generate heatmap and ui then display the frame
         #ifdef ENABLE_VIDEO
-        if (video.processFrame(processed_data, -70.0f, -30.0f) == false) break;
+        #ifdef ENABLE_AUDIO
+        int pcm_error = ALSA.pcm_error;
+        #else
+        int pcm_error = 0;
+        #endif
+        if (video.processFrame(processed_data, pcm_error) == false) break;
         //if (waitKey(1) >= 0) break;
         #endif
 

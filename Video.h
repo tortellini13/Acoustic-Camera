@@ -32,13 +32,13 @@ public:
 
     void stopCapture();
 
-    bool processFrame(Mat& data_input, const float lower_limit, const float upper_limit);
+    bool processFrame(Mat& data_input, int pcm_error);
 
 
 private:
     // Gets frame from other thread
     bool getFrame(Mat& frame); 
-    
+
     // Actively captures video stream
     void captureVideo(VideoCapture& cap, atomic<bool>& is_running);
 
@@ -68,8 +68,7 @@ private:
 
     bool writeConfig(); //write the config file
 
-    bool was_pcm_error = false; //error flag
-
+    
     GLuint textureID; //this is the ID for the video frame (opencv mat) that is converted into a texture for imgui
 
     // Camera params
@@ -123,12 +122,21 @@ private:
     //stuff for the config file
     unordered_map<string, string> config; //somewhere to store the data from the config file
 
-    ifstream configfile;
+    ifstream configfile;    
     ofstream wrconfigfile;
 
     string heatmap_style; //COLORMAP_JET
 
     int loopcounter; //num of loops for deciding when to write the configuration to file again
+
+    int pcm_error; //error code from ALSA
+
+    bool fatal_error_flag = false; //error flag
+
+    bool missing_config_flag = false;
+    bool was_error = false; //error flag
+
+
 
 };
 
@@ -203,8 +211,9 @@ bool video::readConfig() {
                 }
         } else {
             cout << "Restoring defualt configuration" << endl;
+            missing_config_flag = true;
             wrconfigfile.open("config.txt");
-            if(!wrconfigfile) {cout << "ERROR OPENING CONFIG.TXT FOR WRITING" << endl; return false;}
+            if(!wrconfigfile) {cout << "ERROR OPENING CONFIG.TXT FOR WRITING" << endl; fatal_error_flag == true; return false;}
             for (const auto& pair : config) {
                 wrconfigfile << pair.first << "=" << pair.second << endl;
             }
@@ -270,7 +279,7 @@ bool video::writeConfig() {
     config["third_band_value"]      = to_string(configs.i(third_band_value)); 
 
     wrconfigfile.open("config.txt");
-    if(!wrconfigfile) {cout << "ERROR OPENING CONFIG.TXT FOR WRITING" << endl; return false;}
+    if(!wrconfigfile) {cout << "ERROR OPENING CONFIG.TXT FOR WRITING" << endl; fatal_error_flag = true; return false;}
     for (const auto& pair : config) {
         wrconfigfile << pair.first << "=" << pair.second << endl;
     }
@@ -371,6 +380,9 @@ bool video::getFrame(Mat& frame)
     {
         frame = frame_queue.front(); // Retrieve the frame
         frame_queue.pop();           // Remove the frame from the queue
+        //while(!frame_queue.empty()) {
+        //    frame_queue.pop(); //clear the queue
+        //}
         return true;
     }
     return false; // No frame available
@@ -832,24 +844,30 @@ bool video::renderIMGui(Mat &frame_in) {
     ImGui::End();
 
     //Error window
-    /*
-    if (!(ALSA.pcm_error == 0) || (was_pcm_error == true)) {
-        was_pcm_error = true;
-
+    
+    if ((!pcm_error == 0) || (was_error == true) || (fatal_error_flag == true) || (missing_config_flag == true)) {
+        was_error = true;
+        cout << pcm_error << " " << was_error << " " << fatal_error_flag << " " << missing_config_flag << endl;
         ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(660, 500), ImGuiCond_Always);
         ImGui::Begin("Error", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
-        switch(ALSA.pcm_error) {
-            case 1: ImGui::Text("Error: Buffer"); break;
-            case 2: ImGui::Text("Error: Buffer"); break;
-            case 3: ImGui::Text("Error: Buffer"); break;
+        if (missing_config_flag == true) {
+            ImGui::Text("Warning: Config file not found. Restoring defaults.");
         }
-        ImGui::Text("Error: Could not capture frame from video source!");
-        if(ALSA.pcm_error == 0) {if (ImGui::Button("Ok")) {was_pcm_error = false;}}
+        if (fatal_error_flag == true) {
+            ImGui::Text("Fatal Error.");
+        }
+        switch(pcm_error) {
+            case 1: ImGui::Text("Error: Buffer overrun/underrun occurred."); break;
+            case 2: ImGui::Text("Error: Error reading PCM data"); break;
+            case 3: ImGui::Text("Error: PCM read returned fewer frames than expected."); break;
+        }
+        //ImGui::Text("Error: Could not capture frame from video source!");
+        if(pcm_error == 0 && fatal_error_flag == false) {if (ImGui::Button("Ok")) {was_error = false;}}
+        if(fatal_error_flag == true) {if (ImGui::Button("Quit :(")) {return false;}}
         ImGui::End();
     }
     
-*/
     
     
     // Slider Menu
@@ -1027,14 +1045,8 @@ bool video::renderIMGui(Mat &frame_in) {
             // 1250 Hz
             case THIRD_1250:	
                 configs.s(current_band) = "1250 Hz";
-                break;	
-        
-            // 1600 Hz
-            case THIRD_1600:	
-                configs.s(current_band) = "1600 Hz";
-                break;	
-        
-            // 2000 Hz
+                break;
+                
             case THIRD_2000:	
                 configs.s(current_band) = "2000 Hz";
                 break;	
@@ -1225,6 +1237,11 @@ bool video::renderIMGui(Mat &frame_in) {
         ImGui::Checkbox("Random Data", &configs.b(random_state));
         ImGui::SameLine();
         ImGui::Checkbox("Static Data", &configs.b(static_state));
+        ImGui::SameLine();
+        if (ImGui::Button("trigger error")) {
+           fatal_error_flag = true;
+        } 
+
 
         ImGui::BeginGroup(); // First Column: Threshold
         ImGui::Text("slider_width");
@@ -1296,7 +1313,7 @@ void video::saveImage(const Mat& image) {
 
 //=====================================================================================
 
-bool video::processFrame(Mat& data_input, const float lower_limit, const float upper_limit)
+bool video::processFrame(Mat& data_input, int pcm_error_in)
 {
     /*
     - convert input_data to correct range
@@ -1304,21 +1321,28 @@ bool video::processFrame(Mat& data_input, const float lower_limit, const float u
     - merge frame and input_data
     - draw UI
     */
-   
+    pcm_error = pcm_error_in;
     Mat newframe;
     
    if (getFrame(newframe)) {
     newframe.copyTo(frame);
    }
-    
+   if(frame.empty()) {
+       cout << "Frame is empty" << endl;
+       frame = Mat::zeros(RESOLUTION_HEIGHT, RESOLUTION_WIDTH, CV_8UC3);
+       }
+
     // Creates heatmap from beamformed audio data, thresholds, clamps, and merges
-    Mat frame_merged = createHeatmap(data_input, lower_limit, upper_limit, frame);
+    Mat frame_merged = createHeatmap(data_input, 0.0f, 0.0f, frame);
+    //cout << "heatmap created" << endl;
         
     // Draw UI onto frame
     Mat frame_merged_UI = drawUI(frame_merged);
+    //cout << "UI drawn" << endl;
         
     //imshow("Window", frame_merged_UI);
     FPSCalculator();
+    //cout << "FPS calculated" << endl;
 
     if (configs.b(capture_image_state) == true) {
         saveImage(frame_merged_UI);
