@@ -18,13 +18,17 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 #define MIC_GAIN 1.0f
 
 // Angles
-#define MIN_THETA -30
-#define MAX_THETA  30
+// #define MIN_THETA -30
+// #define MAX_THETA  30
+#define MIN_THETA 0
+#define MAX_THETA 60
 #define STEP_THETA 5 // 2 is correct
 const int NUM_THETA = ((MAX_THETA - MIN_THETA) / STEP_THETA) + 1;
 
-#define MIN_PHI -18
-#define MAX_PHI  18
+// #define MIN_PHI -18
+// #define MAX_PHI  18
+#define MIN_PHI 0
+#define MAX_PHI 36
 #define STEP_PHI 4 // 1 is correct
 const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 
@@ -34,7 +38,7 @@ const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 #define FFT_SIZE 1024                   // Amount of samples in one frame of the FFT
 
 // Audio
-const char* AUDIO_DEVICE_NAME = "hw:2,0"; // arecord -l (type in console to find)
+const char* AUDIO_DEVICE_NAME = "hw:3,0"; // arecord -l (type in console to find)
 #define SAMPLE_RATE 48000                 // Audio sample rate
 
 // Camera
@@ -187,11 +191,11 @@ extern CONFIG configs;
 // #define PROFILE_VIDEO
 // #define PRINT_AUDIO
 // #define PRINT_BEAMFORM
-#define PRINT_FFT
+// #define PRINT_FFT
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
-//#define ENABLE_AUDIO
+#define ENABLE_AUDIO
 #define ENABLE_VIDEO
 #define ENABLE_IMGUI
 #define AVG_SAMPLES 10

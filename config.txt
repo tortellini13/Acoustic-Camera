@@ -1,8 +1,8 @@
 =======
-third_band_value=4
+third_band_value=25
 save_path=/home/nate/Desktop/Acoustic-Camera/Captures
 quality=1
-full_range=false
+full_range=true
 imgui_alpha=1.000000
 imgui_clamp_max=0
 imgui_clamp_min=-100

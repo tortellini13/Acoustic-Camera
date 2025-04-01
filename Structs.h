@@ -246,6 +246,20 @@ struct array4D
             }
         }
     }
+
+    // Print array
+    void print_layer(const int layer_1, const int layer_2) const
+    {
+        for (size_t i = 0; i < dim_1; ++i)
+        {
+            for (size_t j = 0; j < dim_2; ++j)
+            {
+                cout << setw(8) << fixed << setprecision(6) << showpos << at(i, j, layer_1, layer_2) << " ";
+            }
+            cout << "\n";
+        }
+        cout << "\n";
+    }
 }; // end array4D
 
 //=====================================================================================
@@ -327,6 +341,20 @@ struct array5D
                 }
             }
         }
+    }
+
+    // Print array
+    void print_layer(const int layer_1, const int layer_2, const int layer_3) const
+    {
+        for (size_t i = 0; i < dim_1; ++i)
+        {
+            for (size_t j = 0; j < dim_2; ++j)
+            {
+                cout << setw(8) << fixed << setprecision(6) << showpos << at(i, j, layer_1, layer_2, layer_3) << " ";
+            }
+            cout << "\n";
+        }
+        cout << "\n";
     }
 }; // end array5D
 
@@ -470,4 +498,12 @@ struct CONFIG
         {
                 return sA[index];
         }
+};
+
+template <typename T>
+struct vec3
+{
+    T x;
+    T y;
+    T z;
 };
