@@ -1,4 +1,5 @@
 #include <opencv2/opencv.hpp>
+#include <opencv2/imgproc.hpp>
 #include <atomic>
 #include <iostream>
 #include <thread>
@@ -709,7 +710,7 @@ bool video::startIMGui() {
 
     #endif
 
-    #ifdef PI
+    #ifdef PI_HW
 
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
@@ -805,7 +806,7 @@ bool video::renderIMGui(Mat &frame_in) {
     ImGui_ImplSDL2_NewFrame();
    #endif
    
-   #ifdef PI
+   #ifdef PI_HW
 
    SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -826,9 +827,10 @@ bool video::renderIMGui(Mat &frame_in) {
    #endif
 
     Mat frameRGBA;
-    cvtColor(frame_in, frameRGBA, COLOR_BGR2RGBA);  // Convert OpenCV BGR to RGBA
+    //cvtColor(frame_in, frameRGBA, COLOR_BGR2RGBA);  // Convert OpenCV BGR to RGBA
 
     glBindTexture(GL_TEXTURE_2D, textureID);
+    // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frameRGBA.cols, frameRGBA.rows, GL_RGBA, GL_UNSIGNED_BYTE, frameRGBA.data);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frameRGBA.cols, frameRGBA.rows, GL_RGBA, GL_UNSIGNED_BYTE, frameRGBA.data);
     glBindTexture(GL_TEXTURE_2D, 0);
    

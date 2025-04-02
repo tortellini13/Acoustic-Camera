@@ -7,7 +7,6 @@
 #include <fftw3.h>            // FFT
 #include <omp.h>              // Multithreading
 #include <opencv2/opencv.hpp> // OpenCV
-#include <stk/DelayL.h>       // STK Delay
 
 // Headers
 #include "PARAMS.h"
@@ -94,17 +93,13 @@ private:
     timer post_process_time;
 
     // Arrays
-    // array4D<int> delay_time_int;      // (theta, phi, m, n)
-    // array4D<float> delay_time_frac;   // (theta, phi, m, n)
-    array4D<float> delay_time;        // (theta, phi, m, n)
+    array4D<int> delay_time_int;      // (theta, phi, m, n)
+    array4D<float> delay_time_frac;   // (theta, phi, m, n)
     array5D<float> FIR_weights;       // (theta, phi, m, n, num_taps)
     array3D<float> data_beamform;     // (theta, phi, b)
     array3D<complex<float>> data_fft; // (theta, phi, b / 2)
     array2D<float> data_fft_collapse; // (theta, phi)
     array2D<float> data_post_process; // (theta, phi)
-
-    // Delay
-    stk::DelayL delay; // STK delay object
 };
 
 beamform::beamform(const int fft_size, const int sample_rate, const int m_channels, const int n_channels, const int num_taps,
@@ -136,15 +131,13 @@ beamform::beamform(const int fft_size, const int sample_rate, const int m_channe
                 fft_collapse_time("FFT Collapse"),
                 post_process_time("Post Process"),
 
-                // delay_time_int(num_theta, num_phi, m_channels, n_channels),
-                // delay_time_frac(num_theta, num_phi, m_channels, n_channels),
-                delay_time(num_theta, num_phi, m_channels, n_channels),
+                delay_time_int(num_theta, num_phi, m_channels, n_channels),
+                delay_time_frac(num_theta, num_phi, m_channels, n_channels),
                 FIR_weights(num_theta, num_phi, m_channels, n_channels, num_taps),
                 data_beamform(num_theta, num_phi, fft_size),
                 data_fft(num_theta, num_phi, fft_size / 2),
                 data_fft_collapse(num_theta, num_phi),
-                data_post_process(num_theta, num_phi),
-                delay()
+                data_post_process(num_theta, num_phi)
 {}
 
 beamform::~beamform()
@@ -179,14 +172,14 @@ float beamform::degtorad(const float angle_deg)
 void beamform::setupDelays()
 {
     // Temporary variables
-    // array4D<float> delay_time(num_theta, num_phi, m_channels, n_channels);
+    array4D<float> delay_time(num_theta, num_phi, m_channels, n_channels);
     float min_delay = MAXFLOAT;  // initialize with a big value and update later
     float max_delay = -MAXFLOAT; // initialize with a small value and update later
 
     // Calculate full delay time and keep track of lowest delay value
-    for (int theta = min_theta, theta_index = 0; theta_index < delay_time.dim_1; theta += step_theta, theta_index++)
+    for (int theta = min_theta, theta_index = 0; theta_index < delay_time_int.dim_1; theta += step_theta, theta_index++)
     {
-        for (int phi = min_phi, phi_index = 0; phi_index < delay_time.dim_2; phi += step_phi, phi_index++)
+        for (int phi = min_phi, phi_index = 0; phi_index < delay_time_int.dim_2; phi += step_phi, phi_index++)
         {
             // Convert theta and phi to radians
             // cout << "Theta: " << theta << " Phi: " << phi << "\n";
@@ -199,9 +192,9 @@ void beamform::setupDelays()
             normal.y = sinf(theta_r) * sinf(phi_r);
             normal.z = cosf(theta_r);
 
-            for (int m = 0; m < delay_time.dim_3; m++)
+            for (int m = 0; m < delay_time_int.dim_3; m++)
             {
-                for (int n = 0; n < delay_time.dim_4; n++)
+                for (int n = 0; n < delay_time_int.dim_4; n++)
                 {
                     // Distance between the origin and a normal vector from (m, n)
                     float numerator = normal.x * m * mic_spacing + normal.y * n * mic_spacing;
@@ -248,13 +241,36 @@ void beamform::setupDelays()
     cout << "Min Delay: " << min_delay << "\n";
     cout << "Max Delay: " << max_delay << "\n";
 
+    // Shift all delays so there are no negative values and separate integer and fractional components
+    for (int theta = 0; theta < delay_time_int.dim_1; theta++)
+    {
+        for (int phi = 0; phi < delay_time_int.dim_2; phi++)
+        {
+            for (int m = 0; m < delay_time_int.dim_3; m++)
+            {
+                for (int n = 0; n < delay_time_int.dim_4; n++)
+                {
+                    // Shift delays so that the minimum is 0 to avoid time travel
+                    delay_time.at(theta, phi, m, n) -= min_delay;
+
+                    // Extract integer and fractional delay
+                    float delay_time_int_temp;
+                    delay_time_frac.at(theta, phi, m, n) = modf(delay_time.at(theta, phi, m, n), &delay_time_int_temp);
+                    delay_time_int.at(theta, phi, m, n) = static_cast<int>(delay_time_int_temp);
+
+                    // Integer part of delay, shifted right by half of taps for FIR filter
+                    delay_time_int.at(theta, phi, m, n) -= tap_offset;
+                } // end n
+            } // end m
+        } // end phi
+    } // end theta
 } // end setupDelays
 
 //=====================================================================================
 
 void beamform::setupFIR()
 {
-    /* // Calculate taps from -num_taps / 2. Index from 0
+    // Calculate taps from -num_taps / 2. Index from 0
     for (int theta = 0; theta < FIR_weights.dim_1; theta++)
     {
         for (int phi = 0; phi < FIR_weights.dim_2; phi++)
@@ -291,7 +307,7 @@ void beamform::setupFIR()
                 } // end n
             } // end m
         } // end phi
-    } // end theta  */
+    } // end theta
 } // end setupFIR
 
 //=====================================================================================
@@ -331,7 +347,7 @@ void beamform::setup()
     // cout << "setupDelays\n";
 
     // Setup FIR weights
-    // setupFIR();
+    setupFIR();
     // cout << "setupFIR\n";
 
     // Setup FFT
@@ -367,7 +383,6 @@ float beamform::accessBuffer(const int m, const int n, const int b, array3D<floa
 
 void beamform::handleBeamforming(array3D<float> &data_buffer_1, array3D<float> &data_buffer_2)
 {
-    /*
     // #pragma omp for collapse(3) schedule(static, 4)
     for (int theta = 0; theta < data_beamform.dim_1; theta++)
     {
@@ -404,35 +419,6 @@ void beamform::handleBeamforming(array3D<float> &data_buffer_1, array3D<float> &
             } // end b
         } // end phi
     } // end theta
-    */
-
-    /*
-    - 
-    */
-
-    for (int theta = 0; theta < data_beamform.dim_1; theta++)
-    {
-        for (int phi = 0; phi < data_beamform.dim_2; phi++)
-        {
-            for (int b = 0; b < data_beamform.dim_3; b++)
-            {
-                // Accumulator for beamforming result
-                float result = 0.0f;
-                for (int m = 0; m < m_channels; m++)
-                {
-                    for (int n = 0; n < n_channels; n++)
-                    {
-                        delay.setDelay(delay_time.at(theta, phi, m, n)); // Set delay in STK delay object
-                        result += delay.tick(accessBuffer(m, n, b, data_buffer_1, data_buffer_2)); // Apply delay to input signal
-
-                    } // end n
-                } // end m
-
-                // Normalize and write result
-                data_beamform.at(theta, phi, b) = result / num_channels;
-            } // end b
-        } // end phi
-    } // end theta 
 } // end handleBeamforming
 
 //=====================================================================================

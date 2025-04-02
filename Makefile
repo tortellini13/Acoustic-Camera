@@ -6,6 +6,8 @@ FFT_FLAGS = -O3 -lfftw3f -lm -lfftw3f_threads
 
 IMGUI_FLAGS = -I/usr/include/SDL2 -D_REENTRANT -lSDL2 -lGL -lGLEW -ldl -pthread 
 
+STK_FLAGS = -I/usr/local/include/stk -L/usr/local/lib -lstk -Wl,-rpath,/usr/local/lib
+
 OPTIMIZATION_FLAGS = -march=native -ffast-math -funroll-loops -fprefetch-loop-arrays
  
 
@@ -26,7 +28,7 @@ NAME = main
 all: $(NAME)
 
 $(NAME): $(NAME).cpp $(HEADERS)
-	g++ -g -o $(NAME) $(NAME).cpp $(IMGUI_SRC) $(FLAGS) $(OPTIMIZATION_FLAGS) $(FFT_FLAGS) $(OPENCV_FLAGS) $(IMGUI_FLAGS)
+	g++ -g -o $(NAME) $(NAME).cpp $(IMGUI_SRC) $(FLAGS) $(OPTIMIZATION_FLAGS) $(FFT_FLAGS) $(STK_FLAGS) $(OPENCV_FLAGS) $(IMGUI_FLAGS)
 
 clean:
 	rm -f $(NAME) imgui.ini
