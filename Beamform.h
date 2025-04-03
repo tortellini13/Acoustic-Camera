@@ -248,6 +248,21 @@ void beamform::setupDelays()
     cout << "Min Delay: " << min_delay << "\n";
     cout << "Max Delay: " << max_delay << "\n";
 
+    // Account for time travel by offsetting all delays by the minimum delay
+    for (int theta = 0; theta < delay_time.dim_1; theta++)
+    {
+        for (int phi = 0; phi < delay_time.dim_2; phi++)
+        {
+            for (int m = 0; m < delay_time.dim_3; m++)
+            {
+                for (int n = 0; n < delay_time.dim_4; n++)
+                {
+                    delay_time.at(theta, phi, m, n) -= min_delay; // Offset all delays by the minimum delay
+                } // end n
+            } // end m
+        } // end phi
+    } // end theta
+
 } // end setupDelays
 
 //=====================================================================================
@@ -508,6 +523,7 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
     data_beamform.print_layer(100);
     #endif
 
+    /*
     // FFT
     // cout << "Performing FFT\n";
     fft_time.start();
@@ -537,6 +553,16 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
     #ifdef PRINT_POST_PROCESS
     data_post_process.print();
     #endif
+    */
+
+    // Bypass FFT and send first frame to video
+    for (int theta = 0; theta < data_beamform.dim_1; theta++)
+    {
+        for (int phi = 0; phi < data_beamform.dim_2; phi++)
+        {
+            data_post_process.at(theta, phi) = 20 * log10(data_beamform.at(theta, phi, 0));
+        } // end phi
+    } // end theta
 
     // Final output
     data_output = array2DtoMat(data_post_process);
