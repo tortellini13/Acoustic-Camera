@@ -828,6 +828,18 @@ bool video::renderIMGui(Mat &frame_in) {
 
     Mat frameRGBA;
     //cvtColor(frame_in, frameRGBA, COLOR_BGR2RGBA);  // Convert OpenCV BGR to RGBA
+    //frame_in.copyTo(frameRGBA); // Copy the frame to frameRGBA
+
+    // Create an empty RGBA image with the same size as the BGR image
+    frameRGBA = Mat(frame_in.rows, frame_in.cols, CV_8UC4);
+
+    // Iterate over each pixel in the BGR image and copy it to the RGBA image
+    for (int i = 0; i < frame_in.rows; ++i) {
+        for (int j = 0; j < frame_in.cols; ++j) {
+            frameRGBA.at<Vec4b>(i, j) = Vec4b(frame_in.at<Vec3b>(i, j)[2], frame_in.at<Vec3b>(i, j)[1], frame_in.at<Vec3b>(i, j)[0], 255);
+        }
+    }
+
 
     glBindTexture(GL_TEXTURE_2D, textureID);
     // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frameRGBA.cols, frameRGBA.rows, GL_RGBA, GL_UNSIGNED_BYTE, frameRGBA.data);
