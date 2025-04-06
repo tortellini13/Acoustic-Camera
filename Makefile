@@ -4,7 +4,7 @@ FLAGS = -lrt -lpthread -lasound -fopenmp
 
 FFT_FLAGS = -O3 -lfftw3f -lm -lfftw3f_threads
 
-IMGUI_FLAGS = -I/usr/include/SDL2 -D_REENTRANT -lSDL2 -lGL -lGLEW -ldl -pthread 
+IMGUI_FLAGS = `pkg-config --cflags --libs sdl2` -D_REENTRANT -lSDL2 -lGL -lGLEW -ldl -pthread 
 
 STK_FLAGS = -I/usr/local/include/stk -L/usr/local/lib -lstk -Wl,-rpath,/usr/local/lib
 

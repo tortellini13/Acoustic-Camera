@@ -16,7 +16,7 @@
 #include "imgui/ImGuiFileDialog.h"
 #include <SDL2/SDL.h>
 #include <GL/glew.h>
-
+#include <linux/videodev2.h>
 // add this to try on pi to makefile:            sdl2-config --cflags
 
 using namespace std;
@@ -119,7 +119,7 @@ private:
 
     Mat frame;
 
-
+    Mat frame1;
     //stuff for the config file
     unordered_map<string, string> config; //somewhere to store the data from the config file
 
@@ -147,7 +147,7 @@ video::video(int frame_width, int frame_height, int frame_rate) :
     frame_width(frame_width),
     frame_height(frame_height),
     frame_rate(frame_rate),
-    cap(0, CAP_V4L2),
+    cap(0, CAP_V4L), // Open the default camera
     FPSTimer("FPS Timer"),
     camFPSTimer("CAM FPS Timer") {    
     }
@@ -297,11 +297,19 @@ void video::startCapture()
     if (!readConfig()) {
         cout << "Could not read config....." << endl;
     }
+    //if(!cap.open("/dev/video0", CAP_V4L2)) {cout << "FAILED TO OPEN CAPTURE" << endl;} // Open the default camera
     // Configure capture properties
     cap.set(CAP_PROP_FRAME_WIDTH, frame_width);
     cap.set(CAP_PROP_FRAME_HEIGHT, frame_height);
     cap.set(CAP_PROP_FPS, frame_rate);
-    cap.set(CAP_PROP_BUFFERSIZE, 1);
+    //cap.set(CAP_PROP_BUFFERSIZE, 1);
+    cap.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M','J','P','G'));
+    std::cout << "Resolution: " << cap.get(cv::CAP_PROP_FRAME_WIDTH) << "x" 
+          << cap.get(cv::CAP_PROP_FRAME_HEIGHT) << "\n";
+std::cout << "FPS: " << cap.get(cv::CAP_PROP_FPS) << "\n";
+
+
+
 
     // Record video on separate thread
     is_running = true;
@@ -335,13 +343,19 @@ void video::UISetup()
     }
 
     Mat initial_frame(Size(RESOLUTION_HEIGHT, RESOLUTION_WIDTH), CV_32FC1);
+    this_thread::sleep_for(chrono::seconds(5));
 
     while (!getFrame(initial_frame)) 
     {
         cerr << "Error: Could not retreive frame from capture thread!" << "\n";
         this_thread::sleep_for(chrono::seconds(1));
     }
-
+    if(initial_frame.empty()) 
+    {
+        cerr << "Error: Initial frame is empty!" << "\n";
+        //this_thread::sleep_for(chrono::seconds(1));
+    }
+    
     FPSTimer.start();
 
 } // end UISetup
@@ -353,11 +367,15 @@ void video::captureVideo(VideoCapture& cap, atomic<bool>& is_running)
     while (is_running) 
     {
         camFPSTimer.start();
+        /*
         Mat temp_frame;
+        cap.grab(); // Capture a frame from the camera
         if (cap.read(temp_frame)) 
         {
+            imshow("Video", temp_frame); // Display the captured frame
             lock_guard<mutex> lock(frame_mutex);  // Protect access to the frame queue with a mutex
             frame_queue.push(temp_frame.clone()); // Store a copy of the frame in the queue
+            waitKey(1);
         }
 
         else 
@@ -365,6 +383,37 @@ void video::captureVideo(VideoCapture& cap, atomic<bool>& is_running)
             cerr << "Error: Could not capture frame from video source!" << "\n";
             is_running = false;
         }
+        */
+        Mat temp_frame;
+        cap >> temp_frame; // Capture a frame from the camera
+        if (temp_frame.empty() == false) {
+        
+            //imshow("Video", temp_frame); // Display the captured frame
+            //waitKey(1);
+        
+           // cap >> temp_frame; // Capture a frame from the camera
+            lock_guard<mutex> lock(frame_mutex);  // Protect access to the frame queue with a mutex
+            frame_queue.push(temp_frame.clone()); // Store a copy of the frame in the queue
+        }
+
+        //else 
+        //{
+        //    cerr << "Error: Could not capture frame from video source!" << "\n";
+        //    is_running = false;
+        //}
+    
+        //temp_frame = cap.grab(); // Capture a frame from the camera
+        //lock_guard<mutex> lock(frame_mutex);  // Protect access to the frame queue with a mutex
+        //frame_queue.push(temp_frame.clone()); // Store a copy of the frame in the queu
+       if (temp_frame.empty()) 
+        {
+            cerr << "Capthread Error: Frame is empty!" << "\n";
+            this_thread::sleep_for(chrono::seconds(1));
+        }
+       
+       
+       
+       
         camFPSTimer.end();
     }
 
@@ -1342,7 +1391,7 @@ bool video::processFrame(Mat& data_input, int pcm_error_in)
     newframe.copyTo(frame);
    }
    if(frame.empty()) {
-       cout << "Frame is empty" << endl;
+     //  cout << "Frame is empty" << endl;
        frame = Mat::zeros(RESOLUTION_HEIGHT, RESOLUTION_WIDTH, CV_8UC3);
        }
 
