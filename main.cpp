@@ -36,6 +36,7 @@ int main()
     // Initialize video
     #ifdef ENABLE_VIDEO
     video video(RESOLUTION_WIDTH, RESOLUTION_HEIGHT, FRAME_RATE);
+    //VideoCapture cap(0); // Open default camera
     #endif
 
     //=====================================================================================

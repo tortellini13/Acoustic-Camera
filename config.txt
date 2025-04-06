@@ -1,9 +1,9 @@
 =======
 third_band_value=25
-save_path=/home/nate/Desktop/Acoustic-Camera/Captures
+save_path=/home/pi/Desktop/Acoustic-Camera/Captures
 quality=1
 full_range=true
-imgui_alpha=1.000000
+imgui_alpha=0.000000
 imgui_clamp_max=0
 imgui_clamp_min=-100
 heatmap=COLORMAP_JET
@@ -13,10 +13,10 @@ octave_bands=false
 color_scale_state=true
 heat_map_state=true
 octave_band_value=6
-imgui_threshold=-33
+imgui_threshold=-100
 static_state=false
 data_clamp_state=false
-threshold_state=false
+threshold_state=true
 auto_save_state=true
 record_state=false
 capture_image_state=false
