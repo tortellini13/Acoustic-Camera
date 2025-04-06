@@ -195,7 +195,7 @@ extern CONFIG configs;
 // #define PRINT_FFT_COLLAPSE
 // #define PRINT_POST_PROCESS
 // #define PRINT_OUTPUT
-#define ENABLE_AUDIO
+//#define ENABLE_AUDIO
 #define ENABLE_VIDEO
 #define ENABLE_IMGUI
 #define AVG_SAMPLES 10
