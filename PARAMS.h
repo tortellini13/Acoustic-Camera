@@ -10,26 +10,28 @@
 const int NUM_CHANNELS = (M_AMOUNT * N_AMOUNT); // Total number of channels
 const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 {
+    {10, 8,  2, 0},
     {11, 9,  3, 1},
-    {12, 10, 4, 2},
-    {15, 13, 7, 5},
-    {16, 14, 8, 6}
+    {14, 12, 6, 4},
+    {15, 13, 7, 5}
 };
 #define MIC_GAIN 1.0f
 
 // Angles
 #define MIN_THETA -30
 #define MAX_THETA  30
-// #define MIN_THETA 0
-// #define MAX_THETA 60
 #define STEP_THETA 3 // 2 is correct
+// #define MIN_THETA -90
+// #define MAX_THETA 90
+// #define STEP_THETA 10
 const int NUM_THETA = ((MAX_THETA - MIN_THETA) / STEP_THETA) + 1;
 
 #define MIN_PHI -18
 #define MAX_PHI  18
-// #define MIN_PHI 0
-// #define MAX_PHI 36
 #define STEP_PHI 2 // 1 is correct
+// #define MIN_PHI -90
+// #define MAX_PHI 90
+// #define STEP_PHI 10
 const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 
 #define NUM_TAPS 5

@@ -268,7 +268,7 @@ bool ALSA::recordAudio()
             {
                 for (int m = 0; m < COLS; m++)
                 {
-                    data_buffer_2.at(m, n, b) = MIC_GAIN * static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
+                    data_buffer_2.at(m, n, b) = static_cast<float>(data_buffer[b * num_channels + channel_order.at(m, n)]) / static_cast<float>(1 << 31);
                 } // end m
             } // end n
         } // end b

@@ -30,7 +30,7 @@ public:
     void setup();
 
     // Performs beamforming
-    void processData(cv::Mat& data_output, const int lower_frequency, const int upper_frequency, const uint8_t post_process_type, array3D<float> &data_buffer_1, array3D<float> &data_buffer_2);
+    void processData(cv::Mat &data_output, const int lower_frequency, const int upper_frequency, const uint8_t post_process_type, array3D<float> &data_buffer_1, array3D<float> &data_buffer_2);
 
 private:
     // Converts degrees to radians
@@ -96,9 +96,10 @@ private:
     // Arrays
     // array4D<int> delay_time_int;      // (theta, phi, m, n)
     // array4D<float> delay_time_frac;   // (theta, phi, m, n)
-    array4D<float> delay_time;        // (theta, phi, m, n)
-    array5D<float> FIR_weights;       // (theta, phi, m, n, num_taps)
-    array3D<float> data_beamform;     // (theta, phi, b)
+    array4D<float> delay_time;    // (theta, phi, m, n)
+    // array5D<float> FIR_weights;   // (theta, phi, m, n, num_taps)
+    float hamming_weights[FFT_SIZE]; // Hamming window weights
+    array3D<float> data_beamform; // (theta, phi, b)
     // array3D<complex<float>> data_fft; // (theta, phi, b / 2 + 1)
     float *fft_input_buffer;          // 1D buffer for input
     fftwf_complex *fft_output_buffer; // 1D buffer for output
@@ -113,62 +114,47 @@ private:
 beamform::beamform(const int fft_size, const int sample_rate, const int m_channels, const int n_channels, const int num_taps,
                    const float mic_spacing, const float speed_of_sound,
                    const int min_theta, const int max_theta, const int step_theta, const int num_theta,
-                   const int min_phi, const int max_phi, const int step_phi, const int num_phi) : 
-                fft_size(fft_size),
-                sample_rate(sample_rate),
-                m_channels(m_channels),
-                n_channels(n_channels),
-                num_channels(m_channels * n_channels),
-                num_taps(num_taps),
-                tap_offset(-floor(num_taps / 2)),
+                   const int min_phi, const int max_phi, const int step_phi, const int num_phi) : fft_size(fft_size),
+                                                                                                  sample_rate(sample_rate),
+                                                                                                  m_channels(m_channels),
+                                                                                                  n_channels(n_channels),
+                                                                                                  num_channels(m_channels * n_channels),
+                                                                                                  num_taps(num_taps),
+                                                                                                  tap_offset(-floor(num_taps / 2)),
 
-                mic_spacing(mic_spacing),
-                speed_of_sound(speed_of_sound),
+                                                                                                  mic_spacing(mic_spacing),
+                                                                                                  speed_of_sound(speed_of_sound),
 
-                min_theta(min_theta),
-                max_theta(max_theta),
-                step_theta(step_theta),
-                num_theta(num_theta),
-                min_phi(min_phi),
-                max_phi(max_phi),
-                step_phi(step_phi),
-                num_phi(num_phi),
+                                                                                                  min_theta(min_theta),
+                                                                                                  max_theta(max_theta),
+                                                                                                  step_theta(step_theta),
+                                                                                                  num_theta(num_theta),
+                                                                                                  min_phi(min_phi),
+                                                                                                  max_phi(max_phi),
+                                                                                                  step_phi(step_phi),
+                                                                                                  num_phi(num_phi),
 
-                beamform_time("Beamform"),
-                fft_time("FFT"),
-                fft_collapse_time("FFT Collapse"),
-                post_process_time("Post Process"),
+                                                                                                  beamform_time("Beamform"),
+                                                                                                  fft_time("FFT"),
+                                                                                                  fft_collapse_time("FFT Collapse"),
+                                                                                                  post_process_time("Post Process"),
 
-                // delay_time_int(num_theta, num_phi, m_channels, n_channels),
-                // delay_time_frac(num_theta, num_phi, m_channels, n_channels),
-                delay_time(num_theta, num_phi, m_channels, n_channels),
-                FIR_weights(num_theta, num_phi, m_channels, n_channels, num_taps),
-                data_beamform(num_theta, num_phi, fft_size),
-                data_fft(num_theta, num_phi, fft_size / 2 + 1),
-                data_fft_collapse(num_theta, num_phi),
-                data_post_process(num_theta, num_phi),
-                delay()
-{}
+                                                                                                  // delay_time_int(num_theta, num_phi, m_channels, n_channels),
+                                                                                                  // delay_time_frac(num_theta, num_phi, m_channels, n_channels),
+                                                                                                  delay_time(num_theta, num_phi, m_channels, n_channels),
+                                                                                                  // FIR_weights(num_theta, num_phi, m_channels, n_channels, num_taps),
+                                                                                                  data_beamform(num_theta, num_phi, fft_size),
+                                                                                                  data_fft(num_theta, num_phi, fft_size / 2 + 1),
+                                                                                                  data_fft_collapse(num_theta, num_phi),
+                                                                                                  data_post_process(num_theta, num_phi),
+                                                                                                  delay()
+{
+}
 
 beamform::~beamform()
 {
 
 } // end ~beamform
-
-// float beamform::degtorad(const float angle_deg){return 1.0f;} // end degtorad
-// void beamform::setup(){}
-// void beamform::setupDelays(){}
-// void beamform::setupFIR(){}
-// void beamform::setupFFT(){}
-// void beamform::processData(cv::Mat& data_output, const int lower_frequency, const int upper_frequency, const uint8_t post_process_type, array3D<float> &data_buffer_1, array3D<float> &data_buffer_2){}
-// void beamform::handleBeamforming(array3D<float> &data_buffer_1, array3D<float> &data_buffer_2){}
-// void beamform::FFT(){}
-// void beamform::FFTCollapse(const int lower_frequency, const int upper_frequency){}
-// void beamform::postProcess(const uint8_t post_process_type){}
-// cv::Mat beamform::array2DtoMat(const array2D<float> &data){return cv::Mat();}
-// float beamform::accessBuffer(const int m, const int n, const int b, array3D<float> &data_buffer_1, array3D<float> &data_buffer_2){return 1.0f;}
-
-
 
 //=====================================================================================
 
@@ -223,7 +209,10 @@ void beamform::setupDelays()
                     magnitude_comp.y = n * mic_spacing - plane.y;
                     magnitude_comp.z = -plane.z;
                     int sign = 1;
-                    if (signbit(plane.z)) {sign = -1;}
+                    if (signbit(plane.z))
+                    {
+                        sign = -1;
+                    }
                     float magnitude = sign * sqrtf(magnitude_comp.x * magnitude_comp.x + magnitude_comp.y * magnitude_comp.y + magnitude_comp.z * magnitude_comp.z); // signbit to account for if delay is ahead or behind (0,0) element
 
                     // Delay time in samples
@@ -316,34 +305,34 @@ void beamform::setupFIR()
 
 void beamform::setupFFT()
 {
-/*     
-    // Enable FFTW multithreading
-    if (fftwf_init_threads() == 0)
-    {
-        cerr << "Error: FFTW threading initialization failed.\n";
-        throw runtime_error("FFTW threading initialization failed");
-    }
+    /*
+        // Enable FFTW multithreading
+        if (fftwf_init_threads() == 0)
+        {
+            cerr << "Error: FFTW threading initialization failed.\n";
+            throw runtime_error("FFTW threading initialization failed");
+        }
 
-    // Set the number of threads for FFTW
-    fftwf_plan_with_nthreads(omp_get_max_threads()); // Use all available threads
+        // Set the number of threads for FFTW
+        fftwf_plan_with_nthreads(omp_get_max_threads()); // Use all available threads
 
-    float *input = reinterpret_cast<float *>(data_beamform.data);             // Allocate real input array
-    fftwf_complex *output = reinterpret_cast<fftwf_complex *>(data_fft.data); // Allocate complex output array
+        float *input = reinterpret_cast<float *>(data_beamform.data);             // Allocate real input array
+        fftwf_complex *output = reinterpret_cast<fftwf_complex *>(data_fft.data); // Allocate complex output array
 
-    fft_plan = fftwf_plan_dft_r2c_3d(data_beamform.dim_1, data_beamform.dim_2, data_beamform.dim_3,
-                                     input, output,
-                                     FFTW_ESTIMATE);
+        fft_plan = fftwf_plan_dft_r2c_3d(data_beamform.dim_1, data_beamform.dim_2, data_beamform.dim_3,
+                                         input, output,
+                                         FFTW_ESTIMATE);
 
-    if (!fft_plan)
-    {
-        cerr << "Error: Failed to create FFT plan.\n";
-        throw runtime_error("FFTW plan creation failed");
-    }
- */
+        if (!fft_plan)
+        {
+            cerr << "Error: Failed to create FFT plan.\n";
+            throw runtime_error("FFTW plan creation failed");
+        }
+     */
 
     // Allocate all arrays
-    fft_input_buffer = new float[FFT_SIZE]; // Allocate buffer for FFT input
-    fft_output_buffer = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * (FFT_SIZE / 2 + 1)); // Allocate buffer for FFT output
+    fft_input_buffer = new float[FFT_SIZE];                                                        // Allocate buffer for FFT input
+    fft_output_buffer = (fftwf_complex *)fftwf_malloc(sizeof(fftwf_complex) * (FFT_SIZE / 2 + 1)); // Allocate buffer for FFT output
 
     // Create FFT plan
     fft_plan = fftwf_plan_dft_r2c_1d(FFT_SIZE, fft_input_buffer, fft_output_buffer, FFTW_ESTIMATE);
@@ -361,6 +350,13 @@ void beamform::setup()
     // Setup FIR weights
     // setupFIR();
     // cout << "setupFIR\n";
+
+    // Setup Hamming window
+    for (int b = 0; b < FFT_SIZE; b++)
+    {
+        float a0 = (25.0f / 46.0f); // Magic numbers
+        hamming_weights[b] = a0 - (1.0f - a0) * cosf((2 * M_PI * static_cast<float>(b)) / static_cast<float>(fft_size));
+    } // end b
 
     // Setup FFT
     setupFFT();
@@ -435,7 +431,7 @@ void beamform::handleBeamforming(array3D<float> &data_buffer_1, array3D<float> &
     */
 
     /*
-    - 
+    -
     */
 
     for (int theta = 0; theta < data_beamform.dim_1; theta++)
@@ -450,17 +446,18 @@ void beamform::handleBeamforming(array3D<float> &data_buffer_1, array3D<float> &
                 {
                     for (int n = 0; n < n_channels; n++)
                     {
-                        delay.setDelay(delay_time.at(theta, phi, m, n)); // Set delay in STK delay object
+                        delay.setDelay(delay_time.at(theta, phi, m, n));                           // Set delay in STK delay object
                         result += delay.tick(accessBuffer(m, n, b, data_buffer_1, data_buffer_2)); // Apply delay to input signal
 
                     } // end n
                 } // end m
 
                 // Normalize and write result
-                data_beamform.at(theta, phi, b) = result / num_channels;
+                data_beamform.at(theta, phi, b) = (result / num_channels) * hamming_weights[b]; // Apply Hamming window
+
             } // end b
         } // end phi
-    } // end theta 
+    } // end theta
 } // end handleBeamforming
 
 //=====================================================================================
@@ -472,7 +469,7 @@ void beamform::FFT()
     {
         for (int phi = 0; phi < data_beamform.dim_2; phi++)
         {
-            // Write data to input buffer. Only 1 mic for testing
+            // Write data to input buffer
             for (int b = 0; b < fft_size; b++)
             {
                 fft_input_buffer[b] = data_beamform.at(theta, phi, b);
@@ -484,10 +481,11 @@ void beamform::FFT()
             // Convert to dBfs
             for (int b = 0; b < FFT_SIZE / 2 + 1; b++)
             {
-                float real = fft_output_buffer[b][0];
-                float imag = fft_output_buffer[b][1];
+                float real = fft_output_buffer[b][0] / fft_size; // Normalize by FFT size
+                float imag = fft_output_buffer[b][1] / fft_size; // Normalize by FFT size
                 float inside = real * real + imag * imag;
                 data_fft.at(theta, phi, b) = 20 * log10f(sqrt(inside));
+
             } // end b
         } // end n
     } // end m
@@ -497,21 +495,21 @@ void beamform::FFT()
 
 void beamform::FFTCollapse(const int lower_frequency, const int upper_frequency)
 {
-/*     
-    for (int theta = 0; theta < data_fft.dim_1; theta++)
-    {
-        for (int phi = 0; phi < data_fft.dim_2; phi++)
+    /*
+        for (int theta = 0; theta < data_fft.dim_1; theta++)
         {
-            complex<float> sum = 0;
-            for (int b = lower_frequency; b <= upper_frequency; b++)
+            for (int phi = 0; phi < data_fft.dim_2; phi++)
             {
-                sum += data_fft.at(theta, phi, b);
-            } // end b
+                complex<float> sum = 0;
+                for (int b = lower_frequency; b <= upper_frequency; b++)
+                {
+                    sum += data_fft.at(theta, phi, b);
+                } // end b
 
-            data_fft_collapse.at(theta, phi) = abs(sum);
-        } // end phi
-    } // end theta
- */
+                data_fft_collapse.at(theta, phi) = abs(sum);
+            } // end phi
+        } // end theta
+     */
     // dB addition
     for (int theta = 0; theta < data_fft.dim_1; theta++)
     {
@@ -547,7 +545,7 @@ void beamform::postProcess(const uint8_t post_process_type)
 
             default:
                 cerr << "Invalid post processing type.\n";
-            break;
+                break;
             } // end switch
         } // end phi
     } // end theta
@@ -564,7 +562,7 @@ cv::Mat beamform::array2DtoMat(const array2D<float> &data)
 
 //=====================================================================================
 
-void beamform::processData(cv::Mat& data_output, const int lower_frequency, const int upper_frequency, const uint8_t post_process_type, array3D<float> &data_buffer_1, array3D<float> &data_buffer_2)
+void beamform::processData(cv::Mat &data_output, const int lower_frequency, const int upper_frequency, const uint8_t post_process_type, array3D<float> &data_buffer_1, array3D<float> &data_buffer_2)
 {
     // Beamforming
     // cout << "Handling Beamforming\n";
@@ -572,20 +570,19 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
     handleBeamforming(data_buffer_1, data_buffer_2);
     beamform_time.end();
 
-    #ifdef PRINT_BEAMFORM
+#ifdef PRINT_BEAMFORM
     data_beamform.print_layer(100);
-    #endif
+#endif
 
-    
     // FFT
     // cout << "Performing FFT\n";
     fft_time.start();
     FFT();
     fft_time.end();
 
-    #ifdef PRINT_FFT
+#ifdef PRINT_FFT
     data_fft.print_layer(23);
-    #endif
+#endif
 
     // FFT Collapse
     // cout << "Collapsing FFT\n";
@@ -593,9 +590,9 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
     FFTCollapse(lower_frequency, upper_frequency);
     fft_collapse_time.end();
 
-    #ifdef PRINT_FFT_COLLAPSE
+#ifdef PRINT_FFT_COLLAPSE
     data_fft_collapse.print();
-    #endif
+#endif
 
     // Post Process
     // cout << "Post Processing\n";
@@ -603,15 +600,15 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
     // postProcess(post_process_type);
     // post_process_time.end();
 
-    #ifdef PRINT_POST_PROCESS
+#ifdef PRINT_POST_PROCESS
     data_post_process.print();
-    #endif
+#endif
 
     // Final output
     data_output = array2DtoMat(data_fft_collapse);
 
-    // Profiling
-    #ifdef PROFILE_BEAMFORM
+// Profiling
+#ifdef PROFILE_BEAMFORM
     beamform_time.print_avg(AVG_SAMPLES);
     fft_time.print_avg(AVG_SAMPLES);
     fft_collapse_time.print_avg(AVG_SAMPLES);
@@ -621,10 +618,10 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
         cout << "\n";
     }
 
-    // float total_time = beamform_time.time() + fft_time.time() + fft_collapse_time.time() + post_process_time.time();
-    // cout << "Total Time: " << total_time << " ms.\n\n";
-    #endif
-    
+// float total_time = beamform_time.time() + fft_time.time() + fft_collapse_time.time() + post_process_time.time();
+// cout << "Total Time: " << total_time << " ms.\n\n";
+#endif
+
 } // end processData
 
 //=====================================================================================
