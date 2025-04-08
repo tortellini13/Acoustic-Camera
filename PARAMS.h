@@ -22,14 +22,14 @@ const int CHANNEL_ORDER[M_AMOUNT][N_AMOUNT] =
 #define MAX_THETA  30
 // #define MIN_THETA 0
 // #define MAX_THETA 60
-#define STEP_THETA 5 // 2 is correct
+#define STEP_THETA 3 // 2 is correct
 const int NUM_THETA = ((MAX_THETA - MIN_THETA) / STEP_THETA) + 1;
 
 #define MIN_PHI -18
 #define MAX_PHI  18
 // #define MIN_PHI 0
 // #define MAX_PHI 36
-#define STEP_PHI 4 // 1 is correct
+#define STEP_PHI 2 // 1 is correct
 const int NUM_PHI = ((MAX_PHI - MIN_PHI) / STEP_PHI) + 1;
 
 #define NUM_TAPS 5

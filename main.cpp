@@ -113,7 +113,7 @@ int main()
 
         double time = test.time(false);
         double fps = 1 / time;
-        cout << "FPS: " << fps << "\n";
+        // cout << "FPS: " << fps << "\n";
 
         // test.print();
         // test.print_avg(AVG_SAMPLES);

@@ -523,7 +523,7 @@ void beamform::FFTCollapse(const int lower_frequency, const int upper_frequency)
                 sum += powf(10, data_fft.at(theta, phi, b) / 10);
             } // end b
 
-            data_fft_collapse.at(theta, phi) = log10f(sum);
+            data_fft_collapse.at(theta, phi) = 10 * log10f(sum);
             // data_fft_collapse.at(theta, phi) = abs(sum) / (upper_frequency - lower_frequency + 1); // Normalize by number of bins
         } // end phi
     } // end theta
