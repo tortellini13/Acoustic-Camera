@@ -99,7 +99,10 @@ private:
     array4D<float> delay_time;        // (theta, phi, m, n)
     array5D<float> FIR_weights;       // (theta, phi, m, n, num_taps)
     array3D<float> data_beamform;     // (theta, phi, b)
-    array3D<complex<float>> data_fft; // (theta, phi, b / 2)
+    // array3D<complex<float>> data_fft; // (theta, phi, b / 2 + 1)
+    float *fft_input_buffer;          // 1D buffer for input
+    fftwf_complex *fft_output_buffer; // 1D buffer for output
+    array3D<float> data_fft;          // (theta, phi, b / 2 + 1)
     array2D<float> data_fft_collapse; // (theta, phi)
     array2D<float> data_post_process; // (theta, phi)
 
@@ -141,7 +144,7 @@ beamform::beamform(const int fft_size, const int sample_rate, const int m_channe
                 delay_time(num_theta, num_phi, m_channels, n_channels),
                 FIR_weights(num_theta, num_phi, m_channels, n_channels, num_taps),
                 data_beamform(num_theta, num_phi, fft_size),
-                data_fft(num_theta, num_phi, fft_size / 2),
+                data_fft(num_theta, num_phi, fft_size / 2 + 1),
                 data_fft_collapse(num_theta, num_phi),
                 data_post_process(num_theta, num_phi),
                 delay()
@@ -313,6 +316,7 @@ void beamform::setupFIR()
 
 void beamform::setupFFT()
 {
+/*     
     // Enable FFTW multithreading
     if (fftwf_init_threads() == 0)
     {
@@ -335,6 +339,15 @@ void beamform::setupFFT()
         cerr << "Error: Failed to create FFT plan.\n";
         throw runtime_error("FFTW plan creation failed");
     }
+ */
+
+    // Allocate all arrays
+    fft_input_buffer = new float[FFT_SIZE]; // Allocate buffer for FFT input
+    fft_output_buffer = (fftwf_complex*) fftwf_malloc(sizeof(fftwf_complex) * (FFT_SIZE / 2 + 1)); // Allocate buffer for FFT output
+
+    // Create FFT plan
+    fft_plan = fftwf_plan_dft_r2c_1d(FFT_SIZE, fft_input_buffer, fft_output_buffer, FFTW_ESTIMATE);
+
 } // end setupFFT
 
 //=====================================================================================
@@ -454,13 +467,37 @@ void beamform::handleBeamforming(array3D<float> &data_buffer_1, array3D<float> &
 
 void beamform::FFT()
 {
-    fftwf_execute(fft_plan);
+    // Loop through each mic and perform 1D FFT on each
+    for (int theta = 0; theta < data_beamform.dim_1; theta++)
+    {
+        for (int phi = 0; phi < data_beamform.dim_2; phi++)
+        {
+            // Write data to input buffer. Only 1 mic for testing
+            for (int b = 0; b < fft_size; b++)
+            {
+                fft_input_buffer[b] = data_beamform.at(theta, phi, b);
+            } // end b
+
+            // Call fft plan
+            fftwf_execute(fft_plan);
+
+            // Convert to dBfs
+            for (int b = 0; b < FFT_SIZE / 2 + 1; b++)
+            {
+                float real = fft_output_buffer[b][0];
+                float imag = fft_output_buffer[b][1];
+                float inside = real * real + imag * imag;
+                data_fft.at(theta, phi, b) = 20 * log10f(sqrt(inside));
+            } // end b
+        } // end n
+    } // end m
 } // end FFT
 
 //=====================================================================================
 
 void beamform::FFTCollapse(const int lower_frequency, const int upper_frequency)
 {
+/*     
     for (int theta = 0; theta < data_fft.dim_1; theta++)
     {
         for (int phi = 0; phi < data_fft.dim_2; phi++)
@@ -472,6 +509,22 @@ void beamform::FFTCollapse(const int lower_frequency, const int upper_frequency)
             } // end b
 
             data_fft_collapse.at(theta, phi) = abs(sum);
+        } // end phi
+    } // end theta
+ */
+    // dB addition
+    for (int theta = 0; theta < data_fft.dim_1; theta++)
+    {
+        for (int phi = 0; phi < data_fft.dim_2; phi++)
+        {
+            float sum = 0;
+            for (int b = lower_frequency; b <= upper_frequency; b++)
+            {
+                sum += powf(10, data_fft.at(theta, phi, b) / 10);
+            } // end b
+
+            data_fft_collapse.at(theta, phi) = log10f(sum);
+            // data_fft_collapse.at(theta, phi) = abs(sum) / (upper_frequency - lower_frequency + 1); // Normalize by number of bins
         } // end phi
     } // end theta
 } // end FFTCollapse
@@ -489,7 +542,7 @@ void beamform::postProcess(const uint8_t post_process_type)
             {
             case POST_dBFS:
                 // 20 * log10(abs(signal) / max_possible_value)
-                data_post_process.at(theta, phi) = 20 * log10(data_fft_collapse.at(theta, phi) / max_signal_value); // Check the max value***
+                data_post_process.at(theta, phi) = 20 * log10f(data_fft_collapse.at(theta, phi) / max_signal_value); // Check the max value***
                 break;
 
             default:
@@ -523,7 +576,7 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
     data_beamform.print_layer(100);
     #endif
 
-    /*
+    
     // FFT
     // cout << "Performing FFT\n";
     fft_time.start();
@@ -546,26 +599,16 @@ void beamform::processData(cv::Mat& data_output, const int lower_frequency, cons
 
     // Post Process
     // cout << "Post Processing\n";
-    post_process_time.start();
-    postProcess(post_process_type);
-    post_process_time.end();
+    // post_process_time.start();
+    // postProcess(post_process_type);
+    // post_process_time.end();
 
     #ifdef PRINT_POST_PROCESS
     data_post_process.print();
     #endif
-    */
-
-    // Bypass FFT and send first frame to video
-    for (int theta = 0; theta < data_beamform.dim_1; theta++)
-    {
-        for (int phi = 0; phi < data_beamform.dim_2; phi++)
-        {
-            data_post_process.at(theta, phi) = 20 * log10(data_beamform.at(theta, phi, 0));
-        } // end phi
-    } // end theta
 
     // Final output
-    data_output = array2DtoMat(data_post_process);
+    data_output = array2DtoMat(data_fft_collapse);
 
     // Profiling
     #ifdef PROFILE_BEAMFORM

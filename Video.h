@@ -147,7 +147,7 @@ video::video(int frame_width, int frame_height, int frame_rate) :
     frame_width(frame_width),
     frame_height(frame_height),
     frame_rate(frame_rate),
-    cap(0, CAP_V4L2),
+    cap("/dev/video0", CAP_V4L2),
     FPSTimer("FPS Timer"),
     camFPSTimer("CAM FPS Timer") {    
     }
@@ -298,6 +298,7 @@ void video::startCapture()
         cout << "Could not read config....." << endl;
     }
     // Configure capture properties
+    cap.open("/dev/video0", CAP_V4L2);
     cap.set(CAP_PROP_FRAME_WIDTH, frame_width);
     cap.set(CAP_PROP_FRAME_HEIGHT, frame_height);
     cap.set(CAP_PROP_FPS, frame_rate);
@@ -343,6 +344,11 @@ void video::UISetup()
     }
 
     FPSTimer.start();
+
+    std::cout << "Using backend: " << cap.getBackendName() << std::endl;
+std::cout << "Frame width: " << cap.get(cv::CAP_PROP_FRAME_WIDTH) << std::endl;
+std::cout << "Frame height: " << cap.get(cv::CAP_PROP_FRAME_HEIGHT) << std::endl;
+
 
 } // end UISetup
 
@@ -861,7 +867,7 @@ bool video::renderIMGui(Mat &frame_in) {
     
     if ((!pcm_error == 0) || (was_error == true) || (fatal_error_flag == true) || (missing_config_flag == true)) {
         was_error = true;
-        cout << pcm_error << " " << was_error << " " << fatal_error_flag << " " << missing_config_flag << endl;
+        //cout << pcm_error << " " << was_error << " " << fatal_error_flag << " " << missing_config_flag << endl;
         ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(660, 500), ImGuiCond_Always);
         ImGui::Begin("Error", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);

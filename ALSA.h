@@ -42,7 +42,8 @@ public:
     // Access ring buffer
     void copyRingBuffer(array3D<float>& data_output_1, array3D<float>& data_output_2);
 
-    atomic<int> pcm_error = 0;   // Flag for buffer error
+    atomic<int> pcm_error = 0;     // Flag for buffer error
+    atomic<int> frame_counter = 0; // Counter for frames recorded
 
 
 private:
@@ -273,6 +274,8 @@ bool ALSA::recordAudio()
         } // end b
         // cout << "End recordAudio\n";
 
+        frame_counter++;
+
         // data_buffer_1.print_layer(100);
     } // end loop
 
@@ -304,9 +307,6 @@ void ALSA::stop()
 void ALSA::copyRingBuffer(array3D<float>& data_output_1, array3D<float>& data_output_2)
 {
     // ALSA_timer.start();
-    // lock_guard<mutex> lock(buffer_mutex);
-    // memcpy(data_output_1.data, data_buffer_1.data, frame_size);
-    // memcpy(data_output_2.data, data_buffer_2.data, frame_size);
 
     for (int m = 0; m < data_buffer_1.dim_1; m++)
     {

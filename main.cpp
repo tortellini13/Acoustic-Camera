@@ -42,7 +42,7 @@ int main()
     //=====================================================================================
 
     // Timer for testing
-    // timer test("Test");
+    timer test("Test");
 
     // Arrays to store data
     array3D<float> audio_data_buffer_1(M_AMOUNT, N_AMOUNT, FFT_SIZE);
@@ -84,14 +84,14 @@ int main()
     while(1)
     {
         
-        // test.start();
+        test.start();
         // Copy data from ring buffer and process beamforming
         #ifdef ENABLE_AUDIO
         ALSA.copyRingBuffer(audio_data_buffer_1, audio_data_buffer_2);
 
         // audio_data_buffer_1.print_layer(100);
 
-        beamform.processData(processed_data, 20, 27, POST_dBFS, audio_data_buffer_1, audio_data_buffer_2);
+        beamform.processData(processed_data, 1, 512, POST_dBFS, audio_data_buffer_1, audio_data_buffer_2);
         // cout << "End of processData\n";
 
         
@@ -109,7 +109,12 @@ int main()
         //if (waitKey(1) >= 0) break;
         #endif
 
-        // test.end();
+        test.end();
+
+        double time = test.time(false);
+        double fps = 1 / time;
+        cout << "FPS: " << fps << "\n";
+
         // test.print();
         // test.print_avg(AVG_SAMPLES);
 
