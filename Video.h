@@ -137,7 +137,8 @@ private:
     bool missing_config_flag = false;
     bool was_error = false; //error flag
 
-
+    Mat frame_buffer_1;
+    Mat frame_buffer_2;
 
 };
 
@@ -362,8 +363,10 @@ void video::captureVideo(VideoCapture& cap, atomic<bool>& is_running)
         Mat temp_frame;
         if (cap.read(temp_frame)) 
         {
-            lock_guard<mutex> lock(frame_mutex);  // Protect access to the frame queue with a mutex
-            frame_queue.push(temp_frame.clone()); // Store a copy of the frame in the queue
+            //lock_guard<mutex> lock(frame_mutex);  // Protect access to the frame queue with a mutex
+            //frame_queue.push(temp_frame.clone()); // Store a copy of the frame in the queue
+            swap(frame_buffer_1, frame_buffer_2); // Swap buffers
+            temp_frame.copyTo(frame_buffer_2); // Copy the new frame to the buffer
         }
 
         else 
@@ -383,13 +386,14 @@ bool video::getFrame(Mat& frame)
 {
     // Try to fetch a frame without blocking
     lock_guard<mutex> lock(frame_mutex);
-    if (!frame_queue.empty()) 
+    if (is_running) 
     {
-        frame = frame_queue.front(); // Retrieve the frame
-        frame_queue.pop();           // Remove the frame from the queue
+        //frame = frame_queue.front(); // Retrieve the frame
+        //frame_queue.pop();           // Remove the frame from the queue
         //while(!frame_queue.empty()) {
         //    frame_queue.pop(); //clear the queue
         //}
+        frame_buffer_1.copyTo(frame); // Copy the frame to the output
         return true;
     }
     return false; // No frame available
