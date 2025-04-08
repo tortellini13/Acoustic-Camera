@@ -475,7 +475,9 @@ Mat video::createHeatmap(Mat& data_input, const float lower_limit, const float u
 
     // Normalizes data to be 0-255
     Mat data_normalized;
+    
     data_input.convertTo(data_normalized, CV_32F);
+   
 
      // Find coord of max and min magnitude
     minMaxLoc(data_input, &magnitude_min, &magnitude_max, NULL, &max_coord);
@@ -1353,6 +1355,7 @@ bool video::processFrame(Mat& data_input, int pcm_error_in)
        }
 
     // Creates heatmap from beamformed audio data, thresholds, clamps, and merges
+    flip(data_input, data_input, -1); //bop it
     Mat frame_merged = createHeatmap(data_input, 0.0f, 0.0f, frame);
     //cout << "heatmap created" << endl;
         
