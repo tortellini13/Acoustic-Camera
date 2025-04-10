@@ -11,6 +11,7 @@
 #include "Beamform.h"
 #include "Video.h"
 #include "Timer.h"
+#include "wav.h"
 
 
 using namespace std;
@@ -26,7 +27,9 @@ int main()
 
     // Initialize ALSA and Beamform
     #ifdef ENABLE_AUDIO
+    #ifdef ENABLE_ALSA
     ALSA ALSA(AUDIO_DEVICE_NAME, M_AMOUNT, N_AMOUNT, SAMPLE_RATE, FFT_SIZE);
+    #endif
     beamform beamform(FFT_SIZE, SAMPLE_RATE, M_AMOUNT, N_AMOUNT, NUM_TAPS,
                       MIC_SPACING, 343.0f,
                       MIN_THETA, MAX_THETA, STEP_THETA, NUM_THETA,
@@ -64,14 +67,20 @@ int main()
 
     // Send configuration to ALSA and start recording audio
     #ifdef ENABLE_AUDIO
+    #ifdef ENABLE_ALSA
     ALSA.setup();
     ALSA.start();
+    #endif
     // cout << "Audio setup complete.\n"; 
 
     beamform.setup();
     // cout << "Beamform setup complete.\n";
-    #endif
 
+    #ifdef ENABLE_WAV
+    WAV WAV;
+    WAV.setup("test1k.wav");
+    #endif
+    #endif
     // Start video capture
     #ifdef ENABLE_VIDEO 
     video.startCapture();
@@ -87,9 +96,13 @@ int main()
         test.start();
         // Copy data from ring buffer and process beamforming
         #ifdef ENABLE_AUDIO
+        #ifdef ENABLE_ALSA
         ALSA.copyRingBuffer(audio_data_buffer_1, audio_data_buffer_2);
-
+        #endif
         // audio_data_buffer_1.print_layer(100);
+        #ifdef ENABLE_WAV
+        WAV.readWAV(audio_data_buffer_1, audio_data_buffer_2);
+        #endif
 
         beamform.processData(processed_data, 19, 24, POST_dBFS, audio_data_buffer_1, audio_data_buffer_2);
         // cout << "End of processData\n";
@@ -98,12 +111,13 @@ int main()
         #endif
         
         // Generate heatmap and ui then display the frame
+        int pcm_error = 0;
         #ifdef ENABLE_VIDEO
         // if (waitKey(1) >= 0) break;
         #ifdef ENABLE_AUDIO
+        #ifdef ENABLE_ALSA
         int pcm_error = ALSA.pcm_error;
-        #else
-        int pcm_error = 0;
+        #endif
         #endif
         if (video.processFrame(processed_data, pcm_error) == false) break;
         //if (waitKey(1) >= 0) break;
@@ -124,7 +138,9 @@ int main()
 
     // Clean up and exit
     #ifdef ENABLE_AUDIO
+    #ifdef ENABLE_ALSA
     ALSA.stop();
+    #endif
     #endif
 
     #ifdef ENABLE_VIDEO

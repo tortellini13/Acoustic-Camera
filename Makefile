@@ -21,7 +21,7 @@ IMGUI_SRC = imgui/imgui.cpp \
             imgui/ImGuiFileDialog.cpp 
 
 
-HEADERS = PARAMS.h Video.h ALSA.h Beamform.h 
+HEADERS = PARAMS.h Video.h ALSA.h Beamform.h wav.h AudioFile.h
 
 NAME = main
 

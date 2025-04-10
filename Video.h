@@ -198,7 +198,7 @@ bool video::readConfig() {
             while (getline(configfile, cfgline)) { //read the config files
                 cfgline.erase(0, cfgline.find_first_not_of(" \t\r\n")); // Trim leading spaces
                 cfgline.erase(cfgline.find_last_not_of(" \t\r\n") + 1); // Trim trailing spaces
-                cout << cfgline << endl;
+                //cout << cfgline << endl;
                 if (cfgline.empty() || cfgline[0] == '#') continue; // Skip empty lines and comments
                 size_t pos = cfgline.find('='); //look for equal sign
                 if (pos != string::npos) { //split up the "parameter"="value"
