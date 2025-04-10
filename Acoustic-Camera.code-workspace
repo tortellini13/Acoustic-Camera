@@ -10,7 +10,8 @@
 	"settings": {
 		"files.associations": {
 			"ostream": "cpp",
-			"atomic": "cpp"
+			"atomic": "cpp",
+			"cmath": "cpp"
 		}
 	}
 }

@@ -4,8 +4,13 @@ save_path=/home/pi/Desktop/Acoustic-Camera/Captures
 quality=2
 full_range=true
 imgui_alpha=0.480000
+<<<<<<< HEAD
 imgui_clamp_max=0
 imgui_clamp_min=-93
+=======
+imgui_clamp_max=20
+imgui_clamp_min=-500
+>>>>>>> 6685142 (trying phased array again)
 heatmap=COLORMAP_JET
 hidden_menu=false
 mark_max_mag_state=true
@@ -13,7 +18,11 @@ octave_bands=false
 color_scale_state=true
 heat_map_state=true
 octave_band_value=6
+<<<<<<< HEAD
 imgui_threshold=-89
+=======
+imgui_threshold=-500
+>>>>>>> 6685142 (trying phased array again)
 static_state=false
 data_clamp_state=true
 threshold_state=true
